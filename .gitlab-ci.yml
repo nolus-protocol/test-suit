@@ -11,7 +11,7 @@ Prepare:
     - apk update && apk add bash
     - apk --no-cache add curl
     - apk --no-cache add jq
-    - yarn
+    - yarn install
   script:
     - yarn prepare-env-dev
 
