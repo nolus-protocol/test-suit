@@ -9,6 +9,8 @@ Prepare:
     - schedules
   before_script:
     - apk update && apk add bash
+    - apk --no-cache add curl
+    - apk --no-cache add jq
     - yarn
   script:
     - yarn prepare-env-dev
