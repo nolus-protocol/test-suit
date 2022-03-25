@@ -2,8 +2,16 @@
 
 ## Prerequisites
 
-You need Node v14+ and npm installed on your machine.
-You also need to install [jq](https://stedolan.github.io/jq/download/) and the project's dependencies via:
+You need Node v14+ installed on your machine.
+You also need to install:
+
+* [jq](https://stedolan.github.io/jq/download/):
+
+```sh
+sudo apt-get install jq
+```
+
+* the project's dependencies:
 
 ```sh
 yarn
