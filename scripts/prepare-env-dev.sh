@@ -2,7 +2,8 @@
 set -euxo pipefail
 
 ARTIFACT_BIN="nolus.tar.gz"
-# "$CI_JOB_TOKEN"
+NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
+
 if [[ $# -eq 0 ]]; then
  if [[ -z ${CI_JOB_TOKEN+x} ]]; then
     echo "Error: there is no PRIVATE or CI_JOB token"
@@ -17,8 +18,7 @@ else
 fi
 
 ROOT_DIR=$(pwd)
-
-VERSION=$(curl --silent "https://net-dev.nolus.io:26612/abci_info" | jq '.result.response.version' | tr -d '"')
+VERSION=$(curl --silent "$NOLUS_DEV_NET/abci_info" | jq '.result.response.version' | tr -d '"')
 
 curl --output artifacts.zip --header "$TOKEN_TYPE: $TOKEN_VALUE" "https://gitlab-nomo.credissimo.net/api/v4/projects/3/jobs/artifacts/v$VERSION/download?job=setup-dev-network"
 echo 'A' | unzip artifacts.zip
