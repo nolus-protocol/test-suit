@@ -3,7 +3,7 @@ image: node:alpine
 stages:
   - test
 
-Prepare:
+Test:
   stage: test
   only:
     - schedules
@@ -14,10 +14,5 @@ Prepare:
     - yarn install
   script:
     - yarn prepare-env-dev
-
-Run:
-  stage: test
-  only:
-    - schedules
-  script:
+  after_script:
     - yarn test
