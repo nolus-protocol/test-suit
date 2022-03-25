@@ -1,4 +1,7 @@
 node_modules/
 .env
 artifacts.zip
+nolus.tar.gz
+binary.zip
 accounts
+nolusd
