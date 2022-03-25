@@ -2,15 +2,15 @@
 set -euxo pipefail
 
 ARTIFACT_BIN="nolus.tar.gz"
-
+# "$CI_JOB_TOKEN"
 if [[ $# -eq 0 ]]; then
- # if [[ -z ${CI_JOB_TOKEN} ]]; then
-    #echo "Error: there is no PRIVATE or CI_JOB token"
-    #exit 1
-  #else
+ if [[ -z ${CI_JOB_TOKEN+x} ]]; then
+    echo "Error: there is no PRIVATE or CI_JOB token"
+    exit 1
+  else
     TOKEN_TYPE="JOB-TOKEN"
     TOKEN_VALUE="$CI_JOB_TOKEN"
-  #fi
+  fi
 else
   TOKEN_TYPE="PRIVATE-TOKEN"
   TOKEN_VALUE="$1"
