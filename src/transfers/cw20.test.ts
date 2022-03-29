@@ -110,69 +110,69 @@ describe("CW20 transfer", () => {
         expect(BigInt(user2BalanceAfter)).toBe(BigInt(user2BalanceBefore) + BigInt(amountToTransfer));
     });
 
-    // test("users should be able to transfer tokens allowed from another user", async () => {
-    //     const user2Client = await getUser1Client();
-    //     const [user2Account] = await (await getUser1Wallet()).getAccounts();
-    //     let user2AllowanceBefore;
-    //     let user2AllowanceAfter;
-    //     let user2BalanceBefore;
-    //     let user2BalanceAfter;
-    //     let amountToTransfer = "1000";
+    test("users should be able to transfer tokens allowed from another user", async () => {
+        const user2Client = await getUser2Client();
+        const [user2Account] = await (await getUser2Wallet()).getAccounts();
+        let user2AllowanceBefore;
+        let user2AllowanceAfter;
+        let user2BalanceBefore;
+        let user2BalanceAfter;
+        let amountToTransfer = "1000";
 
-    //     const allowanceMsg = {
-    //         "allowance": {
-    //             "owner": user1Account.address,
-    //             "spender": user2Account.address
-    //         }
-    //     };
-    //     user2AllowanceBefore = (await user2Client.queryContractSmart(contractAddress, allowanceMsg)).allowance;
-    //     console.log("User before allowance:", user2AllowanceBefore);
+        const allowanceMsg = {
+            "allowance": {
+                "owner": user1Account.address,
+                "spender": user2Account.address
+            }
+        };
+        user2AllowanceBefore = (await user2Client.queryContractSmart(contractAddress, allowanceMsg)).allowance;
+        console.log("User before allowance:", user2AllowanceBefore);
 
-    //     const balanceMsg = {
-    //         "balance": {
-    //             "address": user2Account.address
-    //         }
-    //     };
-    //     user2BalanceBefore = (await user2Client.queryContractSmart(contractAddress, balanceMsg)).balance;
-    //     console.log("User before balance:", user2BalanceBefore);
+        const balanceMsg = {
+            "balance": {
+                "address": user2Account.address
+            }
+        };
+        user2BalanceBefore = (await user2Client.queryContractSmart(contractAddress, balanceMsg)).balance;
+        console.log("User before balance:", user2BalanceBefore);
 
-    //     // send some native tokens to the user, so that they can call TransferFrom
-    //     const nativeTokenTransfer = {
-    //         denom: "unolus",
-    //         amount: "2000000",
-    //     };
-    //     const fee = {
-    //         amount: [{denom: "unolus", amount: "12"}],
-    //         gas: "100000"
-    //     };
-    //     await user1Client.sendTokens(user1Account.address, user2Account.address, [nativeTokenTransfer], fee, "Send transaction");
+        // send some native tokens to the user, so that they can call TransferFrom
+        const nativeTokenTransfer = {
+            denom: "unolus",
+            amount: "2000000",
+        };
+        const fee = {
+            amount: [{denom: "unolus", amount: "12"}],
+            gas: "100000"
+        };
+        await user1Client.sendTokens(user1Account.address, user2Account.address, [nativeTokenTransfer], fee, "Send transaction");
 
-    //     const increaseAllowanceMsg = {
-    //         "increase_allowance": {
-    //             "spender": user2Account.address,
-    //             "amount": amountToTransfer,
-    //         }
-    //     };
-    //     await user1Client.execute(user1Account.address, contractAddress, increaseAllowanceMsg, customFees.exec);
+        const increaseAllowanceMsg = {
+            "increase_allowance": {
+                "spender": user2Account.address,
+                "amount": amountToTransfer,
+            }
+        };
+        await user1Client.execute(user1Account.address, contractAddress, increaseAllowanceMsg, customFees.exec);
 
-    //     user2AllowanceAfter = (await user2Client.queryContractSmart(contractAddress, allowanceMsg)).allowance;
-    //     console.log("User after allowance:", user2AllowanceAfter);
+        user2AllowanceAfter = (await user2Client.queryContractSmart(contractAddress, allowanceMsg)).allowance;
+        console.log("User after allowance:", user2AllowanceAfter);
 
-    //     expect(BigInt(user2AllowanceAfter)).toBe(BigInt(user2AllowanceBefore) + BigInt(amountToTransfer));
+        expect(BigInt(user2AllowanceAfter)).toBe(BigInt(user2AllowanceBefore) + BigInt(amountToTransfer));
 
-    //     const transferFromMsg = {
-    //         "transfer_from": {
-    //             "owner": user1Account.address,
-    //             "recipient": user2Account.address,
-    //             "amount": amountToTransfer
-    //         }
-    //     };
-    //     await user2Client.execute(user2Account.address, contractAddress, transferFromMsg, customFees.exec);
+        const transferFromMsg = {
+            "transfer_from": {
+                "owner": user1Account.address,
+                "recipient": user2Account.address,
+                "amount": amountToTransfer
+            }
+        };
+        await user2Client.execute(user2Account.address, contractAddress, transferFromMsg, customFees.exec);
 
-    //     user2BalanceAfter = (await user2Client.queryContractSmart(contractAddress, balanceMsg)).balance;
-    //     console.log("User after balance:", user2BalanceAfter);
-    //     console.log("User after transfer allowance:", (await user2Client.queryContractSmart(contractAddress, allowanceMsg)).allowance);
+        user2BalanceAfter = (await user2Client.queryContractSmart(contractAddress, balanceMsg)).balance;
+        console.log("User after balance:", user2BalanceAfter);
+        console.log("User after transfer allowance:", (await user2Client.queryContractSmart(contractAddress, allowanceMsg)).allowance);
 
-    //     expect(BigInt(user2BalanceAfter)).toBe(BigInt(user2BalanceBefore) + BigInt(amountToTransfer));
-    // });
+        expect(BigInt(user2BalanceAfter)).toBe(BigInt(user2BalanceBefore) + BigInt(amountToTransfer));
+    });
 });
