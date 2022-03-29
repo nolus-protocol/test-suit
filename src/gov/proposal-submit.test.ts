@@ -22,30 +22,29 @@ import { getUser1Client, getUser1Wallet } from "../util/clients";
 import { UpgradeProposal, ClientUpdateProposal } from "../util/proposals";
 
 describe('Proposal submission tests', () => {
-
+    const NATIVE_TOKEN = "unolus";
     let client: SigningCosmWasmClient;
     let wallet: DirectSecp256k1Wallet;
     let firstAccount: AccountData;
     let msg: any;
     let fee: StdFee;
     let moduleName: string;
+    fee = {
+        amount: [{denom: NATIVE_TOKEN, amount: "12"}],
+        gas: "100000"
+    }
 
     beforeAll(async () => {
         client = await getUser1Client();
         wallet = await getUser1Wallet();
         [firstAccount] = await wallet.getAccounts();
         moduleName = "gov";
-
-        fee = {
-            amount: [{denom: "unolus", amount: "12"}],
-            gas: "100000"
-        }
         msg = {
             typeUrl: "/cosmos.gov.v1beta1.MsgSubmitProposal",
             value: {
                 content: {},
                 proposer: firstAccount.address,
-                initialDeposit: [{denom: "unolus", amount: "12"}],
+                initialDeposit: [{denom: NATIVE_TOKEN, amount: "12"}],
             }
         };
     })
@@ -64,7 +63,6 @@ describe('Proposal submission tests', () => {
                 title: "Test Proposal",
             }).finish(),
         };
-
         moduleName = "gov";
     })
 
@@ -75,10 +73,9 @@ describe('Proposal submission tests', () => {
                 description: "This proposal proposes to test whether this proposal passes",
                 title: "Test Proposal",
                 recipient: firstAccount.address,
-                amount: [{denom: "unolus", amount: "1000000"}]
+                amount: [{denom: NATIVE_TOKEN, amount: "1000000"}]
             }).finish(),
         };
-
         moduleName = "distribution"
     })
 
@@ -95,7 +92,6 @@ describe('Proposal submission tests', () => {
                 }]
             }).finish(),
         };
-
         moduleName = "params";
     })
 
@@ -112,7 +108,6 @@ describe('Proposal submission tests', () => {
                 }
             }).finish(),
         };
-
         moduleName = "upgrade";
     })
 
@@ -124,7 +119,6 @@ describe('Proposal submission tests', () => {
                 title: "Test Proposal",
             }).finish(),
         };
-
         moduleName = "upgrade";
     })
 
@@ -151,12 +145,10 @@ describe('Proposal submission tests', () => {
                 }
             }).finish(),
         };
-
         fee = {
-            amount: [{denom: "unolus", amount: "12"}],
+            amount: [{denom: NATIVE_TOKEN, amount: "12"}],
             gas: "200000"
         }
-
         moduleName = "client";
     })
 
@@ -170,7 +162,6 @@ describe('Proposal submission tests', () => {
                 substituteClientId: "tendermint-08"
             }).finish(),
         };
-
         moduleName = "client";
     })
 
@@ -184,7 +175,6 @@ describe('Proposal submission tests', () => {
                 wasmByteCode: new Uint8Array(2)
             }).finish(),
         };
-
         moduleName = "wasm";
     })
 
@@ -199,10 +189,9 @@ describe('Proposal submission tests', () => {
                 codeId: Long.fromInt(1),
                 label: "contractlabel",
                 msg: toUtf8("{}"),
-                funds: [{denom: "unolus", amount: "12"}]
+                funds: [{denom: NATIVE_TOKEN, amount: "12"}]
             }).finish(),
         };
-
         moduleName = "wasm";
     })
 
@@ -219,7 +208,6 @@ describe('Proposal submission tests', () => {
                 msg: toUtf8("{}"),
             }).finish(),
         };
-
         moduleName = "wasm";
     })
 
@@ -233,7 +221,6 @@ describe('Proposal submission tests', () => {
                 contract: firstAccount.address,
             }).finish(),
         };
-
         moduleName = "wasm";
     })
 
@@ -246,7 +233,6 @@ describe('Proposal submission tests', () => {
                 contract: firstAccount.address,
             }).finish(),
         };
-
         moduleName = "wasm";
     })
 
@@ -259,7 +245,6 @@ describe('Proposal submission tests', () => {
                 codeIds: [Long.fromInt(1)],
             }).finish(),
         };
-
         moduleName = "wasm";
     })
 
@@ -272,7 +257,6 @@ describe('Proposal submission tests', () => {
                 codeIds: [Long.fromInt(1)],
             }).finish(),
         };
-
         moduleName = "wasm";
     })
 })

@@ -11,7 +11,14 @@ describe("IBC transfer", () => {
         const [user1Account] = await (await getUser1Wallet()).getAccounts();
         const user2Client: SigningCosmWasmClient = await getUser2Client();
         const [user2Account] = await (await getUser2Wallet()).getAccounts();
-
+        const transfer = {
+            denom: ibcToken,
+            amount: "1000",
+        };
+        const fee = {
+            amount: [{denom: NATIVE_TOKEN, amount: "12"}],
+            gas: "100000"
+        };
 
         let initialUser1Balance = await user1Client.getBalance(user1Account.address, ibcToken);
         let initialUser2Balance = await user2Client.getBalance(user2Account.address, ibcToken);
@@ -22,18 +29,8 @@ describe("IBC transfer", () => {
         expect(ibcToken.length > 0).toBeTruthy();
         expect(BigInt(initialUser1Balance.amount) > 0).toBeTruthy();
 
-        const transfer = {
-            denom: ibcToken,
-            amount: "1000",
-        };
-        const fee = {
-            amount: [{denom: NATIVE_TOKEN, amount: "12"}],
-            gas: "100000"
-        };
-
         let sendTokensResponse: DeliverTxResponse = await user1Client.sendTokens(user1Account.address, user2Account.address, [transfer], fee, "Testing send transaction");
         assertIsDeliverTxSuccess(sendTokensResponse);
-
         let nextUser1Balance = await (user1Client.getBalance(user1Account.address, ibcToken));
         let nextUser2Balance = await (user2Client.getBalance(user2Account.address, ibcToken))
         console.log("User 1 after balance:", nextUser1Balance);
