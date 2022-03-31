@@ -39,16 +39,12 @@ echo 'y' | nolusd keys add test-user-2 --keyring-backend "test" --home "$ACCOUNT
 USER_2_PRIV_KEY=$(echo 'y' | nolusd keys export test-user-1 --unsafe --unarmored-hex --keyring-backend "test" --home "$ACCOUNTS_DIR" 2>&1)
 USER_3_PRIV_KEY=$(echo 'y' | nolusd keys export test-user-2 --unsafe --unarmored-hex --keyring-backend "test" --home "$ACCOUNTS_DIR" 2>&1)
 
-# create DELAYED_VESTING account
-DELAYED_VESTING_PRIV_KEY=$(echo 'y' | nolusd keys export treasury --unsafe --unarmored-hex --keyring-backend "test" --home "$ACCOUNTS_DIR" 2>&1)
-
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${NOLUS_DEV_NET}
 USER_1_PRIV_KEY=${USER_1_PRIV_KEY}
 USER_2_PRIV_KEY=${USER_2_PRIV_KEY}
 USER_3_PRIV_KEY=${USER_3_PRIV_KEY}
 IBC_TOKEN=${IBC_TOKEN}
-DELAYED_VESTING_PRIV_KEY=${DELAYED_VESTING_PRIV_KEY}
 EOF
   )
    echo "$DOT_ENV" > "$ROOT_DIR/.env"

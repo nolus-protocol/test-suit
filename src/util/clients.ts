@@ -20,7 +20,6 @@ import {QuerySuspendRequest} from "./codec/nolus/suspend/v1beta1/query";
 let user1PrivKey = fromHex(process.env.USER_1_PRIV_KEY as string);
 let user2PrivKey = fromHex(process.env.USER_2_PRIV_KEY as string);
 let user3PrivKey = fromHex(process.env.USER_3_PRIV_KEY as string);
-let delayedVestingPrivKey = fromHex(process.env.DELAYED_VESTING_PRIV_KEY as string);
 
 
 export const NOLUS_PREFIX = "nolus";
@@ -77,14 +76,6 @@ function seedToPrivateKey(mnemonic: string, hdPath = 'm/44\'/118\'/0\'/0/0'): Bu
         throw new Error("Illegal state reached");
     }
     return privateKey
-}
-
-export async function getDelayedVestingWallet(): Promise<DirectSecp256k1Wallet> {
-    return await getWallet(delayedVestingPrivKey);
-}
-
-export async function getDelayedVestingClient(): Promise<SigningCosmWasmClient> {
-    return await getClientWithKey(delayedVestingPrivKey);
 }
 
 function getSignerOptions(): SigningCosmWasmClientOptions {
