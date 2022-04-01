@@ -8,13 +8,14 @@ import {AccountData, EncodeObject} from "@cosmjs/proto-signing";
 import {SigningCosmWasmClient} from "@cosmjs/cosmwasm-stargate";
 import {MsgCreateVestingAccount, protobufPackage as vestingPackage} from "../util/codec/cosmos/vesting/v1beta1/tx";
 import Long from "long";
-import {assertIsDeliverTxSuccess} from "@cosmjs/stargate";
+import {assertIsDeliverTxSuccess, isDeliverTxFailure} from "@cosmjs/stargate";
 import {DEFAULT_FEE, sleep} from "../util/utils";
 import { Coin } from "src/util/codec/cosmos/base/v1beta1/coin";
 
 describe("Delayed vesting tests", () => {
-    const AMOUNT: Coin = {denom: "unolus", amount: "1000"};
-    const ENDTIME_SECONDS: number = 7;
+    const AMOUNT: Coin = {denom: "unolus", amount: "10000"};
+    const INIT: Coin = {denom: "unolus", amount: "200"};
+    const ENDTIME_SECONDS: number = 30;
     let user1Client: SigningCosmWasmClient;
     let user1Account: AccountData;
     let delayedClient: SigningCosmWasmClient;
@@ -43,10 +44,14 @@ describe("Delayed vesting tests", () => {
 
         let result = await user1Client.signAndBroadcast(user1Account.address, [encodedMsg], DEFAULT_FEE);
         assertIsDeliverTxSuccess(result);
-        let broadcast = () => delayedClient.sendTokens(delayedAccount.address, user1Account.address, DEFAULT_FEE.amount, DEFAULT_FEE);
 
-        await expect(broadcast).rejects.toThrow(/^.*insufficient funds: insufficient funds.*/);
-        await sleep(ENDTIME_SECONDS*1000);
-        assertIsDeliverTxSuccess(await delayedClient.sendTokens(delayedAccount.address, user1Account.address, DEFAULT_FEE.amount, DEFAULT_FEE));
+        await user1Client.sendTokens(user1Account.address, delayedAccount.address, [INIT], DEFAULT_FEE);
+
+        let sendFailTx = await delayedClient.sendTokens(delayedAccount.address, user1Account.address, [AMOUNT], DEFAULT_FEE);
+        console.log(sendFailTx);
+        expect(isDeliverTxFailure(sendFailTx)).toBeTruthy();
+        expect(sendFailTx.rawLog).toMatch(/^.*smaller than 10000unolus: insufficient funds.*/);
+        await sleep(ENDTIME_SECONDS / 2 * 1000);
+        assertIsDeliverTxSuccess(await delayedClient.sendTokens(delayedAccount.address, user1Account.address, [AMOUNT], DEFAULT_FEE));
     });
 });

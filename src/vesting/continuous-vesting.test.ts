@@ -10,6 +10,7 @@ import {Coin} from "../util/codec/cosmos/base/v1beta1/coin";
 describe("Continuous vesting tests", () => {
     const FULL_AMOUNT: Coin = {denom: "unolus", amount: "10000"};
     const HALF_AMOUNT: Coin = {denom: "unolus", amount: "5000"};
+    const INIT: Coin = {denom: "unolus", amount: "200"};
     const ENDTIME_SECONDS: number = 30;
     let user1Client: SigningCosmWasmClient;
     let user1Account: AccountData;
@@ -29,7 +30,7 @@ describe("Continuous vesting tests", () => {
             fromAddress: user1Account.address,
             toAddress: continuousAccount.address,
             amount: [FULL_AMOUNT],
-            endTime: Long.fromNumber((new Date().getTime() / 1000) + ENDTIME_SECONDS),
+            endTime:  Long.fromNumber((new Date().getTime() / 1000) + ENDTIME_SECONDS),
             delayed: false,
         };
         const encodedMsg: EncodeObject = {
@@ -38,12 +39,12 @@ describe("Continuous vesting tests", () => {
         };
 
         let result = await user1Client.signAndBroadcast(user1Account.address, [encodedMsg], DEFAULT_FEE);
-
         assertIsDeliverTxSuccess(result);
-        await sleep(5000);
-        let sendFailTx = await continuousClient.sendTokens(continuousAccount.address, user1Account.address, [HALF_AMOUNT], DEFAULT_FEE);
-        console.log(sendFailTx)
 
+        await user1Client.sendTokens(user1Account.address, continuousAccount.address, [INIT], DEFAULT_FEE);
+
+        let sendFailTx = await continuousClient.sendTokens(continuousAccount.address, user1Account.address, [HALF_AMOUNT], DEFAULT_FEE);
+        console.log(sendFailTx);
         expect(isDeliverTxFailure(sendFailTx)).toBeTruthy();
         expect(sendFailTx.rawLog).toMatch(/^.*smaller than 5000unolus: insufficient funds.*/);
         await sleep(ENDTIME_SECONDS / 2 * 1000);
