@@ -1,0 +1,18 @@
+image: node:alpine
+
+stages:
+  - test
+
+Test:
+  stage: test
+  only:
+    - schedules
+  before_script:
+    - apk update && apk add bash
+    - apk --no-cache add curl
+    - apk --no-cache add jq
+    - yarn install
+  script:
+    - yarn prepare-env-dev
+  after_script:
+    - yarn test
