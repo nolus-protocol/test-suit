@@ -51,7 +51,10 @@ describe("Delayed vesting tests", () => {
         console.log(sendFailTx);
         expect(isDeliverTxFailure(sendFailTx)).toBeTruthy();
         expect(sendFailTx.rawLog).toMatch(/^.*smaller than 10000unolus: insufficient funds.*/);
-        await sleep(ENDTIME_SECONDS / 2 * 1000);
-        assertIsDeliverTxSuccess(await delayedClient.sendTokens(delayedAccount.address, user1Account.address, [AMOUNT], DEFAULT_FEE));
+        await sleep(ENDTIME_SECONDS * 1000);
+
+        let result2 = await delayedClient.sendTokens(delayedAccount.address, user1Account.address, [AMOUNT], DEFAULT_FEE);
+        console.log(result2);
+        assertIsDeliverTxSuccess(result2);
     });
 });

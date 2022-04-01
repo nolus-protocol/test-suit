@@ -14,5 +14,4 @@ Test:
     - yarn install
   script:
     - yarn prepare-env-dev
-  after_script:
     - yarn test
