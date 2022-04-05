@@ -39,12 +39,16 @@ echo 'y' | nolusd keys add test-user-2 --keyring-backend "test" --home "$ACCOUNT
 USER_2_PRIV_KEY=$(echo 'y' | nolusd keys export test-user-1 --unsafe --unarmored-hex --keyring-backend "test" --home "$ACCOUNTS_DIR" 2>&1)
 USER_3_PRIV_KEY=$(echo 'y' | nolusd keys export test-user-2 --unsafe --unarmored-hex --keyring-backend "test" --home "$ACCOUNTS_DIR" 2>&1)
 
+# contracts
+# get ORACLE_CODE_ID from smart-contracts artifacts
+
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${NOLUS_DEV_NET}
 USER_1_PRIV_KEY=${USER_1_PRIV_KEY}
 USER_2_PRIV_KEY=${USER_2_PRIV_KEY}
 USER_3_PRIV_KEY=${USER_3_PRIV_KEY}
 IBC_TOKEN=${IBC_TOKEN}
+ORACLE_CODE_ID=${ORACLE_CODE_ID}
 EOF
   )
    echo "$DOT_ENV" > "$ROOT_DIR/.env"
