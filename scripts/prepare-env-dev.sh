@@ -17,15 +17,17 @@ else
   TOKEN_VALUE="$1"
 fi
 
+downloadArtifact() {
+  curl --output $1.zip --header "$TOKEN_TYPE: $TOKEN_VALUE" "https://gitlab-nomo.credissimo.net/api/v4/projects/3/jobs/artifacts/v$2/download?job=$1"
+  echo 'A' | unzip $1.zip
+}
+
 ROOT_DIR=$(pwd)
 IBC_TOKEN='ibc/0954E1C28EB7AF5B72D24F3BC2B47BBB2FDF91BDDFD57B74B99E133AED40972A'
 VERSION=$(curl --silent "$NOLUS_DEV_NET/abci_info" | jq '.result.response.version' | tr -d '"')
 
-curl --output artifacts.zip --header "$TOKEN_TYPE: $TOKEN_VALUE" "https://gitlab-nomo.credissimo.net/api/v4/projects/3/jobs/artifacts/v$VERSION/download?job=setup-dev-network"
-echo 'A' | unzip artifacts.zip
-
-curl --output binary.zip --header "$TOKEN_TYPE: $TOKEN_VALUE" "https://gitlab-nomo.credissimo.net/api/v4/projects/3/jobs/artifacts/v$VERSION/download?job=build-binary"
-echo 'A' | unzip binary.zip
+downloadArtifact "setup-dev-network" $VERSION
+downloadArtifact "build-binary" $VERSION
 tar -xf $ARTIFACT_BIN
 export PATH=$(pwd):$PATH
 
@@ -40,7 +42,7 @@ USER_2_PRIV_KEY=$(echo 'y' | nolusd keys export test-user-1 --unsafe --unarmored
 USER_3_PRIV_KEY=$(echo 'y' | nolusd keys export test-user-2 --unsafe --unarmored-hex --keyring-backend "test" --home "$ACCOUNTS_DIR" 2>&1)
 
 # contracts
-# get ORACLE_CODE_ID from smart-contracts artifacts
+# download artifact from smart-contracts; get ORACLE_ADDRESS and save as env var
 
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${NOLUS_DEV_NET}
@@ -48,7 +50,6 @@ USER_1_PRIV_KEY=${USER_1_PRIV_KEY}
 USER_2_PRIV_KEY=${USER_2_PRIV_KEY}
 USER_3_PRIV_KEY=${USER_3_PRIV_KEY}
 IBC_TOKEN=${IBC_TOKEN}
-ORACLE_CODE_ID=${ORACLE_CODE_ID}
 EOF
   )
    echo "$DOT_ENV" > "$ROOT_DIR/.env"
