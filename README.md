@@ -5,6 +5,20 @@
 You need Node v14+ installed on your machine.
 You also need to install:
 
+* [yarn](https://classic.yarnpkg.com/lang/en/docs/install/#debian-stable)
+
+```sh
+npm install --global yarn
+```
+
+* [jest](https://jestjs.io/docs/getting-started)
+
+You can run Jest directly from the CLI if it's globally available in your PATH:
+
+```sh
+yarn global add jest
+```
+
 * [jq](https://stedolan.github.io/jq/download/):
 
 ```sh
