@@ -1,49 +1,66 @@
 #!/bin/bash
 set -euxo pipefail
 
+ROOT_DIR=$(pwd)
 ARTIFACT_BIN="nolus.tar.gz"
 NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
+GITLAB_API="https://gitlab-nomo.credissimo.net/api/v4"
+IBC_TOKEN='ibc/0954E1C28EB7AF5B72D24F3BC2B47BBB2FDF91BDDFD57B74B99E133AED40972A'
 
 if [[ $# -eq 0 ]]; then
  if [[ -z ${CI_JOB_TOKEN+x} ]]; then
     echo "Error: there is no PRIVATE or CI_JOB token"
     exit 1
-  else
+  fi
     TOKEN_TYPE="JOB-TOKEN"
     TOKEN_VALUE="$CI_JOB_TOKEN"
-  fi
 else
   TOKEN_TYPE="PRIVATE-TOKEN"
   TOKEN_VALUE="$1"
 fi
 
 downloadArtifact() {
-  curl --output $1.zip --header "$TOKEN_TYPE: $TOKEN_VALUE" "https://gitlab-nomo.credissimo.net/api/v4/projects/3/jobs/artifacts/v$2/download?job=$1"
-  echo 'A' | unzip $1.zip
+  local name="$1"
+  local version="$2"
+
+  curl --output "$name".zip --header "$TOKEN_TYPE: $TOKEN_VALUE" "$GITLAB_API/projects/3/jobs/artifacts/v$version/download?job=$name"
+  echo 'A' | unzip "$name".zip
 }
 
-ROOT_DIR=$(pwd)
-IBC_TOKEN='ibc/0954E1C28EB7AF5B72D24F3BC2B47BBB2FDF91BDDFD57B74B99E133AED40972A'
+addKey() {
+  local name="$1"
+  local account_dir="$ACCOUNTS_DIR"
+
+  echo 'y' | nolusd keys add "$name" --keyring-backend "test" --home "$account_dir"
+}
+
+exportKey() {
+  local name="$1"
+  local account_dir="$ACCOUNTS_DIR"
+
+  echo 'y' | nolusd keys export "$name" --unsafe --unarmored-hex --keyring-backend "test" --home "$account_dir"
+}
+
 VERSION=$(curl --silent "$NOLUS_DEV_NET/abci_info" | jq '.result.response.version' | tr -d '"')
 
-downloadArtifact "setup-dev-network" $VERSION
-downloadArtifact "build-binary" $VERSION
+downloadArtifact "setup-dev-network" "$VERSION"
+downloadArtifact "build-binary" "$VERSION"
+
 tar -xf $ARTIFACT_BIN
-export PATH=$(pwd):$PATH
+export PATH
+PATH=$(pwd):$PATH
 
 ACCOUNTS_DIR="$ROOT_DIR/accounts"
 
-USER_1_PRIV_KEY=$(echo 'y' | nolusd keys export treasury --unsafe --unarmored-hex --keyring-backend "test" --home "$ACCOUNTS_DIR" 2>&1)
+addKey "test-user-2"
+USER_1_PRIV_KEY=$(exportKey "treasury")
+USER_2_PRIV_KEY=$(exportKey "test-user-1")
+USER_3_PRIV_KEY=$(exportKey "test-user-2")
 
-echo 'y' | nolusd keys add test-user-1 --keyring-backend "test" --home "$ACCOUNTS_DIR"
-echo 'y' | nolusd keys add test-user-2 --keyring-backend "test" --home "$ACCOUNTS_DIR"
+# Get contracts information
+# download artifact from smart-contracts
 
-USER_2_PRIV_KEY=$(echo 'y' | nolusd keys export test-user-1 --unsafe --unarmored-hex --keyring-backend "test" --home "$ACCOUNTS_DIR" 2>&1)
-USER_3_PRIV_KEY=$(echo 'y' | nolusd keys export test-user-2 --unsafe --unarmored-hex --keyring-backend "test" --home "$ACCOUNTS_DIR" 2>&1)
-
-# contracts
-# download artifact from smart-contracts; get ORACLE_ADDRESS and save as env var
-
+# Save the results
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${NOLUS_DEV_NET}
 USER_1_PRIV_KEY=${USER_1_PRIV_KEY}
