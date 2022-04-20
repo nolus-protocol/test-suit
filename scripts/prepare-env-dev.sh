@@ -7,7 +7,7 @@ NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
 GITLAB_API="https://gitlab-nomo.credissimo.net/api/v4"
 IBC_TOKEN='ibc/0954E1C28EB7AF5B72D24F3BC2B47BBB2FDF91BDDFD57B74B99E133AED40972A'
 SMART_CONTRACTS_PROJECT_ID="8"
-COSMZONE_PROJECT_ID-"3"
+COSMZONE_PROJECT_ID="3"
 
 if [[ $# -eq 0 ]]; then
  if [[ -z ${CI_JOB_TOKEN+x} ]]; then
