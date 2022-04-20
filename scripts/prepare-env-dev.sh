@@ -64,7 +64,7 @@ USER_3_PRIV_KEY=$(exportKey "test-user-2")
 # Get contracts information
 # download artifact from smart-contracts
 
-SMART_CONTRACTS_LATEST_VERSION=$(curl --header "$TOKEN_TYPE: $TOKEN_VALUE" "$GITLAB_API/projects/$COSMZONE_PROJECT_ID/repository/tags")
+SMART_CONTRACTS_LATEST_VERSION=$(curl --header "PRIVATE-TOKEN: $TOKEN_VALUE" "$GITLAB_API/projects/$COSMZONE_PROJECT_ID/repository/tags")
 echo SMART_CONTRACTS_LATEST_VERSION
 
 #downloadArtifact "deploy:cargo" "$SMART_CONTRACTS_LATEST_VERSION" "$SMART_CONTRACTS_PROJECT_ID"
