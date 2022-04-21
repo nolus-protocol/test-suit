@@ -1,10 +1,11 @@
 image: node:16.14.2-alpine
 
 stages:
+  - prep
   - test
 
-Test:
-  stage: test
+env-prep:
+  stage: prep
   only:
     - schedules
   before_script:
@@ -14,4 +15,10 @@ Test:
     - yarn install
   script:
     - yarn prepare-env-dev
+
+test:
+  stage: test
+  only:
+    - schedules
+  script:
     - yarn test
