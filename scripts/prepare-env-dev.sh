@@ -8,6 +8,7 @@ GITLAB_API="https://gitlab-nomo.credissimo.net/api/v4"
 IBC_TOKEN='ibc/0954E1C28EB7AF5B72D24F3BC2B47BBB2FDF91BDDFD57B74B99E133AED40972A'
 SMART_CONTRACTS_PROJECT_ID="8"
 COSMZONE_PROJECT_ID="3"
+CONTRACTS_INFO_ARTIFACT="deploy:cargo"
 
 if [[ $# -eq 0 ]]; then
  if [[ -z ${CI_JOB_TOKEN+x} ]]; then
@@ -62,10 +63,10 @@ USER_2_PRIV_KEY=$(exportKey "test-user-1")
 USER_3_PRIV_KEY=$(exportKey "test-user-2")
 
 # Get contracts information
-# download artifact from smart-contracts
+# download deploy:cargo artifact from smart-contracts
 
-#TO DO: SMART_CONTRACTS_LATEST_VERSION=$(curl --header "$TOKEN_TYPE: $TOKEN_VALUE" "$GITLAB_API/projects/$SMART_CONTRACTS_PROJECT_ID/repository/tags")
-#downloadArtifact "deploy:cargo" "$SMART_CONTRACTS_LATEST_VERSION" "$SMART_CONTRACTS_PROJECT_ID"
+SMART_CONTRACTS_LATEST_VERSION=$(curl --header "PRIVATE-TOKEN: $SMART_CONTRACTS_ACCESS_KEY" "$GITLAB_API/projects/$SMART_CONTRACTS_PROJECT_ID/repository/tags" | jq -r '.[0].name' | tr -d '"')
+downloadArtifact  "$CONTRACTS_INFO_ARTIFACT" "$SMART_CONTRACTS_LATEST_VERSION" "$SMART_CONTRACTS_PROJECT_ID"
 
 # download the schemas
 
