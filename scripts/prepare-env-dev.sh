@@ -17,8 +17,8 @@ if [[ $# -eq 0 ]]; then
     echo "Error: there is no PRIVATE or CI_JOB token"
     exit 1
   fi
-  if [[ -v PIPELINE_PREFFERED_TAG ]]; then
-    TAG="$PIPELINE_PREFFERED_TAG"
+  if [[ -v PIPELINE_PREFERRED_TAG ]]; then
+    TAG="$PIPELINE_PREFERRED_TAG"
   fi
     TOKEN_TYPE="JOB-TOKEN"
     TOKEN_VALUE="$CI_JOB_TOKEN"
