@@ -12,7 +12,6 @@ env-prep:
     - apk update && apk add bash
     - apk --no-cache add curl
     - apk --no-cache add jq
-    - yarn install
   script:
     - yarn prepare-env-dev
 
@@ -21,4 +20,5 @@ test:
   only:
     - schedules
   script:
+    - yarn install
     - yarn test
