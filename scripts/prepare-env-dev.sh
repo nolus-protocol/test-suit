@@ -13,14 +13,20 @@ SETUP_DEV_NETWORK_ARTIFACT="setup-dev-network"
 NOLUS_BUILD_BINARY_ARTIFACT="build-binary"
 
 if [[ $# -eq 0 ]]; then
- if [[ -z ${CI_JOB_TOKEN+x} ]]; then
+  if [[ -z ${CI_JOB_TOKEN+x} ]]; then
     echo "Error: there is no PRIVATE or CI_JOB token"
     exit 1
+  fi
+  if [[ -v PIPELINE_PREFFERED_TAG ]]; then
+    TAG="$PIPELINE_PREFFERED_TAG"
   fi
     TOKEN_TYPE="JOB-TOKEN"
     TOKEN_VALUE="$CI_JOB_TOKEN"
     TAGS_ENDPOINT_ACCESS_TOKEN="$SMART_CONTRACTS_ACCESS_KEY"
 else
+  if [[ $# -eq 2 ]]; then
+    TAG="$2"
+  fi
   TOKEN_TYPE="PRIVATE-TOKEN"
   TOKEN_VALUE="$1"
   TAGS_ENDPOINT_ACCESS_TOKEN="$1"
@@ -30,9 +36,14 @@ downloadArtifact() {
   local name="$1"
   local version="$2"
   local project_id="$3"
+  local response
 
-  curl --output "$name".zip --header "$TOKEN_TYPE: $TOKEN_VALUE" "$GITLAB_API/projects/$project_id/jobs/artifacts/$version/download?job=$name"
-  echo 'A' | unzip "$name".zip
+  response=$(curl --output "$name".zip -w '%{http_code}' --header "$TOKEN_TYPE: $TOKEN_VALUE" "$GITLAB_API/projects/$project_id/jobs/artifacts/$version/download?job=$name")
+  if [[ $response -ne 200 ]]; then
+    echo "Error: failed to retrieve artifact $name, version $version from the project with ID $project_id. Are you sure the artifact and tag exist?"
+    exit 1
+  fi
+   echo 'A' | unzip "$name".zip
 }
 
 addKey() {
@@ -48,6 +59,8 @@ exportKey() {
 
   echo 'y' | nolusd keys export "$name" --unsafe --unarmored-hex --keyring-backend "test" --home "$account_dir"
 }
+
+# Get dev-network information
 
 COSMZONE_LATEST_VERSION=$(curl --silent "$NOLUS_DEV_NET/abci_info" | jq '.result.response.version' | tr -d '"')
 
@@ -67,14 +80,21 @@ USER_2_PRIV_KEY=$(exportKey "test-user-1")
 USER_3_PRIV_KEY=$(exportKey "test-user-2")
 
 # Get contracts information
-# download deploy:cargo artifact from smart-contracts
 
-SMART_CONTRACTS_LATEST_VERSION=$(curl --header "PRIVATE-TOKEN: $TAGS_ENDPOINT_ACCESS_TOKEN" "$GITLAB_API/projects/$SMART_CONTRACTS_PROJECT_ID/repository/tags" | jq -r '.[0].name' | tr -d '"')
+  if [[ -z ${TAG+x} ]]; then
+    SMART_CONTRACTS_LATEST_VERSION=$(curl --header "PRIVATE-TOKEN: $TAGS_ENDPOINT_ACCESS_TOKEN" "$GITLAB_API/projects/$SMART_CONTRACTS_PROJECT_ID/repository/tags" | jq -r '.[0].name' | tr -d '"')
+  else
+    SMART_CONTRACTS_LATEST_VERSION="$TAG"
+  fi
+
 downloadArtifact  "$CONTRACTS_INFO_ARTIFACT" "$SMART_CONTRACTS_LATEST_VERSION" "$SMART_CONTRACTS_PROJECT_ID"
 
-# download the schemas
+#TO DO: when we have access to the json file -> read the contracts addresses from it
+
+#TO DO?: Download the contracts schemas
 
 # Save the results
+
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${NOLUS_DEV_NET}
 USER_1_PRIV_KEY=${USER_1_PRIV_KEY}

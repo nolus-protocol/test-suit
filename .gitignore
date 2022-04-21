@@ -3,5 +3,7 @@ node_modules/
 setup-dev-network.zip
 nolus.tar.gz
 build-binary.zip
+contracts.tar.gz
+deploy:cargo.zip
 accounts
 nolusd
