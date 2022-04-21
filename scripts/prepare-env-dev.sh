@@ -91,7 +91,8 @@ downloadArtifact  "$CONTRACTS_INFO_ARTIFACT" "$SMART_CONTRACTS_LATEST_VERSION" "
 
 #TO DO: when we have access to the json file -> read the contracts addresses from it
 
-#TO DO?: Download the contracts schemas
+#TO DO ?: Download the contracts schemas? Do we need this here, in the script. Or maybe i can add instructions
+#in the README.md about how to get these schemas if we need them?
 
 # Save the results
 

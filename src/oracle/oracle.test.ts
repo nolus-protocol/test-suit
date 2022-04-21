@@ -1,8 +1,5 @@
 import * as fs from 'fs';
-import {
-  InstantiateResult,
-  SigningCosmWasmClient,
-} from '@cosmjs/cosmwasm-stargate';
+import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import {
   getUser1Client,
   getUser1Wallet,
@@ -33,7 +30,8 @@ describe('Oracle contract tests', () => {
   let feederAccount: AccountData;
   let contractAddress: string;
 
-  const PRICE_FEED_PERIOD = 10;
+  //TO DO: how to find out what the price feed period is? Maybe there should be a contract message that gives me this type of info as result?
+  const PRICE_FEED_PERIOD = 5; //example - i need it for the tests
 
   beforeEach(async () => {
     userClient = await getUser1Client();
@@ -50,22 +48,7 @@ describe('Oracle contract tests', () => {
       DEFAULT_FEE,
     );
 
-    const codeId: any = process.env.ORACLE_CODE_ID;
-
-    // instantiate the contract
-    const instatiateMsg = {
-      base_asset: 'ust',
-      price_feed_period: PRICE_FEED_PERIOD,
-      feeders_percentage_needed: 50,
-    };
-    const contract: InstantiateResult = await userClient.instantiate(
-      userAccount.address,
-      codeId,
-      instatiateMsg,
-      'test',
-      customFees.init,
-    );
-    contractAddress = contract.contractAddress;
+    // TO DO: contractAddress = process.env.ORACLE_ADDRESS;
 
     // add feeder
     const addFeederMsg = {
@@ -96,13 +79,16 @@ describe('Oracle contract tests', () => {
   });
 
   test('feed price should works as expected - one feeder', async () => {
+    const mAAPL_PRICE = '1.2';
+    const mGOGOL_PRICE = '1.3';
+
     // feed price
     const feedPriceMsg = {
       feed_price: {
         base: 'OSM',
         prices: [
-          ['mAAPL', '1.2'],
-          ['mGOGOL', '1.3'],
+          [mAAPL_PRICE, '1.2'],
+          [mGOGOL_PRICE, '1.3'],
         ],
       },
     };
@@ -144,8 +130,8 @@ describe('Oracle contract tests', () => {
     const result3 = () =>
       userClient.queryContractSmart(contractAddress, failed_PriceMsg);
 
-    expect(result.price).toBe('1.3');
-    expect(result2.price).toBe('1.2');
+    expect(result.price).toBe(mGOGOL_PRICE);
+    expect(result2.price).toBe(mAAPL_PRICE);
     await expect(result3).rejects.toThrow(/^.*No price for pair.*/);
 
     // the price feed period has expired
@@ -236,12 +222,13 @@ describe('Oracle contract tests', () => {
     // no 50% vote yet
     await expect(price).rejects.toThrow(/^.*No price for pair.*/);
 
+    const EXPECTED_PRICE = '3.3';
     const feedPrice2Msg = {
       feed_price: {
         base: 'OSM',
         prices: [
           ['mAAPL', '3.4'],
-          ['mGOGOL', '3.3'],
+          ['mGOGOL', EXPECTED_PRICE],
         ],
       },
     };
@@ -258,7 +245,7 @@ describe('Oracle contract tests', () => {
     );
 
     // already has 50% vote - the price must be last added value
-    expect(afterResult.price).toBe('3.3');
+    expect(afterResult.price).toBe(EXPECTED_PRICE);
 
     // the price feed period has expired
     await sleep(PRICE_FEED_PERIOD * 1000);
