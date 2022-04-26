@@ -25,12 +25,11 @@ import {
   protobufPackage as suspendPackage,
 } from './codec/nolus/suspend/v1beta1/tx';
 import { QuerySuspendRequest } from './codec/nolus/suspend/v1beta1/query';
+import { NOLUS_PREFIX } from '../util/utils';
 
 const user1PrivKey = fromHex(process.env.USER_1_PRIV_KEY as string);
 const user2PrivKey = fromHex(process.env.USER_2_PRIV_KEY as string);
 const user3PrivKey = fromHex(process.env.USER_3_PRIV_KEY as string);
-
-export const NOLUS_PREFIX = 'nolus';
 
 export async function getWallet(
   privateKey: Uint8Array,
