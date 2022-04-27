@@ -7,3 +7,4 @@ contracts.tar.gz
 deploy:cargo.zip
 accounts
 nolusd
+contracts-info.json
