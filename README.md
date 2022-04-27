@@ -34,7 +34,7 @@ yarn
 ## Download contracts json schemas
 
 ```sh
-curl --output schemas.zip --header "PRIVATE-TOKEN: <your_private_token>" "https://gitlab-nomo.credissimo.net/api/v4/projects/8/jobs/artifacts/<contracts_version>/download?job=schema:cargo"
+curl --output schemas.zip --header "PRIVATE-TOKEN: <your_gitlab_access_token>" "https://gitlab-nomo.credissimo.net/api/v4/projects/8/jobs/artifacts/<contracts_version>/download?job=schema:cargo"
 ```
 
 ## Linting the code
@@ -54,7 +54,7 @@ Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://
 For running on dev-net:
 
 ```sh
-yarn prepare-env-dev <your-gitlab-access-token>
+yarn prepare-env-dev <your_gitlab_access_token>
 ```
 
 ```sh
