@@ -2,6 +2,6 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   setupFiles: ['dotenv/config'],
-  testTimeout: 100000,
+  testTimeout: 200000,
   verbose: true,
 };

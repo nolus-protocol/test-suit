@@ -1,8 +1,10 @@
 node_modules/
 .env
-artifacts.zip
+setup-dev-network.zip
 nolus.tar.gz
-binary.zip
+build-binary.zip
+contracts.tar.gz
+deploy:cargo.zip
 accounts
 nolusd
-cosmjs-example
+contracts-info.json

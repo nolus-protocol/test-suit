@@ -1,17 +1,28 @@
 image: node:16.14.2-alpine
 
 stages:
+  - prep
   - test
 
-Test:
-  stage: test
+env-prep:
+  stage: prep
   only:
     - schedules
   before_script:
     - apk update && apk add bash
     - apk --no-cache add curl
     - apk --no-cache add jq
-    - yarn install
   script:
     - yarn prepare-env-dev
+  artifacts:
+    paths:
+    - .env
+    expire_in: 12 hour
+
+test:
+  stage: test
+  only:
+    - schedules
+  script:
+    - yarn install
     - yarn test
