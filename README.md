@@ -31,6 +31,12 @@ sudo apt-get install jq
 yarn
 ```
 
+## Download contracts json schemas
+
+```sh
+curl --output schemas.zip --header "PRIVATE-TOKEN: <your_private_token>" "https://gitlab-nomo.credissimo.net/api/v4/projects/8/jobs/artifacts/<contracts_version>/download?job=schema:cargo"
+```
+
 ## Linting the code
 
 We use the [TypeScript-Eslint](https://github.com/typescript-eslint) and [Prettier](https://prettier.io/).
