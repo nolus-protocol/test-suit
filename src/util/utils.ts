@@ -1,5 +1,9 @@
 import { Coin } from './codec/cosmos/base/v1beta1/coin';
 
+export const NOLUS_PREFIX = 'nolus';
+
+export const NATIVE_TOKEN_DENOM = 'unolus';
+
 export const DEFAULT_FEE = {
   amount: [{ denom: 'unolus', amount: '12' }],
   gas: '110000',
