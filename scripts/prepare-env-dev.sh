@@ -3,6 +3,7 @@ set -euxo pipefail
 
 ROOT_DIR=$(pwd)
 ARTIFACT_BIN="nolus.tar.gz"
+CONTRACTS_BIN="contracts.tar.gz"
 NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
 GITLAB_API="https://gitlab-nomo.credissimo.net/api/v4"
 IBC_TOKEN='ibc/0954E1C28EB7AF5B72D24F3BC2B47BBB2FDF91BDDFD57B74B99E133AED40972A'
@@ -88,11 +89,11 @@ USER_3_PRIV_KEY=$(exportKey "test-user-2")
   fi
 
 downloadArtifact  "$CONTRACTS_INFO_ARTIFACT" "$SMART_CONTRACTS_LATEST_VERSION" "$SMART_CONTRACTS_PROJECT_ID"
+tar -xf $CONTRACTS_BIN
 
-#TO DO: when we have access to the json file -> read the contracts addresses from it
-
-#TO DO ?: Download the contracts schemas? Do we need this here, in the script. Or maybe i can add instructions
-#in the README.md about how to get these schemas if we need them?
+ORACLE_ADDRESS=$(jq .contracts_info[0].oracle.instance contracts-info.json | tr -d '"')
+LEASER_ADDRESS=$(jq .contracts_info[1].leaser.instance contracts-info.json | tr -d '"')
+TREASURY_ADDRESS=$(jq .contracts_info[3].treasury.instance contracts-info.json | tr -d '"')
 
 # Save the results
 
@@ -102,6 +103,9 @@ USER_1_PRIV_KEY=${USER_1_PRIV_KEY}
 USER_2_PRIV_KEY=${USER_2_PRIV_KEY}
 USER_3_PRIV_KEY=${USER_3_PRIV_KEY}
 IBC_TOKEN=${IBC_TOKEN}
+ORACLE_ADDRESS=${ORACLE_ADDRESS}
+LEASER_ADDRESS=${LEASER_ADDRESS}
+TREASURY_ADDRESS=${TREASURY_ADDRESS}
 EOF
   )
    echo "$DOT_ENV" > "$ROOT_DIR/.env"
