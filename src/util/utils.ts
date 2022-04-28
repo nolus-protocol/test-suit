@@ -4,6 +4,8 @@ export const NOLUS_PREFIX = 'nolus';
 
 export const NATIVE_TOKEN_DENOM = 'unolus';
 
+export const BLOCK_CREATION_TIME_DEV = 5;
+
 export const DEFAULT_FEE = {
   amount: [{ denom: 'unolus', amount: '12' }],
   gas: '110000',
