@@ -61,6 +61,10 @@ exportKey() {
   echo 'y' | nolusd keys export "$name" --unsafe --unarmored-hex --keyring-backend "test" --home "$account_dir"
 }
 
+getValidatorAddress() {
+  nolusd query staking validators --output json --node "$NOLUS_DEV_NET"| jq '.validators[0].operator_address' | tr -d '"'
+}
+
 # Get dev-network information
 
 COSMZONE_LATEST_VERSION=$(curl --silent "$NOLUS_DEV_NET/abci_info" | jq '.result.response.version' | tr -d '"')
@@ -76,9 +80,11 @@ ACCOUNTS_DIR="$ROOT_DIR/accounts"
 
 addKey "test-user-1"
 addKey "test-user-2"
+
 USER_1_PRIV_KEY=$(exportKey "treasury")
 USER_2_PRIV_KEY=$(exportKey "test-user-1")
 USER_3_PRIV_KEY=$(exportKey "test-user-2")
+VALIDATOR_ADDRESS=$(getValidatorAddress)
 
 # Get contracts information
 
@@ -102,6 +108,7 @@ NODE_URL=${NOLUS_DEV_NET}
 USER_1_PRIV_KEY=${USER_1_PRIV_KEY}
 USER_2_PRIV_KEY=${USER_2_PRIV_KEY}
 USER_3_PRIV_KEY=${USER_3_PRIV_KEY}
+VALIDATOR_ADDRESS=${VALIDATOR_ADDRESS}
 IBC_TOKEN=${IBC_TOKEN}
 ORACLE_ADDRESS=${ORACLE_ADDRESS}
 LEASER_ADDRESS=${LEASER_ADDRESS}
