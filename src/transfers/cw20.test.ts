@@ -23,7 +23,7 @@ describe('CW20 transfer', () => {
   const customFees = {
     upload: {
       amount: [{ amount: '2000000', denom: NATIVE_TOKEN }],
-      gas: '2000000',
+      gas: '20000000',
     },
     init: {
       amount: [{ amount: '500000', denom: NATIVE_TOKEN }],
