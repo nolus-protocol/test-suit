@@ -14,11 +14,7 @@ import {
 } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 import { generateMnemonic, mnemonicToSeedSync } from 'bip39';
 import { fromSeed } from 'bip32';
-import {
-  defaultRegistryTypes,
-  QueryClient,
-  setupStakingExtension,
-} from '@cosmjs/stargate';
+import { defaultRegistryTypes } from '@cosmjs/stargate';
 import {
   MsgCreateVestingAccount,
   protobufPackage as vestingPackage,
@@ -30,8 +26,6 @@ import {
 } from './codec/nolus/suspend/v1beta1/tx';
 import { QuerySuspendRequest } from './codec/nolus/suspend/v1beta1/query';
 import { NOLUS_PREFIX } from '../util/utils';
-import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
-import { QueryValidatorResponse } from 'cosmjs-types/cosmos/staking/v1beta1/query';
 
 const user1PrivKey = fromHex(process.env.USER_1_PRIV_KEY as string);
 const user2PrivKey = fromHex(process.env.USER_2_PRIV_KEY as string);
@@ -105,17 +99,6 @@ function seedToPrivateKey(
     throw new Error('Illegal state reached');
   }
   return privateKey;
-}
-
-export async function getValidatorInformation(
-  valAddress: string,
-): Promise<QueryValidatorResponse> {
-  const tendermintClient = await Tendermint34Client.connect(NODE_ENDPOINT);
-  const queryClient = QueryClient.withExtensions(
-    tendermintClient,
-    setupStakingExtension,
-  );
-  return await queryClient.staking.validator(valAddress);
 }
 
 function getSignerOptions(): SigningCosmWasmClientOptions {
