@@ -3,6 +3,7 @@ import {
   QueryValidatorResponse,
   QueryDelegatorDelegationsResponse,
   QueryDelegationResponse,
+  QueryParamsResponse,
 } from 'cosmjs-types/cosmos/staking/v1beta1/query';
 import {
   QueryClient,
@@ -41,4 +42,9 @@ export async function getDelegatorValidatorPairInformation(
 ): Promise<QueryDelegationResponse> {
   await loadClient();
   return await queryClient.staking.delegation(delegatorAddress, valAddress);
+}
+
+export async function getParamsInformation(): Promise<QueryParamsResponse> {
+  await loadClient();
+  return await queryClient.staking.params();
 }

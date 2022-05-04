@@ -15,6 +15,7 @@ import {
   getValidatorInformation,
   getDelegatorInformation,
   getDelegatorValidatorPairInformation,
+  getParamsInformation,
 } from '../util/staking';
 import {
   DEFAULT_FEE,
@@ -43,10 +44,15 @@ describe('Staking Nolus tokens - Delegation', () => {
     stakeholderWallet = await getUser1Wallet();
     [stakeholderAccount] = await stakeholderWallet.getAccounts();
     validatorAddress = getValidatorAddress();
-    console.log(stakeholderAccount.address);
 
     delegateMsg.value.delegatorAddress = stakeholderAccount.address;
     delegateMsg.value.validatorAddress = validatorAddress;
+  });
+
+  afterEach(() => {
+    delegateMsg.value.delegatorAddress = stakeholderAccount.address;
+    delegateMsg.value.validatorAddress = validatorAddress;
+    delegateMsg.value.amount.denom = NATIVE_TOKEN_DENOM;
   });
 
   test('the validator should exist and should be bonded', async () => {
@@ -228,9 +234,32 @@ describe('Staking Nolus tokens - Delegation', () => {
     expect(broadcastTx.rawLog).toEqual('internal');
   });
 
-  // test('stakeholder tries to delegate less than the minimum allowed delegation - should produce an error', () => {
-  // });
+  test('stakeholder tries to delegate tokens different than one defined by params.BondDenom - should produce an error', async () => {
+    // get BondDenom from params
+    const bondDenom = (await getParamsInformation()).params?.bondDenom;
 
-  // test('stakeholder tries to delegate tokens different than one defined by params.BondDenom - should produce an error', () => {
-  // });
+    if (!bondDenom) {
+      undefinedHandler();
+      return;
+    }
+
+    const invalidDenom = 'upebble';
+
+    expect(bondDenom).not.toBe(invalidDenom);
+
+    // try to delegate tokens
+    delegateMsg.value.amount.denom = invalidDenom;
+    delegateMsg.value.amount.amount = delegatedAmount;
+
+    const broadcastTx = await stakeholderClient.signAndBroadcast(
+      stakeholderAccount.address,
+      [delegateMsg],
+      DEFAULT_FEE,
+    );
+
+    expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
+    expect(broadcastTx.rawLog).toEqual(
+      `failed to execute message; message index: 0: invalid coin denomination: got ${invalidDenom}, expected ${bondDenom}: invalid request`,
+    );
+  });
 });
