@@ -44,8 +44,29 @@ describe('Staking Nolus tokens - Delegation', () => {
     expect(validatorStatus).toBe(expectedStatus);
   });
 
-  // test('validator information should be provided', () => {
-  // });
+  test('the mandatory validator information should be provided', async () => {
+    const validatorInformation = (
+      await getValidatorInformation(validatorAddress)
+    ).validator;
+
+    if (!validatorInformation) {
+      undefinedHandler();
+      return;
+    }
+
+    // At least, all mandatory validator information, which is used to help stakeholders choose a validator,
+    // should be provided
+    expect(validatorInformation.minSelfDelegation).not.toBe('');
+    expect(validatorInformation.commission?.commissionRates?.rate).not.toBe('');
+    expect(validatorInformation.commission?.commissionRates?.maxRate).not.toBe(
+      '',
+    );
+    expect(
+      validatorInformation.commission?.commissionRates?.maxChangeRate,
+    ).not.toBe('');
+    expect(validatorInformation.description?.moniker).not.toBe('');
+    expect(validatorInformation.tokens).not.toBe('');
+  });
 
   test('the successful scenario for tokens delegation to the validator should work as expected', async () => {
     // get the amount of tokens delegated to the validator - before delegation
