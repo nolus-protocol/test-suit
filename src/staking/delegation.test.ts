@@ -1,6 +1,6 @@
 import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { AccountData, DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
-import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
+import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
 import {
   BondStatus,
   bondStatusFromJSON,
@@ -9,6 +9,7 @@ import {
   getUser1Client,
   getUser1Wallet,
   getValidatorAddress,
+  getUser2Wallet,
 } from '../util/clients';
 import {
   getValidatorInformation,
@@ -28,12 +29,24 @@ describe('Staking Nolus tokens - Delegation', () => {
   let validatorAddress: string;
   const delegatedAmount = '120';
 
+  const delegateMsg = {
+    typeUrl: '/cosmos.staking.v1beta1.MsgDelegate',
+    value: {
+      delegatorAddress: '',
+      validatorAddress: '',
+      amount: { denom: NATIVE_TOKEN_DENOM, amount: '' },
+    },
+  };
+
   beforeAll(async () => {
     stakeholderClient = await getUser1Client();
     stakeholderWallet = await getUser1Wallet();
     [stakeholderAccount] = await stakeholderWallet.getAccounts();
     validatorAddress = getValidatorAddress();
     console.log(stakeholderAccount.address);
+
+    delegateMsg.value.delegatorAddress = stakeholderAccount.address;
+    delegateMsg.value.validatorAddress = validatorAddress;
   });
 
   test('the validator should exist and should be bonded', async () => {
@@ -70,11 +83,11 @@ describe('Staking Nolus tokens - Delegation', () => {
 
   test('the successful scenario for tokens delegation to the validator should work as expected', async () => {
     // get the amount of tokens delegated to the validator - before delegation
-    const validatorAmountBefore = (
+    const validatorDelegatedTokensBefore = (
       await getValidatorInformation(validatorAddress)
     ).validator?.tokens;
 
-    if (!validatorAmountBefore) {
+    if (!validatorDelegatedTokensBefore) {
       undefinedHandler();
       return;
     }
@@ -93,14 +106,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     }
 
     // delegate tokens
-    const delegateMsg = {
-      typeUrl: '/cosmos.staking.v1beta1.MsgDelegate',
-      value: {
-        delegatorAddress: stakeholderAccount.address,
-        validatorAddress: validatorAddress,
-        amount: { denom: NATIVE_TOKEN_DENOM, amount: delegatedAmount },
-      },
-    };
+    delegateMsg.value.amount.amount = delegatedAmount;
 
     const result = await stakeholderClient.signAndBroadcast(
       stakeholderAccount.address,
@@ -127,43 +133,104 @@ describe('Staking Nolus tokens - Delegation', () => {
     );
 
     // see the stakeholder staked tokens
-    const stakeholderDelegations = (
+    const stakeholderDelegatedTokens = (
       await getDelegatorInformation(stakeholderAccount.address)
     ).delegationResponses[0]?.balance?.amount;
 
-    if (!stakeholderDelegations) {
+    if (!stakeholderDelegatedTokens) {
       undefinedHandler();
       return;
     }
 
-    expect(+stakeholderDelegations).not.toBe(0);
+    expect(+stakeholderDelegatedTokens).not.toBe(0);
 
     // get the amount of tokens delegated to the validator - after delegation
-    const validatorAmountAfter = (
+    const validatorDelegatedTokensAfter = (
       await getValidatorInformation(validatorAddress)
     ).validator?.tokens;
 
-    if (!validatorAmountAfter) {
+    if (!validatorDelegatedTokensAfter) {
       undefinedHandler();
       return;
     }
-    expect(+validatorAmountAfter).toBe(
-      +validatorAmountBefore + +delegatedAmount,
+    expect(+validatorDelegatedTokensAfter).toBe(
+      +validatorDelegatedTokensBefore + +delegatedAmount,
     );
+  });
+
+  test('stakeholder tries to delegate 0 tokens - should produce an error', async () => {
+    // see the stakeholder staked tokens to the current validator - before delegation
+    const stakeholderDelegationsToValBefore = (
+      await getDelegatorValidatorPairInformation(
+        stakeholderAccount.address,
+        validatorAddress,
+      )
+    ).delegationResponse?.balance?.amount;
+
+    if (!stakeholderDelegationsToValBefore) {
+      undefinedHandler();
+      return;
+    }
+
+    // try to delegate 0 tokens
+    delegateMsg.value.amount.amount = '0';
+
+    const broadcastTx = () =>
+      stakeholderClient.signAndBroadcast(
+        stakeholderAccount.address,
+        [delegateMsg],
+        DEFAULT_FEE,
+      );
+
+    await expect(broadcastTx).rejects.toThrow(/^.*invalid delegation amount.*/);
+
+    // see the stakeholder staked tokens to the current validator - after delegation
+    const stakeholderDelegationsToValAfter = (
+      await getDelegatorValidatorPairInformation(
+        stakeholderAccount.address,
+        validatorAddress,
+      )
+    ).delegationResponse?.balance?.amount;
+
+    if (!stakeholderDelegationsToValAfter) {
+      undefinedHandler();
+      return;
+    }
+
+    expect(+stakeholderDelegationsToValAfter).toBe(
+      +stakeholderDelegationsToValBefore,
+    );
+  });
+
+  test('stakeholder tries to delegate tokens to non-existent validator - should produce an error', async () => {
+    const invalidValidatoWallet = await getUser2Wallet();
+    const [invalidValidatoAccount] = await invalidValidatoWallet.getAccounts();
+
+    // see the stakeholder staked tokens to the current validator
+    await expect(
+      getDelegatorValidatorPairInformation(
+        stakeholderAccount.address,
+        invalidValidatoAccount.address,
+      ),
+    ).rejects.toThrow(/^.*expected nolusvaloper, got nolus.*/);
+
+    // try to delegate tokens
+    delegateMsg.value.amount.amount = delegatedAmount;
+    delegateMsg.value.validatorAddress = invalidValidatoAccount.address;
+
+    const broadcastTx = await stakeholderClient.signAndBroadcast(
+      stakeholderAccount.address,
+      [delegateMsg],
+      DEFAULT_FEE,
+    );
+
+    expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
+    expect(broadcastTx.rawLog).toEqual('internal');
   });
 
   // test('stakeholder tries to delegate less than the minimum allowed delegation - should produce an error', () => {
   // });
 
-  // test('stakeholder tries to delegate 0 tokens - should produce an error', () => {
-  // });
-
-  // test('stakeholder tries to delegate tokens to non-existent validator - should produce an error', () => {
-  // });
-
   // test('stakeholder tries to delegate tokens different than one defined by params.BondDenom - should produce an error', () => {
-  // });
-
-  // test('stakeholder tries to delegate the entire amount tokens he owns - should produce an error', () => {
   // });
 });
