@@ -6,7 +6,7 @@ export const NATIVE_TOKEN_DENOM = 'unolus';
 
 export const DEFAULT_FEE = {
   amount: [{ denom: 'unolus', amount: '12' }],
-  gas: '210000',
+  gas: '2000000',
 };
 
 export const TEN_NOLUS: Coin[] = [{ denom: 'unolus', amount: '10_000_000' }];

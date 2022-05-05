@@ -28,7 +28,7 @@ describe('Staking Nolus tokens - Delegation', () => {
   let stakeholderWallet: DirectSecp256k1Wallet;
   let stakeholderAccount: AccountData;
   let validatorAddress: string;
-  const delegatedAmount = '120';
+  const delegatedAmount = '13';
 
   const delegateMsg = {
     typeUrl: '/cosmos.staking.v1beta1.MsgDelegate',
@@ -208,7 +208,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     );
   });
 
-  test('stakeholder tries to delegate tokens to non-existent validator - should produce an error', async () => {
+  test('the stakeholder tries to delegate tokens to non-existent validator - should produce an error', async () => {
     const invalidValidatoWallet = await getUser2Wallet();
     const [invalidValidatoAccount] = await invalidValidatoWallet.getAccounts();
 
@@ -234,7 +234,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     expect(broadcastTx.rawLog).toEqual('internal');
   });
 
-  test('stakeholder tries to delegate tokens different than one defined by params.BondDenom - should produce an error', async () => {
+  test('the stakeholder tries to delegate tokens different than one defined by params.BondDenom - should produce an error', async () => {
     // get BondDenom from params
     const bondDenom = (await getParamsInformation()).params?.bondDenom;
 

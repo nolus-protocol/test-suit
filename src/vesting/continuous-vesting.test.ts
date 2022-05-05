@@ -22,21 +22,21 @@ describe('Continuous vesting tests', () => {
   const ENDTIME_SECONDS = 30;
   let user1Client: SigningCosmWasmClient;
   let user1Account: AccountData;
-  let continuousClient: SigningCosmWasmClient;
-  let continuousAccount: AccountData;
+  let user2Client: SigningCosmWasmClient;
+  let user2Account: AccountData;
 
   beforeAll(async () => {
     user1Client = await getUser1Client();
     [user1Account] = await (await getUser1Wallet()).getAccounts();
-    const contWallet = await createWallet();
-    continuousClient = await getClient(contWallet);
-    [continuousAccount] = await contWallet.getAccounts();
+    const user2Wallet = await createWallet();
+    user2Client = await getClient(user2Wallet);
+    [user2Account] = await user2Wallet.getAccounts();
   });
 
   test('created continuous vesting account should works as expected', async () => {
     const createVestingAccountMsg: MsgCreateVestingAccount = {
       fromAddress: user1Account.address,
-      toAddress: continuousAccount.address,
+      toAddress: user2Account.address,
       amount: [FULL_AMOUNT],
       endTime: Long.fromNumber(new Date().getTime() / 1000 + ENDTIME_SECONDS),
       delayed: false,
@@ -55,13 +55,13 @@ describe('Continuous vesting tests', () => {
 
     await user1Client.sendTokens(
       user1Account.address,
-      continuousAccount.address,
+      user2Account.address,
       [INIT],
       DEFAULT_FEE,
     );
 
-    const sendFailTx = await continuousClient.sendTokens(
-      continuousAccount.address,
+    const sendFailTx = await user2Client.sendTokens(
+      user2Account.address,
       user1Account.address,
       [HALF_AMOUNT],
       DEFAULT_FEE,
@@ -73,8 +73,8 @@ describe('Continuous vesting tests', () => {
     );
     await sleep((ENDTIME_SECONDS / 2) * 1000);
     assertIsDeliverTxSuccess(
-      await continuousClient.sendTokens(
-        continuousAccount.address,
+      await user2Client.sendTokens(
+        user2Account.address,
         user1Account.address,
         [HALF_AMOUNT],
         DEFAULT_FEE,
