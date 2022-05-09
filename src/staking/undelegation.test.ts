@@ -131,14 +131,14 @@ describe('Staking Nolus tokens - Undelegation', () => {
     undelegationsCounter++;
 
     // get unbounded delegation list deligator-validator
-    const lastEntries = (
+    const lastEntrie = (
       await getDelegatorValidatorUnboundingInformation(
         delegatorAccount.address,
         validatorAddress,
       )
     ).unbond?.entries.length;
 
-    if (!lastEntries) {
+    if (!lastEntrie) {
       undefinedHandler();
       return;
     }
@@ -147,7 +147,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
         delegatorAccount.address,
         validatorAddress,
       )
-    ).unbond?.entries[lastEntries - 1].completionTime?.nanos;
+    ).unbond?.entries[lastEntrie - 1].completionTime?.nanos;
 
     expect(completionTime).not.toBe('');
 
@@ -214,7 +214,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     );
   });
 
-  test('the delegation tries to undelegate more tokens than he has delegated to the validator - should produce an error', async () => {
+  test('the delegator tries to undelegate more tokens than he has delegated to the validator - should produce an error', async () => {
     // see the delegator staked tokens to the current validator - before undelegation
     const delegatorDelegationsToValBefore = (
       await getDelegatorValidatorPairInformation(

@@ -5,6 +5,7 @@ import {
   QueryDelegationResponse,
   QueryParamsResponse,
   QueryUnbondingDelegationResponse,
+  QueryRedelegationsResponse,
 } from 'cosmjs-types/cosmos/staking/v1beta1/query';
 import {
   QueryClient,
@@ -12,7 +13,7 @@ import {
   StakingExtension,
 } from '@cosmjs/stargate';
 
-const NODE_ENDPOINT = process.env.DEV_NODE_URL as string;
+const NODE_ENDPOINT = process.env.NODE_URL as string;
 let queryClient: QueryClient & StakingExtension;
 
 async function loadClient() {
@@ -58,5 +59,18 @@ export async function getDelegatorValidatorUnboundingInformation(
   return await queryClient.staking.unbondingDelegation(
     delegatorAddress,
     valAddress,
+  );
+}
+
+export async function getDelegatorValidatorsRedelegationsInformation(
+  delegatorAddress: string,
+  srcValAddress: string,
+  dstValAddress: string,
+): Promise<QueryRedelegationsResponse> {
+  await loadClient();
+  return await queryClient.staking.redelegations(
+    delegatorAddress,
+    srcValAddress,
+    dstValAddress,
   );
 }

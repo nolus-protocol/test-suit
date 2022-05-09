@@ -30,7 +30,7 @@ import { NOLUS_PREFIX } from '../util/utils';
 const user1PrivKey = fromHex(process.env.USER_1_PRIV_KEY as string);
 const user2PrivKey = fromHex(process.env.USER_2_PRIV_KEY as string);
 const user3PrivKey = fromHex(process.env.USER_3_PRIV_KEY as string);
-const NODE_ENDPOINT = process.env.DEV_NODE_URL as string;
+const NODE_ENDPOINT = process.env.NODE_URL as string;
 
 export async function getWallet(
   privateKey: Uint8Array,
@@ -56,7 +56,7 @@ export async function getClient(
 }
 
 export function getValidatorAddress(): string {
-  return process.env.VALIDATOR_ADDRESS as string;
+  return process.env.VALIDATOR_1_ADDRESS as string;
 }
 
 export async function getUser1Wallet(): Promise<DirectSecp256k1Wallet> {

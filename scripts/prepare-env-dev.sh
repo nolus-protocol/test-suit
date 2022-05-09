@@ -62,7 +62,8 @@ exportKey() {
 }
 
 getValidatorAddress() {
-  nolusd query staking validators --output json --node "$NOLUS_DEV_NET"| jq '.validators[0].operator_address' | tr -d '"'
+  local count="$1"
+  nolusd query staking validators --output json --node "$NOLUS_DEV_NET"| jq '.validators['$count'].operator_address' | tr -d '"'
 }
 
 # Get dev-network information
@@ -84,7 +85,8 @@ addKey "test-user-2"
 USER_1_PRIV_KEY=$(exportKey "treasury")
 USER_2_PRIV_KEY=$(exportKey "test-user-1")
 USER_3_PRIV_KEY=$(exportKey "test-user-2")
-VALIDATOR_ADDRESS=$(getValidatorAddress)
+VALIDATOR_1_ADDRESS=$(getValidatorAddress "0")
+VALIDATOR_2_ADDRESS=$(getValidatorAddress "1")
 
 # Get contracts information
 
@@ -108,7 +110,8 @@ NODE_URL=${NOLUS_DEV_NET}
 USER_1_PRIV_KEY=${USER_1_PRIV_KEY}
 USER_2_PRIV_KEY=${USER_2_PRIV_KEY}
 USER_3_PRIV_KEY=${USER_3_PRIV_KEY}
-VALIDATOR_ADDRESS=${VALIDATOR_ADDRESS}
+VALIDATOR_1_ADDRESS=${VALIDATOR_1_ADDRESS}
+VALIDATOR_2_ADDRESS=${VALIDATOR_2_ADDRESS}
 IBC_TOKEN=${IBC_TOKEN}
 ORACLE_ADDRESS=${ORACLE_ADDRESS}
 LEASER_ADDRESS=${LEASER_ADDRESS}
