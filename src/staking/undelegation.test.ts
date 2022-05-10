@@ -1,5 +1,9 @@
 import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { AccountData, DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
+import {
+  AccountData,
+  Coin,
+  DirectSecp256k1Wallet,
+} from '@cosmjs/proto-signing';
 import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
 import {
   getValidatorAddress,
@@ -11,7 +15,8 @@ import {
 import {
   getDelegatorValidatorUnboundingInformation,
   getParamsInformation,
-  getDelegatorValidatorPairInformation,
+  getDelegatorValidatorPairAmount,
+  stakingModule,
 } from '../util/staking';
 import {
   DEFAULT_FEE,
@@ -51,7 +56,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     validatorAddress = getValidatorAddress();
 
     // send some tokens
-    const initTransfer = {
+    const initTransfer: Coin = {
       denom: NATIVE_TOKEN_DENOM,
       amount: delegatedAmount + DEFAULT_FEE.amount[0].amount,
     };
@@ -62,7 +67,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
       [initTransfer],
       DEFAULT_FEE,
     );
-    assertIsDeliverTxSuccess(broadcastTx);
+    expect(assertIsDeliverTxSuccess(broadcastTx)).toBeUndefined();
 
     generalMsg.value.delegatorAddress = delegatorAccount.address;
     generalMsg.value.validatorAddress = validatorAddress;
@@ -77,7 +82,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
   test('the delegator tries to undelegate tokens from a non-existent delegate-validator pair - should produce an error', async () => {
     // try to undelegate
     generalMsg.value.amount.amount = delegatedAmount;
-    generalMsg.typeUrl = '/cosmos.staking.v1beta1.MsgUndelegate';
+    generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
 
     const broadcastTx = await delegatorClient.signAndBroadcast(
       delegatorAccount.address,
@@ -95,7 +100,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
   test('the successful scenario for tokens undelegation should work as expected', async () => {
     // delegate tokens
     generalMsg.value.amount.amount = delegatedAmount;
-    generalMsg.typeUrl = '/cosmos.staking.v1beta1.MsgDelegate';
+    generalMsg.typeUrl = `${stakingModule}.MsgDelegate`;
 
     const delegationResult = await delegatorClient.signAndBroadcast(
       delegatorAccount.address,
@@ -105,12 +110,11 @@ describe('Staking Nolus tokens - Undelegation', () => {
     expect(assertIsDeliverTxSuccess(delegationResult)).toBeUndefined();
 
     // see the delegator staked tokens to the current validator - before undelegation
-    const delegatorDelegationsToValBefore = (
-      await getDelegatorValidatorPairInformation(
+    const delegatorDelegationsToValBefore =
+      await getDelegatorValidatorPairAmount(
         delegatorAccount.address,
         validatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+      );
 
     if (!delegatorDelegationsToValBefore) {
       undefinedHandler();
@@ -118,7 +122,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     }
 
     // undelegate tokens
-    generalMsg.typeUrl = '/cosmos.staking.v1beta1.MsgUndelegate';
+    generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
     generalMsg.value.amount.amount = undelegatedAmount;
 
     const undelegationResult = await delegatorClient.signAndBroadcast(
@@ -152,12 +156,11 @@ describe('Staking Nolus tokens - Undelegation', () => {
     expect(completionTime).not.toBe('');
 
     // see the delegator staked tokens to the current validator - after undelegation
-    const delegatorDelegationsToValAfter = (
-      await getDelegatorValidatorPairInformation(
+    const delegatorDelegationsToValAfter =
+      await getDelegatorValidatorPairAmount(
         delegatorAccount.address,
         validatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+      );
 
     if (!delegatorDelegationsToValAfter) {
       undefinedHandler();
@@ -171,7 +174,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
 
   test('the delegator tries to undelegate 0 tokens - should produce an error', async () => {
     // try to undelegate
-    generalMsg.typeUrl = '/cosmos.staking.v1beta1.MsgUndelegate';
+    generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
     generalMsg.value.amount.amount = '0';
 
     const broadcastTx = () =>
@@ -198,7 +201,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     expect(bondDenom).not.toBe(invalidDenom);
 
     // undelegate tokens
-    generalMsg.typeUrl = '/cosmos.staking.v1beta1.MsgUndelegate';
+    generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
     generalMsg.value.amount.amount = undelegatedAmount;
     generalMsg.value.amount.denom = invalidDenom;
 
@@ -216,12 +219,11 @@ describe('Staking Nolus tokens - Undelegation', () => {
 
   test('the delegator tries to undelegate more tokens than he has delegated to the validator - should produce an error', async () => {
     // see the delegator staked tokens to the current validator - before undelegation
-    const delegatorDelegationsToValBefore = (
-      await getDelegatorValidatorPairInformation(
+    const delegatorDelegationsToValBefore =
+      await getDelegatorValidatorPairAmount(
         delegatorAccount.address,
         validatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+      );
 
     if (!delegatorDelegationsToValBefore) {
       undefinedHandler();
@@ -229,7 +231,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     }
 
     // undelegate tokens
-    generalMsg.typeUrl = '/cosmos.staking.v1beta1.MsgUndelegate';
+    generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
     // after the previous tests he has 'delegatedAmount/2' tokens left
     generalMsg.value.amount.amount = delegatedAmount;
 
@@ -244,12 +246,11 @@ describe('Staking Nolus tokens - Undelegation', () => {
     );
 
     // see the delegator staked tokens to the current validator - after undelegation
-    const delegatorDelegationsToValAfter = (
-      await getDelegatorValidatorPairInformation(
+    const delegatorDelegationsToValAfter =
+      await getDelegatorValidatorPairAmount(
         delegatorAccount.address,
         validatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+      );
 
     if (!delegatorDelegationsToValAfter) {
       undefinedHandler();
@@ -263,12 +264,11 @@ describe('Staking Nolus tokens - Undelegation', () => {
 
   test('the delegator should be able to undelagate all his delegated tokens - should be removed from the current validator pairs', async () => {
     // see the delegator staked tokens to the current validator - before undelegation
-    const delegatorDelegationsToValBefore = (
-      await getDelegatorValidatorPairInformation(
+    const delegatorDelegationsToValBefore =
+      await getDelegatorValidatorPairAmount(
         delegatorAccount.address,
         validatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+      );
 
     if (!delegatorDelegationsToValBefore) {
       undefinedHandler();
@@ -276,7 +276,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     }
 
     // undelegate tokens
-    generalMsg.typeUrl = '/cosmos.staking.v1beta1.MsgUndelegate';
+    generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
     // after the previous tests he has 'undelegatedAmount = delegatedAmount/2' tokens left
     generalMsg.value.amount.amount = undelegatedAmount;
 
@@ -291,7 +291,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
 
     // the validator-delegator pair information should not exist - after undelegation
     await expect(
-      getDelegatorValidatorPairInformation(
+      getDelegatorValidatorPairAmount(
         delegatorAccount.address,
         validatorAddress,
       ),
@@ -303,7 +303,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
   test('the delegator tries to undelegate tokens more than params.MaxEntries times - should produce an error', async () => {
     // delegate some tokens
     generalMsg.value.amount.amount = delegatedAmount;
-    generalMsg.typeUrl = '/cosmos.staking.v1beta1.MsgDelegate';
+    generalMsg.typeUrl = `${stakingModule}.MsgDelegate`;
 
     const delegationResult = await delegatorClient.signAndBroadcast(
       delegatorAccount.address,
@@ -319,7 +319,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
       undefinedHandler();
       return;
     }
-    generalMsg.typeUrl = '/cosmos.staking.v1beta1.MsgUndelegate';
+    generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
     const loopIteration = maxEntries - undelegationsCounter;
     const loopUndelegateAmount = Math.floor(
       +delegatedAmount / (loopIteration + 1),

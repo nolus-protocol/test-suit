@@ -2,6 +2,7 @@ import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
 import {
   QueryDelegationRewardsResponse,
   QueryDelegatorWithdrawAddressResponse,
+  QueryDelegationTotalRewardsResponse,
 } from 'cosmjs-types/cosmos/distribution/v1beta1/query';
 import {
   QueryClient,
@@ -37,5 +38,14 @@ export async function getDelegatorRewardsFromValidator(
   return await queryClient.distribution.delegationRewards(
     delegatorAddress,
     valAddress,
+  );
+}
+
+export async function getTotalDelegatorRewards(
+  delegatorAddress: string,
+): Promise<QueryDelegationTotalRewardsResponse> {
+  await loadClient();
+  return await queryClient.distribution.delegationTotalRewards(
+    delegatorAddress,
   );
 }

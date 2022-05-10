@@ -21,9 +21,10 @@ import {
 } from '../util/utils';
 import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
 import {
-  getDelegatorValidatorPairInformation,
+  getDelegatorValidatorPairAmount,
   stakingModule,
 } from '../util/staking';
+import { sendInitFeeTokens } from '../util/transfer';
 
 describe('Staking Nolus tokens - Staking of unvested tokens', () => {
   const FULL_AMOUNT: Coin = { denom: 'unolus', amount: '100' };
@@ -72,11 +73,10 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     ).toBeUndefined();
 
     // send some tokens
-    const sendInitTokensResult = await user1Client.sendTokens(
+    const sendInitTokensResult = await sendInitFeeTokens(
+      user1Client,
       user1Account.address,
       user2Account.address,
-      [INIT],
-      DEFAULT_FEE,
     );
 
     expect(assertIsDeliverTxSuccess(sendInitTokensResult)).toBeUndefined();
@@ -110,12 +110,11 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     );
 
     // see the stakeholder staked tokens to the current validator - before delegation
-    const stakeholderDelegationsToValBefore = (
-      await getDelegatorValidatorPairInformation(
+    const stakeholderDelegationsToValBefore =
+      await getDelegatorValidatorPairAmount(
         user1Account.address,
         validatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+      );
 
     if (!stakeholderDelegationsToValBefore) {
       undefinedHandler();
@@ -136,12 +135,11 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     expect(assertIsDeliverTxSuccess(broadcastSuccTx)).toBeUndefined();
 
     // see the stakeholder staked tokens to the current validator - after delegation
-    const stakeholderDelegationsToValAfter = (
-      await getDelegatorValidatorPairInformation(
+    const stakeholderDelegationsToValAfter =
+      await getDelegatorValidatorPairAmount(
         user1Account.address,
         validatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+      );
 
     if (!stakeholderDelegationsToValAfter) {
       undefinedHandler();

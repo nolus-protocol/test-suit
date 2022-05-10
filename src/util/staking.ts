@@ -48,6 +48,15 @@ export async function getDelegatorValidatorPairInformation(
   return await queryClient.staking.delegation(delegatorAddress, valAddress);
 }
 
+export async function getDelegatorValidatorPairAmount(
+  delegatorAddress: string,
+  valAddress: string,
+): Promise<string | undefined> {
+  return (
+    await getDelegatorValidatorPairInformation(delegatorAddress, valAddress)
+  ).delegationResponse?.balance?.amount;
+}
+
 export async function getParamsInformation(): Promise<QueryParamsResponse> {
   await loadClient();
   return await queryClient.staking.params();

@@ -1,5 +1,9 @@
 import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { AccountData, DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
+import {
+  AccountData,
+  Coin,
+  DirectSecp256k1Wallet,
+} from '@cosmjs/proto-signing';
 import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
 import {
   getValidatorAddress,
@@ -10,8 +14,9 @@ import {
 } from '../util/clients';
 import {
   getParamsInformation,
-  getDelegatorValidatorPairInformation,
+  getDelegatorValidatorPairAmount,
   getDelegatorValidatorsRedelegationsInformation,
+  stakingModule,
 } from '../util/staking';
 import {
   DEFAULT_FEE,
@@ -33,7 +38,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
   let redelegationsCounter = 0;
 
   const delegateMsg = {
-    typeUrl: '/cosmos.staking.v1beta1.MsgDelegate',
+    typeUrl: `${stakingModule}.MsgDelegate`,
     value: {
       delegatorAddress: '',
       validatorAddress: '',
@@ -42,7 +47,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
   };
 
   const redelegateMsg = {
-    typeUrl: '/cosmos.staking.v1beta1.MsgBeginRedelegate',
+    typeUrl: `${stakingModule}.MsgBeginRedelegate`,
     value: {
       delegatorAddress: '',
       validatorSrcAddress: '',
@@ -70,7 +75,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     redelegateMsg.value.validatorDstAddress = dstValidatorAddress;
 
     // send some tokens
-    const initTransfer = {
+    const initTransfer: Coin = {
       denom: NATIVE_TOKEN_DENOM,
       amount: delegatedAmount + DEFAULT_FEE.amount[0].amount,
     };
@@ -117,12 +122,10 @@ describe('Staking Nolus tokens - Redelegation', () => {
     expect(assertIsDeliverTxSuccess(delegationResult)).toBeUndefined();
 
     // see the delegator staked tokens to the source validator - before redelegation
-    const delegationsToSrcValBefore = (
-      await getDelegatorValidatorPairInformation(
-        delegatorAccount.address,
-        srcValidatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+    const delegationsToSrcValBefore = await getDelegatorValidatorPairAmount(
+      delegatorAccount.address,
+      srcValidatorAddress,
+    );
 
     if (!delegationsToSrcValBefore) {
       undefinedHandler();
@@ -159,12 +162,10 @@ describe('Staking Nolus tokens - Redelegation', () => {
     expect(completionTime).not.toBe('');
 
     // see the delegator staked tokens to the source validator - after redelegation
-    const delegationsToSrcValAfter = (
-      await getDelegatorValidatorPairInformation(
-        delegatorAccount.address,
-        srcValidatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+    const delegationsToSrcValAfter = await getDelegatorValidatorPairAmount(
+      delegatorAccount.address,
+      srcValidatorAddress,
+    );
 
     if (!delegationsToSrcValAfter) {
       undefinedHandler();
@@ -176,12 +177,10 @@ describe('Staking Nolus tokens - Redelegation', () => {
     );
 
     // see the delegator staked tokens to the destination validator - after redelegation
-    const delegationsToDstValAfter = (
-      await getDelegatorValidatorPairInformation(
-        delegatorAccount.address,
-        srcValidatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+    const delegationsToDstValAfter = await getDelegatorValidatorPairAmount(
+      delegatorAccount.address,
+      srcValidatorAddress,
+    );
 
     if (!delegationsToDstValAfter) {
       undefinedHandler();
@@ -235,12 +234,10 @@ describe('Staking Nolus tokens - Redelegation', () => {
 
   test('the delegator tries to redelegate more tokens than he has delegated to the validator - should produce an error', async () => {
     // see the delegator staked tokens to the source validator - before redelegation
-    const delegationsToSrcValBefore = (
-      await getDelegatorValidatorPairInformation(
-        delegatorAccount.address,
-        srcValidatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+    const delegationsToSrcValBefore = await getDelegatorValidatorPairAmount(
+      delegatorAccount.address,
+      srcValidatorAddress,
+    );
 
     if (!delegationsToSrcValBefore) {
       undefinedHandler();
@@ -262,12 +259,10 @@ describe('Staking Nolus tokens - Redelegation', () => {
     );
 
     // see the delegator staked tokens to the source validator - after redelegation
-    const delegationsToSrcValAfter = (
-      await getDelegatorValidatorPairInformation(
-        delegatorAccount.address,
-        srcValidatorAddress,
-      )
-    ).delegationResponse?.balance?.amount;
+    const delegationsToSrcValAfter = await getDelegatorValidatorPairAmount(
+      delegatorAccount.address,
+      srcValidatorAddress,
+    );
 
     if (!delegationsToSrcValAfter) {
       undefinedHandler();
