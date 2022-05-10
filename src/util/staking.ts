@@ -14,6 +14,8 @@ import {
 } from '@cosmjs/stargate';
 
 const NODE_ENDPOINT = process.env.NODE_URL as string;
+export const stakingModule = '/cosmos.staking.v1beta1';
+
 let queryClient: QueryClient & StakingExtension;
 
 async function loadClient() {
