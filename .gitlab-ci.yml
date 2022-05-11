@@ -25,4 +25,12 @@ test:
     - schedules
   script:
     - yarn install
-    - yarn test
+    - if [[ $TEST_STAKING == "true" ]] ;
+      then
+        yarn test src/staking ;
+      fi
+    - if [[ $TEST_VESTING == "true" ]] ;
+      then
+        yarn test src/vesting ;
+      fi
+
