@@ -12,6 +12,7 @@ import {
 
 const NODE_ENDPOINT = process.env.NODE_URL as string;
 let queryClient: QueryClient & DistributionExtension;
+export const distributionModule = '/cosmos.distribution.v1beta1';
 
 async function loadClient() {
   const tendermintClient = await Tendermint34Client.connect(NODE_ENDPOINT);
