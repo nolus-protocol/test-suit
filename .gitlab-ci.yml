@@ -33,4 +33,16 @@ test:
       then
         yarn test src/vesting ;
       fi
+    - if [[ $TEST_GOV == "true" ]] ;
+      then
+        yarn test src/gov ;
+      fi
+    - if [[ $TEST_TRANSFERS == "true" ]] ;
+      then
+        yarn test src/transfers ;
+      fi
+    - if [[ $TEST_ORACLE == "true" ]] ;
+      then
+        yarn test src/oracle ;
+      fi
 
