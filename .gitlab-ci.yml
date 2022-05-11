@@ -25,10 +25,7 @@ test:
     - schedules
   script:
     - yarn install
-    - if [[ $TEST_STAKING == "true" ]] ;
-      then
-        yarn test src/staking ;
-      fi
+    - yarn test src/app.test.ts
     - if [[ $TEST_VESTING == "true" ]] ;
       then
         yarn test src/vesting ;
@@ -44,5 +41,9 @@ test:
     - if [[ $TEST_ORACLE == "true" ]] ;
       then
         yarn test src/oracle ;
+      fi
+    - if [[ $TEST_STAKING == "true" ]] ;
+      then
+        yarn test src/staking ;
       fi
 
