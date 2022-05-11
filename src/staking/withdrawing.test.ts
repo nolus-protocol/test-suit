@@ -92,7 +92,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     let rewardResult: QueryDelegationRewardsResponse;
 
     do {
-      sleep(50000);
+      await sleep(50000);
 
       console.log('Waiting for the reward to become 1unolus.');
       rewardResult = await getDelegatorRewardsFromValidator(
