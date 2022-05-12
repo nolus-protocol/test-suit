@@ -1,12 +1,11 @@
 stages:
-  - prep
   - test
 
 default:
   image: node:16.14.2-alpine
 
 env-prep:
-  stage: prep
+  stage: test
   only:
     - schedules
   before_script:
