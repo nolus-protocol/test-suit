@@ -62,8 +62,8 @@ exportKey() {
 }
 
 getValidatorAddress() {
-  local count="$1"
-  nolusd query staking validators --output json --node "$NOLUS_DEV_NET"| jq '.validators['$count'].operator_address' | tr -d '"'
+  local index="$1"
+  nolusd query staking validators --output json --node "$NOLUS_DEV_NET"| jq '.validators['$index'].operator_address' | tr -d '"'
 }
 
 # Get dev-network information
