@@ -6,7 +6,7 @@ import {
   createWallet,
 } from '../util/clients';
 import { AccountData } from '@cosmjs/amino';
-import { DEFAULT_FEE, sleep } from '../util/utils';
+import { DEFAULT_FEE, BLOCK_CREATION_TIME_DEV, sleep } from '../util/utils';
 
 describe('Oracle contract tests', () => {
   const customFees = {
@@ -18,7 +18,6 @@ describe('Oracle contract tests', () => {
   let userClient: SigningCosmWasmClient;
   let userAccount: AccountData;
   let feederAccount: AccountData;
-  let listFeedersBeforeTests;
   const contractAddress = process.env.ORACLE_ADDRESS as string;
 
   //TO DO: Maybe there should be a contract message that gives me this type of info as result?
@@ -37,16 +36,6 @@ describe('Oracle contract tests', () => {
       feederAccount.address,
       customFees.exec.amount,
       DEFAULT_FEE,
-    );
-
-    // list all feeders
-    const feedersMsg = {
-      feeders: {},
-    };
-
-    listFeedersBeforeTests = await userClient.queryContractSmart(
-      contractAddress,
-      feedersMsg,
     );
 
     // add feeder
@@ -75,17 +64,6 @@ describe('Oracle contract tests', () => {
       isFeederMsg,
     );
     expect(isFeeder).toBe(true);
-
-    // list all feeders
-    const feedersMsg = {
-      feeders: {},
-    };
-    const listFeeders = await userClient.queryContractSmart(
-      contractAddress,
-      feedersMsg,
-    );
-
-    expect(listFeeders.length).toEqual(listFeedersBeforeTests.length + 1);
   });
 
   test('feed price should works as expected', async () => {
@@ -111,9 +89,10 @@ describe('Oracle contract tests', () => {
       contractAddress,
       feedersMsg,
     );
-
+    console.log(listFeeders.length);
     // calc needed votes
-    const onePercentNeeded = Math.floor(listFeeders.length / 100); // 1%
+    const onePercentNeeded = Math.ceil(listFeeders.length / 100); // 1%
+    console.log(onePercentNeeded);
 
     // create the required number of feeders - 1
     for (let i = 1; i < onePercentNeeded; i++) {
@@ -227,7 +206,7 @@ describe('Oracle contract tests', () => {
     expect(afterResult.price).toBe(EXPECTED_PRICE);
 
     // the price feed period has expired + 5sec block creation time
-    await sleep((PRICE_FEED_PERIOD + 5) * 1000);
+    await sleep((PRICE_FEED_PERIOD + BLOCK_CREATION_TIME_DEV) * 1000);
     const resultAfterPeriod = () =>
       userClient.queryContractSmart(contractAddress, getPriceMsg);
     await expect(resultAfterPeriod).rejects.toThrow(/^.*No price for pair.*/);
