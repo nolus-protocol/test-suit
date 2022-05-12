@@ -82,7 +82,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     expect(withdrawAddress.withdrawAddress).toBe(delegatorAccount.address);
   });
 
-  test('the successful scenario for withdraw staking rewards should work as expected', async () => {
+  test('the successful scenario for withdraw staking rewards - should work as expected', async () => {
     // get delegator balance before
     const delegatorBalanceBefore = await delegatorClient.getBalance(
       delegatorAccount.address,

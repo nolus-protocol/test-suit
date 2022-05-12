@@ -111,7 +111,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     );
   });
 
-  test('the successful scenario for tokens redelegation should work as expected', async () => {
+  test('the successful scenario for tokens redelegation - should work as expected', async () => {
     // delegate tokens
     const delegationResult = await delegatorClient.signAndBroadcast(
       delegatorAccount.address,

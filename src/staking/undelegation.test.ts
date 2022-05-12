@@ -97,7 +97,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     );
   });
 
-  test('the successful scenario for tokens undelegation should work as expected', async () => {
+  test('the successful scenario for tokens undelegation - should work as expected', async () => {
     // delegate tokens
     generalMsg.value.amount.amount = delegatedAmount;
     generalMsg.typeUrl = `${stakingModule}.MsgDelegate`;

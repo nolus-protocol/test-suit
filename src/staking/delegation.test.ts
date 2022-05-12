@@ -9,7 +9,6 @@ import {
   BondStatus,
   bondStatusFromJSON,
 } from 'cosmjs-types/cosmos/staking/v1beta1/staking';
-import { sendInitFeeTokens } from '../util/transfer';
 import {
   getValidatorAddress,
   getUser2Wallet,
@@ -116,7 +115,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     expect(validatorInformation.tokens).not.toBe('');
   });
 
-  test('the successful scenario for tokens delegation to the validator should work as expected', async () => {
+  test('the successful scenario for tokens delegation to the validator - should work as expected', async () => {
     // get the amount of tokens delegated to the validator - before delegation
     const validatorDelegatedTokensBefore = (
       await getValidatorInformation(validatorAddress)
@@ -177,7 +176,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     );
   });
 
-  test('stakeholder tries to delegate 0 tokens - should produce an error', async () => {
+  test('the stakeholder tries to delegate 0 tokens - should produce an error', async () => {
     // see the stakeholder staked tokens to the current validator - before delegation
     const stakeholderDelegationsToValBefore =
       await getDelegatorValidatorPairAmount(
