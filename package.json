@@ -7,6 +7,7 @@
     "dev": "ts-node-dev --exit-child src/index.ts",
     "start": "ts-node src/index.ts",
     "prepare-env-dev": "/bin/bash ./scripts/prepare-env-dev.sh",
+    "run-tests-pipeline": "/bin/bash ./scripts/run-tests-pipeline.sh",
     "test": "jest --runInBand",
     "lint": "eslint 'src/**/*.{js,ts,tsx}' --quiet --fix"
   },
@@ -35,6 +36,7 @@
     "typescript": "^4.6.2"
   },
   "dependencies": {
+    "@cosmjs/launchpad": "^0.27.1",
     "axios": "^0.26.1",
     "bip32": "^2.0.6",
     "bip39": "^3.0.4",

@@ -22,7 +22,7 @@ module.exports = {
     'no-undef': 'warn',
     'no-restricted-globals': 'warn',
     'prefer-const': 'warn',
-    // no-magic-numbers
+    'no-magic-numbers': 'warn',
   },
   env: {
     jest: true,

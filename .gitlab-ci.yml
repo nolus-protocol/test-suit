@@ -1,8 +1,9 @@
-image: node:16.14.2-alpine
-
 stages:
   - prep
   - test
+
+default:
+  image: node:16.14.2-alpine
 
 env-prep:
   stage: prep
@@ -23,6 +24,9 @@ test:
   stage: test
   only:
     - schedules
+  before_script:
+    - apk update && apk add bash
   script:
     - yarn install
-    - yarn test
+    - yarn run-tests-pipeline
+

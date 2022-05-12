@@ -24,5 +24,5 @@
   },
   "include": [
     "src/**/*"
-, "utils/index.ts", "utils/v1beta1", "scripts/app.test.ts", "cosmjs-example/oracle.test.ts"  ]
+]
 }
