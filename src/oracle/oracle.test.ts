@@ -7,22 +7,18 @@ import {
 } from '../util/clients';
 import { AccountData } from '@cosmjs/amino';
 import { DEFAULT_FEE, BLOCK_CREATION_TIME, sleep } from '../util/utils';
+import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
+import { sendInitFeeTokens } from '../util/transfer';
 
 describe('Oracle contract tests', () => {
-  const customFees = {
-    exec: {
-      amount: [{ amount: '20000', denom: 'unolus' }],
-      gas: '2000000',
-    },
-  };
   let userClient: SigningCosmWasmClient;
   let userAccount: AccountData;
   let feederAccount: AccountData;
+  let PRICE_FEED_PERIOD: number;
+  let PERCENTAGE_NEEDED: number;
+  let BASE_ASSET: string;
+  let correctPairMember: string;
   const contractAddress = process.env.ORACLE_ADDRESS as string;
-
-  //TO DO: Maybe there should be a contract message that gives me this type of info as result?
-  const PRICE_FEED_PERIOD = 60; //example - i need this for the tests
-  const PERCENTAGE_NEEDED = 50; //also
 
   beforeAll(async () => {
     userClient = await getUser1Client();
@@ -30,13 +26,28 @@ describe('Oracle contract tests', () => {
     const feeder1wallet = await createWallet();
     [feederAccount] = await feeder1wallet.getAccounts();
 
-    // send some tokens
-    await userClient.sendTokens(
+    // get needed params
+    const configMsg = {
+      config: {},
+    };
+    const config = await userClient.queryContractSmart(
+      contractAddress,
+      configMsg,
+    );
+
+    BASE_ASSET = config.base_asset;
+    PRICE_FEED_PERIOD = config.price_feed_period;
+    PERCENTAGE_NEEDED = config.feeders_percentage_needed;
+
+    // send some tokens to the feeder
+    await sendInitFeeTokens(
+      userClient,
       userAccount.address,
       feederAccount.address,
-      customFees.exec.amount,
-      DEFAULT_FEE,
     );
+
+    // this period must expires
+    await sleep(PRICE_FEED_PERIOD * 1000);
 
     // add feeder
     const addFeederMsg = {
@@ -48,8 +59,26 @@ describe('Oracle contract tests', () => {
       userAccount.address,
       contractAddress,
       addFeederMsg,
-      customFees.exec,
+      DEFAULT_FEE,
     );
+
+    const supportedPairsMsg = {
+      supported_denom_pairs: {},
+    };
+
+    const getSupportedPairs = await userClient.queryContractSmart(
+      contractAddress,
+      supportedPairsMsg,
+    );
+
+    const existingPair_1 = getSupportedPairs[0][0];
+    const existingPair_2 = getSupportedPairs[0][2];
+
+    if (existingPair_1 !== BASE_ASSET) {
+      correctPairMember = existingPair_1;
+    } else if (existingPair_2 !== BASE_ASSET) {
+      correctPairMember = getSupportedPairs[0][2];
+    }
   });
 
   test('the feeder should be added', async () => {
@@ -66,6 +95,14 @@ describe('Oracle contract tests', () => {
     expect(isFeeder).toBe(true);
   });
 
+  // test('push new price feed for unsupported denom pairs - should produce an error', async () => {
+  // TO DO
+  // });
+
+  // test('feed nested price should works as expected', async () => {  // [OSMO,UST] [B,UST] -> get OSMO,B
+  // TO DO
+  // });
+
   test('feed price should works as expected', async () => {
     // change percentage needed to 1%
     const changeConfigMsg = {
@@ -78,7 +115,7 @@ describe('Oracle contract tests', () => {
       userAccount.address,
       contractAddress,
       changeConfigMsg,
-      customFees.exec,
+      DEFAULT_FEE,
     );
 
     // list all feeders
@@ -89,10 +126,9 @@ describe('Oracle contract tests', () => {
       contractAddress,
       feedersMsg,
     );
-    console.log(listFeeders.length);
+
     // calc needed votes
     const onePercentNeeded = Math.ceil(listFeeders.length / 100); // 1%
-    console.log(onePercentNeeded);
 
     // create the required number of feeders - 1
     for (let i = 1; i < onePercentNeeded; i++) {
@@ -110,40 +146,40 @@ describe('Oracle contract tests', () => {
         userAccount.address,
         contractAddress,
         addFeederMsg,
-        customFees.exec,
+        DEFAULT_FEE,
       );
 
       // send tokens to the new feeder
-      await userClient.sendTokens(
+      await sendInitFeeTokens(
+        userClient,
         userAccount.address,
-        newFeederAccount.address,
-        customFees.exec.amount,
-        DEFAULT_FEE,
+        feederAccount.address,
       );
 
       // add feed price
       const feedPriceMsg = {
-        feed_price: {
-          base: 'OSM',
+        feed_prices: {
           prices: [
-            ['mAAPL', '1.6'],
-            ['mGOGOL', '1.3'],
+            {
+              base: correctPairMember,
+              values: [[BASE_ASSET, '1.3']],
+            },
           ],
         },
       };
+
       await newFeederClient.execute(
         newFeederAccount.address,
         contractAddress,
         feedPriceMsg,
-        customFees.exec,
+        DEFAULT_FEE,
       );
     }
 
     // get price
     const getPriceMsg = {
-      price: {
-        base: 'OSM',
-        quote: 'mGOGOL',
+      price_for: {
+        denom: correctPairMember,
       },
     };
 
@@ -155,11 +191,12 @@ describe('Oracle contract tests', () => {
 
     const EXPECTED_PRICE = '3.3';
     const feedPrice2Msg = {
-      feed_price: {
-        base: 'OSM',
+      feed_prices: {
         prices: [
-          ['mAAPL', '3.4'],
-          ['mGOGOL', EXPECTED_PRICE],
+          {
+            base: correctPairMember,
+            values: [[BASE_ASSET, EXPECTED_PRICE]],
+          },
         ],
       },
     };
@@ -178,14 +215,14 @@ describe('Oracle contract tests', () => {
       userAccount.address,
       contractAddress,
       addFeederMsg,
-      customFees.exec,
+      DEFAULT_FEE,
     );
 
     // send tokens
     await userClient.sendTokens(
       userAccount.address,
       lastFeederAccount.address,
-      customFees.exec.amount,
+      DEFAULT_FEE.amount,
       DEFAULT_FEE,
     );
 
@@ -194,7 +231,7 @@ describe('Oracle contract tests', () => {
       lastFeederAccount.address,
       contractAddress,
       feedPrice2Msg,
-      customFees.exec,
+      DEFAULT_FEE,
     );
 
     const afterResult = await userClient.queryContractSmart(
@@ -203,9 +240,9 @@ describe('Oracle contract tests', () => {
     );
 
     // already enough votes - the price must be last added value
-    expect(afterResult.price).toBe(EXPECTED_PRICE);
+    expect(afterResult).toBe(EXPECTED_PRICE);
 
-    // the price feed period has expired + 5sec block creation time
+    // the price feed period has expired + block creation time
     await sleep(BLOCK_CREATION_TIME + PRICE_FEED_PERIOD * 1000);
     const resultAfterPeriod = () =>
       userClient.queryContractSmart(contractAddress, getPriceMsg);
@@ -222,7 +259,7 @@ describe('Oracle contract tests', () => {
       userAccount.address,
       contractAddress,
       changeConfig2Msg,
-      customFees.exec,
+      DEFAULT_FEE,
     );
   });
 });

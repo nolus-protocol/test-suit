@@ -100,8 +100,9 @@ downloadArtifact  "$CONTRACTS_INFO_ARTIFACT" "$SMART_CONTRACTS_LATEST_VERSION" "
 tar -xf $CONTRACTS_BIN
 
 ORACLE_ADDRESS=$(jq .contracts_info[0].oracle.instance contracts-info.json | tr -d '"')
-LEASER_ADDRESS=$(jq .contracts_info[1].leaser.instance contracts-info.json | tr -d '"')
-TREASURY_ADDRESS=$(jq .contracts_info[3].treasury.instance contracts-info.json | tr -d '"')
+LEASER_ADDRESS=$(jq .contracts_info[2].leaser.instance contracts-info.json | tr -d '"')
+LPP_ADDRESS=$(jq .contracts_info[3].leaser.instance contracts-info.json | tr -d '"')
+TREASURY_ADDRESS=$(jq .contracts_info[4].treasury.instance contracts-info.json | tr -d '"')
 
 # Save the results
 
@@ -115,6 +116,7 @@ VALIDATOR_2_ADDRESS=${VALIDATOR_2_ADDRESS}
 IBC_TOKEN=${IBC_TOKEN}
 ORACLE_ADDRESS=${ORACLE_ADDRESS}
 LEASER_ADDRESS=${LEASER_ADDRESS}
+LPP_ADDRESS=${LPP_ADDRESS}
 TREASURY_ADDRESS=${TREASURY_ADDRESS}
 EOF
   )
