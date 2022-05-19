@@ -22,3 +22,7 @@ fi
 if [[ $TEST_STAKING == "true" ]] ; then
     yarn test src/staking
 fi
+
+if [[ $TEST_CW20 == "true" ]] ; then
+    yarn test src/staking
+fi
