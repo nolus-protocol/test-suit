@@ -52,7 +52,7 @@ describe('Transfers - Native transfer', () => {
   });
 
   test('account should have some balance', async () => {
-    const balance: Coin = await user1Client.getBalance(
+    const balance = await user1Client.getBalance(
       user1Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -62,11 +62,11 @@ describe('Transfers - Native transfer', () => {
 
   test('users should be able to transfer and receive native tokens', async () => {
     // user1 -> user2
-    const previousUser1Balance: Coin = await user1Client.getBalance(
+    const previousUser1Balance = await user1Client.getBalance(
       user1Account.address,
       NATIVE_TOKEN_DENOM,
     );
-    let previousUser2Balance: Coin = await user2Client.getBalance(
+    let previousUser2Balance = await user2Client.getBalance(
       user2Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -80,11 +80,11 @@ describe('Transfers - Native transfer', () => {
       );
     assertIsDeliverTxSuccess(broadcastTxResponse1);
 
-    const nextUser1Balance: Coin = await user1Client.getBalance(
+    const nextUser1Balance = await user1Client.getBalance(
       user1Account.address,
       NATIVE_TOKEN_DENOM,
     );
-    let nextUser2Balance: Coin = await user2Client.getBalance(
+    let nextUser2Balance = await user2Client.getBalance(
       user2Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -103,7 +103,7 @@ describe('Transfers - Native transfer', () => {
       user2Account.address,
       NATIVE_TOKEN_DENOM,
     );
-    const previousUser3Balance: Coin = await user3Client.getBalance(
+    const previousUser3Balance = await user3Client.getBalance(
       user3Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -120,7 +120,7 @@ describe('Transfers - Native transfer', () => {
       user2Account.address,
       NATIVE_TOKEN_DENOM,
     );
-    const nextUser3Balance: Coin = await user3Client.getBalance(
+    const nextUser3Balance = await user3Client.getBalance(
       user3Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -145,11 +145,11 @@ describe('Transfers - Native transfer', () => {
       );
     assertIsDeliverTxSuccess(broadcastTxResponse3);
 
-    const user1Balance: Coin = await user1Client.getBalance(
+    const user1Balance = await user1Client.getBalance(
       user1Account.address,
       NATIVE_TOKEN_DENOM,
     );
-    const user3Balance: Coin = await user3Client.getBalance(
+    const user3Balance = await user3Client.getBalance(
       user3Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -168,11 +168,11 @@ describe('Transfers - Native transfer', () => {
       denom: NATIVE_TOKEN_DENOM,
       amount: '0',
     };
-    const previousUser2Balance: Coin = await user2Client.getBalance(
+    const previousUser2Balance = await user2Client.getBalance(
       user2Account.address,
       NATIVE_TOKEN_DENOM,
     );
-    const previousUser3Balance: Coin = await user1Client.getBalance(
+    const previousUser3Balance = await user1Client.getBalance(
       user3Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -187,11 +187,11 @@ describe('Transfers - Native transfer', () => {
 
     await expect(broadcastTx).rejects.toThrow(/^.*0unolus: invalid coins.*/);
 
-    const nextUser2Balance: Coin = await user2Client.getBalance(
+    const nextUser2Balance = await user2Client.getBalance(
       user2Account.address,
       NATIVE_TOKEN_DENOM,
     );
-    const nextUser3Balance: Coin = await user3Client.getBalance(
+    const nextUser3Balance = await user3Client.getBalance(
       user3Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -212,7 +212,7 @@ describe('Transfers - Native transfer', () => {
       user2Account.address,
     );
 
-    const previousUser2Balance: Coin = await user2Client.getBalance(
+    const previousUser2Balance = await user2Client.getBalance(
       user2Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -220,7 +220,7 @@ describe('Transfers - Native transfer', () => {
       denom: NATIVE_TOKEN_DENOM,
       amount: previousUser2Balance.amount,
     };
-    const previousUser3Balance: Coin = await user3Client.getBalance(
+    const previousUser3Balance = await user3Client.getBalance(
       user3Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -235,11 +235,11 @@ describe('Transfers - Native transfer', () => {
     expect(isDeliverTxFailure(broadcastTxResponse)).toBeTruthy();
     expect(broadcastTxResponse.rawLog).toMatch(/^.*insufficient funds.*/);
 
-    const nextUser3Balance: Coin = await user3Client.getBalance(
+    const nextUser3Balance = await user3Client.getBalance(
       user3Account.address,
       NATIVE_TOKEN_DENOM,
     );
-    const nextUser2Balance: Coin = await user2Client.getBalance(
+    const nextUser2Balance = await user2Client.getBalance(
       user2Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -256,7 +256,7 @@ describe('Transfers - Native transfer', () => {
   test('user should not be able to send tokens to an incompatible nolus wallet address', async () => {
     const WRONG_WALLET_ADDRESS = 'wasm1gzkmn2lfm56m0q0l4rmjamq7rlwpfjrp7k78xw'; // wasm1 -> nolus1
 
-    const previousUser2Balance: Coin = await user2Client.getBalance(
+    const previousUser2Balance = await user2Client.getBalance(
       user2Account.address,
       NATIVE_TOKEN_DENOM,
     );
@@ -270,7 +270,7 @@ describe('Transfers - Native transfer', () => {
       );
     await expect(broadcastTx).rejects.toThrow(/^.*invalid address.*/);
 
-    const nextUser2Balance: Coin = await user2Client.getBalance(
+    const nextUser2Balance = await user2Client.getBalance(
       user2Account.address,
       NATIVE_TOKEN_DENOM,
     );

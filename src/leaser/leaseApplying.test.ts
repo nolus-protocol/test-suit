@@ -8,7 +8,7 @@ import {
 import { AccountData, Coin } from '@cosmjs/amino';
 import { DEFAULT_FEE, NATIVE_TOKEN_DENOM } from '../util/utils';
 
-describe('Leaser contract tests - Loan application', () => {
+describe('Leaser contract tests - Lease application', () => {
   let borrowerAccount: AccountData;
   let borrowerClient: SigningCosmWasmClient;
   let userClient: SigningCosmWasmClient;
@@ -41,7 +41,7 @@ describe('Leaser contract tests - Loan application', () => {
       await userClient.sendTokens(
         userAccount.address,
         lppContractAddress,
-        [{ denom: 'unolus', amount: '10000000' }],
+        [{ denom: 'unolus', amount: '100000' }],
         DEFAULT_FEE,
       );
     }
@@ -75,7 +75,7 @@ describe('Leaser contract tests - Loan application', () => {
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });
 
-  test('the borrower tries to apply for a loan with 0 tokens as a down payment - should produce an error', async () => {
+  test('the borrower tries to apply for a lease with 0 tokens as a down payment - should produce an error', async () => {
     const quoteMsg = {
       quote: {
         downpayment: { denom: lppDenom, amount: '0' },
@@ -88,7 +88,7 @@ describe('Leaser contract tests - Loan application', () => {
     );
   });
 
-  test('the borrower tries to apply for a loan with tokens more than the liquidity in lpp - should be rejected with an information message', async () => {
+  test('the borrower tries to apply for a lease with tokens more than the liquidity in lpp - should be rejected with an information message', async () => {
     const quoteMsg = {
       quote: {
         downpayment: {
@@ -102,7 +102,7 @@ describe('Leaser contract tests - Loan application', () => {
     await expect(quoteQueryResult).rejects.toThrow(/^.*NoLiquidity.*/);
   });
 
-  test('the borrower tries to apply for a loan with unsupported lpp denom as a down payment denom - should produce an error', async () => {
+  test('the borrower tries to apply for a lease with unsupported lpp denom as a down payment denom - should produce an error', async () => {
     const quoteMsg = {
       quote: {
         downpayment: { denom: 'A', amount: '100' },

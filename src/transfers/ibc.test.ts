@@ -50,7 +50,7 @@ describe('Transfers - IBC tokens', () => {
   });
 
   test('user should have some balance and ibc token should be defined', async () => {
-    const balance: Coin = await user1Client.getBalance(
+    const balance = await user1Client.getBalance(
       user1Account.address,
       ibcToken,
     );
@@ -61,7 +61,7 @@ describe('Transfers - IBC tokens', () => {
   });
 
   test('user should be able to transfer and receive ibc tokens including sending the entire amount tokens he owns', async () => {
-    const previousUser1Balance: Coin = await user1Client.getBalance(
+    const previousUser1Balance = await user1Client.getBalance(
       user1Account.address,
       ibcToken,
     );
@@ -151,11 +151,11 @@ describe('Transfers - IBC tokens', () => {
       amount: '0',
     };
 
-    const previousUser2Balance: Coin = await user2Client.getBalance(
+    const previousUser2Balance = await user2Client.getBalance(
       user2Account.address,
       ibcToken,
     );
-    const previousUser3Balance: Coin = await user3Client.getBalance(
+    const previousUser3Balance = await user3Client.getBalance(
       user3Account.address,
       ibcToken,
     );
@@ -169,11 +169,11 @@ describe('Transfers - IBC tokens', () => {
       );
     await expect(broadcastTx).rejects.toThrow(/^.*invalid coins.*/);
 
-    const nextUser2Balance: Coin = await user2Client.getBalance(
+    const nextUser2Balance = await user2Client.getBalance(
       user2Account.address,
       ibcToken,
     );
-    const nextUser3Balance: Coin = await user3Client.getBalance(
+    const nextUser3Balance = await user3Client.getBalance(
       user3Account.address,
       ibcToken,
     );
@@ -189,7 +189,7 @@ describe('Transfers - IBC tokens', () => {
   test('user should not be able to send ibc tokens to an incompatible nolus wallet address', async () => {
     const WRONG_WALLET_ADDRESS = 'wasm1gzkmn2lfm56m0q0l4rmjamq7rlwpfjrp7k78xw'; // wasm1 -> nolus1
 
-    const previousUser2Balance: Coin = await user2Client.getBalance(
+    const previousUser2Balance = await user2Client.getBalance(
       user2Account.address,
       ibcToken,
     );
@@ -203,7 +203,7 @@ describe('Transfers - IBC tokens', () => {
       );
     await expect(broadcastTx).rejects.toThrow(/^.*invalid address.*/);
 
-    const nextUser2Balance: Coin = await user2Client.getBalance(
+    const nextUser2Balance = await user2Client.getBalance(
       user2Account.address,
       ibcToken,
     );
