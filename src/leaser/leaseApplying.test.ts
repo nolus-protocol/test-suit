@@ -7,8 +7,9 @@ import {
 } from '../util/clients';
 import { AccountData, Coin } from '@cosmjs/amino';
 import { DEFAULT_FEE, NATIVE_TOKEN_DENOM } from '../util/utils';
+import { assertIsDeliverTxSuccess, DeliverTxResponse } from '@cosmjs/stargate';
 
-describe('Leaser contract tests - Loan application', () => {
+describe('Leaser contract tests - Apply for a lease', () => {
   let borrowerAccount: AccountData;
   let borrowerClient: SigningCosmWasmClient;
   let userClient: SigningCosmWasmClient;
@@ -38,12 +39,15 @@ describe('Leaser contract tests - Loan application', () => {
     if (lppLiquidity.amount === '0') {
       // TO DO: we won`t need this in the future
       // Send tokens to lpp address to provide liquidity
-      await userClient.sendTokens(
-        userAccount.address,
-        lppContractAddress,
-        [{ denom: 'unolus', amount: '10000000' }],
-        DEFAULT_FEE,
-      );
+      const broadcastTxResponse: DeliverTxResponse =
+        await userClient.sendTokens(
+          userAccount.address,
+          lppContractAddress,
+          [{ denom: 'unolus', amount: '100' }],
+          DEFAULT_FEE,
+        );
+
+      assertIsDeliverTxSuccess(broadcastTxResponse);
     }
     console.log(lppLiquidity.amount);
 
