@@ -6,8 +6,7 @@ import {
   getUser1Wallet,
 } from '../util/clients';
 import { AccountData, Coin } from '@cosmjs/amino';
-import { DEFAULT_FEE, NATIVE_TOKEN_DENOM } from '../util/utils';
-import { assertIsDeliverTxSuccess, DeliverTxResponse } from '@cosmjs/stargate';
+import { DEFAULT_FEE, sleep } from '../util/utils';
 
 describe('Leaser contract tests - Apply for a lease', () => {
   let borrowerAccount: AccountData;
@@ -20,7 +19,10 @@ describe('Leaser contract tests - Apply for a lease', () => {
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
 
+  const downpayment = '100';
+
   beforeAll(async () => {
+    //await sleep(50000);
     userClient = await getUser1Client();
     [userAccount] = await (await getUser1Wallet()).getAccounts();
     const borrower1wallet = await createWallet();
@@ -31,23 +33,27 @@ describe('Leaser contract tests - Apply for a lease', () => {
     lppDenom = 'unolus';
 
     // get the liquidity
-    lppLiquidity = await borrowerClient.getBalance(
-      lppContractAddress,
-      NATIVE_TOKEN_DENOM,
+    lppLiquidity = await userClient.getBalance(lppContractAddress, lppDenom);
+
+    const quoteMsg = {
+      quote: {
+        downpayment: { denom: lppDenom, amount: downpayment },
+      },
+    };
+    const quote = await userClient.queryContractSmart(
+      leaserContractAddress,
+      quoteMsg,
     );
 
-    if (lppLiquidity.amount === '0') {
+    if (+quote.borrow.amount > +lppLiquidity.amount) {
       // TO DO: we won`t need this in the future
       // Send tokens to lpp address to provide liquidity
-      const broadcastTxResponse: DeliverTxResponse =
-        await userClient.sendTokens(
-          userAccount.address,
-          lppContractAddress,
-          [{ denom: 'unolus', amount: '100' }],
-          DEFAULT_FEE,
-        );
-
-      assertIsDeliverTxSuccess(broadcastTxResponse);
+      await userClient.sendTokens(
+        userAccount.address,
+        lppContractAddress,
+        [{ denom: lppDenom, amount: quote.borrow.amount }],
+        DEFAULT_FEE,
+      );
     }
     console.log(lppLiquidity.amount);
 
@@ -57,12 +63,12 @@ describe('Leaser contract tests - Apply for a lease', () => {
   test('the borrower should be able to get information depending on the down payment', async () => {
     const borrowerBalanceBefore = await borrowerClient.getBalance(
       borrowerAccount.address,
-      NATIVE_TOKEN_DENOM,
+      lppDenom,
     );
 
     const quoteMsg = {
       quote: {
-        downpayment: { denom: lppDenom, amount: '100' },
+        downpayment: { denom: lppDenom, amount: downpayment },
       },
     };
     const quote = await borrowerClient.queryContractSmart(
@@ -72,10 +78,12 @@ describe('Leaser contract tests - Apply for a lease', () => {
 
     const borrowerBalanceAfter = await borrowerClient.getBalance(
       borrowerAccount.address,
-      NATIVE_TOKEN_DENOM,
+      lppDenom,
     );
 
     expect(quote.total).toBeDefined();
+    expect(quote.borrow).toBeDefined();
+    expect(quote.annual_interest_rate).toBeDefined();
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });
 
@@ -93,6 +101,12 @@ describe('Leaser contract tests - Apply for a lease', () => {
   });
 
   test('the borrower tries to apply for a loan with tokens more than the liquidity in lpp - should be rejected with an information message', async () => {
+    // get the liquidity
+    lppLiquidity = await borrowerClient.getBalance(
+      lppContractAddress,
+      lppDenom,
+    );
+
     const quoteMsg = {
       quote: {
         downpayment: {
