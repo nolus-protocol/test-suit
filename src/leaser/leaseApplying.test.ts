@@ -87,7 +87,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });
 
-  test('the borrower tries to apply for a loan with 0 tokens as a down payment - should produce an error', async () => {
+  test('the borrower tries to apply for a lease with 0 tokens as a down payment - should produce an error', async () => {
     const quoteMsg = {
       quote: {
         downpayment: { denom: lppDenom, amount: '0' },
@@ -120,7 +120,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
     await expect(quoteQueryResult).rejects.toThrow(/^.*NoLiquidity.*/);
   });
 
-  test('the borrower tries to apply for a loan with unsupported lpp denom as a down payment denom - should produce an error', async () => {
+  test('the borrower tries to apply for a lease with unsupported lpp denom as a down payment denom - should produce an error', async () => {
     const quoteMsg = {
       quote: {
         downpayment: { denom: 'A', amount: '100' },

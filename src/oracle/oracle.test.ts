@@ -1,13 +1,7 @@
 import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import {
-  getUser1Client,
-  getUser1Wallet,
-  getClient,
-  createWallet,
-} from '../util/clients';
 import { AccountData } from '@cosmjs/amino';
 import { DEFAULT_FEE, BLOCK_CREATION_TIME_DEV, sleep } from '../util/utils';
-import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
+import { sendInitFeeTokens } from '../util/transfer';
 
 describe('Oracle contract tests', () => {
   let userClient: SigningCosmWasmClient;
@@ -16,7 +10,8 @@ describe('Oracle contract tests', () => {
   let PRICE_FEED_PERIOD: number;
   let PERCENTAGE_NEEDED: number;
   let BASE_ASSET: string;
-  let correctPairMember: string;
+  let supportedPairsBefore: [[string, string]];
+  const testPairMember = 'UAT';
   const contractAddress = process.env.ORACLE_ADDRESS as string;
 
   beforeAll(async () => {
@@ -65,19 +60,24 @@ describe('Oracle contract tests', () => {
       supported_denom_pairs: {},
     };
 
-    const getSupportedPairs = await userClient.queryContractSmart(
+    supportedPairsBefore = await userClient.queryContractSmart(
       contractAddress,
       supportedPairsMsg,
     );
 
-    const existingPair_1 = getSupportedPairs[0][0];
-    const existingPair_2 = getSupportedPairs[0][2];
+    const newSupportedPairs = supportedPairsBefore.slice();
+    newSupportedPairs.push([testPairMember, BASE_ASSET]);
 
-    if (existingPair_1 !== BASE_ASSET) {
-      correctPairMember = existingPair_1;
-    } else if (existingPair_2 !== BASE_ASSET) {
-      correctPairMember = getSupportedPairs[0][2];
-    }
+    const updateSupportedPairsMsg = {
+      supported_denom_pairs: { pairs: newSupportedPairs },
+    };
+
+    await userClient.execute(
+      userAccount.address,
+      contractAddress,
+      updateSupportedPairsMsg,
+      DEFAULT_FEE,
+    );
   });
 
   test('the feeder should be added', async () => {
@@ -101,6 +101,8 @@ describe('Oracle contract tests', () => {
   // test('feed nested price should works as expected', async () => {  // [OSMO,UST] [B,UST] -> get OSMO,B
   // TO DO
   // });
+
+  // TO DO: Alarm ?
 
   test('feed price should works as expected', async () => {
     // change percentage needed to 1%
@@ -160,7 +162,7 @@ describe('Oracle contract tests', () => {
         feed_prices: {
           prices: [
             {
-              base: correctPairMember,
+              base: testPairMember,
               values: [[BASE_ASSET, '1.3']],
             },
           ],
@@ -178,7 +180,7 @@ describe('Oracle contract tests', () => {
     // get price
     const getPriceMsg = {
       price_for: {
-        denom: correctPairMember,
+        denoms: [testPairMember],
       },
     };
 
@@ -193,8 +195,8 @@ describe('Oracle contract tests', () => {
       feed_prices: {
         prices: [
           {
-            base: correctPairMember,
-            values: [[BASE_ASSET, EXPECTED_PRICE]],
+            base: testPairMember,
+            values: [{ denom: BASE_ASSET, amount: EXPECTED_PRICE }],
           },
         ],
       },
@@ -239,7 +241,8 @@ describe('Oracle contract tests', () => {
     );
 
     // already enough votes - the price must be last added value
-    expect(afterResult).toBe(EXPECTED_PRICE);
+    expect(afterResult.prices[0].price.amount).toBe(EXPECTED_PRICE);
+    expect(afterResult.prices[0].price.denom).toBe(BASE_ASSET);
 
     // the price feed period has expired + block creation time
     await sleep(BLOCK_CREATION_TIME_DEV + PRICE_FEED_PERIOD * 1000);
@@ -258,6 +261,18 @@ describe('Oracle contract tests', () => {
       userAccount.address,
       contractAddress,
       changeConfig2Msg,
+      DEFAULT_FEE,
+    );
+
+    // recovery the supported pairs from the
+    const updateSupportedPairsMsg = {
+      supported_denom_pairs: { pairs: supportedPairsBefore },
+    };
+
+    await userClient.execute(
+      userAccount.address,
+      contractAddress,
+      updateSupportedPairsMsg,
       DEFAULT_FEE,
     );
   });

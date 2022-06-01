@@ -108,7 +108,7 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     // see the stakeholder staked tokens to the current validator - before delegation
     const stakeholderDelegationsToValBefore =
       await getDelegatorValidatorPairAmount(
-        user1Account.address,
+        user2Account.address,
         validatorAddress,
       );
 
@@ -133,7 +133,7 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     // see the stakeholder staked tokens to the current validator - after delegation
     const stakeholderDelegationsToValAfter =
       await getDelegatorValidatorPairAmount(
-        user1Account.address,
+        user2Account.address,
         validatorAddress,
       );
 
