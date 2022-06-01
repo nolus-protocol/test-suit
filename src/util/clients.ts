@@ -26,62 +26,71 @@ import {
 } from './codec/nolus/suspend/v1beta1/tx';
 import { QuerySuspendRequest } from './codec/nolus/suspend/v1beta1/query';
 import { NOLUS_PREFIX } from '../util/utils';
+import { ChainConstants, NolusWallet } from '@nolus/nolusjs';
+import { nolusOfflineSigner } from '@nolus/nolusjs/build/wallet/NolusWalletFactory';
 
 const user1PrivKey = fromHex(process.env.USER_1_PRIV_KEY as string);
 const user2PrivKey = fromHex(process.env.USER_2_PRIV_KEY as string);
 const user3PrivKey = fromHex(process.env.USER_3_PRIV_KEY as string);
 const NODE_ENDPOINT = process.env.NODE_URL as string;
 
-export async function getWallet(
-  privateKey: Uint8Array,
-): Promise<DirectSecp256k1Wallet> {
-  return await DirectSecp256k1Wallet.fromKey(privateKey, NOLUS_PREFIX);
-}
-
-export async function getClientWithKey(
-  privateKey: Uint8Array,
-): Promise<SigningCosmWasmClient> {
-  const wallet = await getWallet(privateKey);
-  return getClient(wallet);
-}
-
-export async function getClient(
-  wallet: DirectSecp256k1Wallet,
-): Promise<SigningCosmWasmClient> {
-  return await SigningCosmWasmClient.connectWithSigner(
-    NODE_ENDPOINT,
-    wallet,
-    getSignerOptions(),
+export async function getWallet(privateKey: Uint8Array): Promise<NolusWallet> {
+  const offlineSigner = await DirectSecp256k1Wallet.fromKey(
+    privateKey,
+    ChainConstants.BECH32_PREFIX_ACC_ADDR,
   );
+  const nolusWallet = await nolusOfflineSigner(offlineSigner);
+  nolusWallet.useAccount();
+  return nolusWallet;
 }
+
+export default NODE_ENDPOINT;
+
+// export async function getClientWithKey(
+//   privateKey: Uint8Array,
+// ): Promise<SigningCosmWasmClient> {
+//   const wallet = await getWallet(privateKey);
+//   return getClient(wallet.);
+// }
+
+// export async function getClient(
+//   wallet: DirectSecp256k1Wallet,
+// ): Promise<SigningCosmWasmClient> {
+//   return await SigningCosmWasmClient.connectWithSigner(
+//     NODE_ENDPOINT,
+//     wallet,
+//     getSignerOptions(),
+//   );
+// }
 
 export function getValidatorAddress(): string {
   return process.env.VALIDATOR_1_ADDRESS as string;
 }
 
-export async function getUser1Wallet(): Promise<DirectSecp256k1Wallet> {
+export async function getUser1Wallet(): Promise<NolusWallet> {
   return await getWallet(user1PrivKey);
 }
 
-export async function getUser2Wallet(): Promise<DirectSecp256k1Wallet> {
+export async function getUser2Wallet(): Promise<NolusWallet> {
   return await getWallet(user2PrivKey);
 }
 
-export async function getUser3Wallet(): Promise<DirectSecp256k1Wallet> {
+export async function getUser3Wallet(): Promise<NolusWallet> {
   return await getWallet(user3PrivKey);
 }
 
-export async function getUser1Client(): Promise<SigningCosmWasmClient> {
-  return await getClientWithKey(user1PrivKey);
-}
-
-export async function getUser2Client(): Promise<SigningCosmWasmClient> {
-  return await getClientWithKey(user2PrivKey);
-}
-
-export async function getUser3Client(): Promise<SigningCosmWasmClient> {
-  return await getClientWithKey(user3PrivKey);
-}
+// export async function getUser1Client(): Promise<SigningCosmWasmClient> {
+//   return await getClientWithKey(user1PrivKey);
+//   const wallet = await getWallet(user1PrivKey);
+// }
+//
+// export async function getUser2Client(): Promise<SigningCosmWasmClient> {
+//   return await getClientWithKey(user2PrivKey);
+// }
+//
+// export async function getUser3Client(): Promise<SigningCosmWasmClient> {
+//   return await getClientWithKey(user3PrivKey);
+// }
 
 export async function createWallet(): Promise<DirectSecp256k1Wallet> {
   const privateKey = seedToPrivateKey(generateMnemonic(256));
