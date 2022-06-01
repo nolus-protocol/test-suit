@@ -13,18 +13,13 @@ import {
 } from '../util/codec/cosmos/vesting/v1beta1/tx';
 import Long from 'long';
 import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
-import {
-  DEFAULT_FEE,
-  NATIVE_TOKEN_DENOM,
-  sleep,
-  undefinedHandler,
-} from '../util/utils';
+import { DEFAULT_FEE, sleep, undefinedHandler } from '../util/utils';
 import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
 import {
   getDelegatorValidatorPairAmount,
   stakingModule,
 } from '../util/staking';
-import { sendInitFeeTokens } from '../util/transfer';
+import { ChainConstants } from '@nolus/nolusjs/build/constants';
 
 describe('Staking Nolus tokens - Staking of unvested tokens', () => {
   const FULL_AMOUNT: Coin = { denom: 'unolus', amount: '100' };
@@ -32,15 +27,16 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     denom: 'unolus',
     amount: (+FULL_AMOUNT.amount / 2).toString(),
   };
-  const INIT: Coin = { denom: 'unolus', amount: '12' };
   const ENDTIME_SECONDS = 30;
   let user1Client: SigningCosmWasmClient;
   let user1Account: AccountData;
   let user2Client: SigningCosmWasmClient;
   let user2Account: AccountData;
   let validatorAddress: string;
+  let NATIVE_TOKEN_DENOM: string;
 
   beforeAll(async () => {
+    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     user1Client = await getUser1Client();
     [user1Account] = await (await getUser1Wallet()).getAccounts();
     const user2Wallet = await createWallet();

@@ -12,14 +12,15 @@ import {
 } from '../util/codec/cosmos/vesting/v1beta1/tx';
 import Long from 'long';
 import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
-import { DEFAULT_FEE, NATIVE_TOKEN_DENOM, sleep } from '../util/utils';
+import { DEFAULT_FEE, sleep } from '../util/utils';
 import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
-import { sendInitFeeTokens } from '../util/transfer';
+import { ChainConstants } from '@nolus/nolusjs/build/constants';
 
 describe('Continuous vesting tests', () => {
   const FULL_AMOUNT: Coin = { denom: 'unolus', amount: '10000' };
   const HALF_AMOUNT: Coin = { denom: 'unolus', amount: '5000' };
   const ENDTIME_SECONDS = 50;
+  let NATIVE_TOKEN_DENOM: string;
   let user1Client: SigningCosmWasmClient;
   let user1Account: AccountData;
   let vestingClient: SigningCosmWasmClient;
@@ -38,6 +39,7 @@ describe('Continuous vesting tests', () => {
   };
 
   beforeAll(async () => {
+    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     user1Client = await getUser1Client();
     [user1Account] = await (await getUser1Wallet()).getAccounts();
     const vestingWallet = await createWallet();

@@ -9,10 +9,11 @@ import {
   getUser1Client,
   getUser1Wallet,
 } from '../util/clients';
+import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { AccountData } from '@cosmjs/amino';
 
 describe('CW20 transfer', () => {
-  const NATIVE_TOKEN = 'unolus';
+  const NATIVE_TOKEN = ChainConstants.COIN_MINIMAL_DENOM;
   let user1Client: SigningCosmWasmClient;
   let user1Account: AccountData;
   let contractAddress: string;

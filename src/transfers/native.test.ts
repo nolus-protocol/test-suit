@@ -13,13 +13,16 @@ import {
   getUser1Client,
   getUser2Client,
 } from '../util/clients';
-import { DEFAULT_FEE, NATIVE_TOKEN_DENOM } from '../util/utils';
+import { DEFAULT_FEE } from '../util/utils';
+import { ChainConstants } from '@nolus/nolusjs/build/constants';
 
 describe('Native transfer', () => {
   let user1Client: SigningCosmWasmClient;
   let user1Account: AccountData;
+  let NATIVE_TOKEN_DENOM: string;
 
   beforeAll(async () => {
+    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     user1Client = await getUser1Client();
     [user1Account] = await (await getUser1Wallet()).getAccounts();
   });

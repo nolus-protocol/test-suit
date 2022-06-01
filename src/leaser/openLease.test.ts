@@ -7,6 +7,7 @@ import {
 } from '../util/clients';
 import { AccountData, Coin } from '@cosmjs/amino';
 import { DEFAULT_FEE, sleep } from '../util/utils';
+import { ChainConstants } from '@nolus/nolusjs/build/constants';
 
 describe('Leaser contract tests - Open a lease', () => {
   let userClient: SigningCosmWasmClient;
@@ -15,14 +16,15 @@ describe('Leaser contract tests - Open a lease', () => {
   let borrowerClient: SigningCosmWasmClient;
   let lppLiquidity: Coin;
   let lppDenom: string;
+  let NATIVE_TOKEN_DENOM: string;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
 
   const downpayment = '100';
-  const borrowerAmount = '200';
 
   beforeAll(async () => {
+    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     userClient = await getUser1Client();
     [userAccount] = await (await getUser1Wallet()).getAccounts();
     const borrowerWallet = await createWallet();
@@ -30,10 +32,10 @@ describe('Leaser contract tests - Open a lease', () => {
     [borrowerAccount] = await borrowerWallet.getAccounts();
 
     // TO DO: We will have a message about that soon
-    lppDenom = 'unolus';
+    lppDenom = process.env.STABLE_DENOM as string;
 
     // if the leaseOpening tests start first, the current tests will fail due to a problem with the qoute request, so sleep()
-    await sleep(4000);
+    await sleep(6000);
 
     // send init tokens to lpp address to provide liquidity, otherwise cant send query
     await userClient.sendTokens(
@@ -55,8 +57,13 @@ describe('Leaser contract tests - Open a lease', () => {
     await userClient.sendTokens(
       userAccount.address,
       borrowerAccount.address,
-      [{ denom: lppDenom, amount: borrowerAmount }],
+      [{ denom: lppDenom, amount: downpayment }],
       DEFAULT_FEE,
+    );
+    await sendInitFeeTokens(
+      userClient,
+      userAccount.address,
+      borrowerAccount.address,
     );
   });
 
@@ -71,7 +78,7 @@ describe('Leaser contract tests - Open a lease', () => {
     await userClient.sendTokens(
       userAccount.address,
       borrowerAccount.address,
-      [{ denom: lppDenom, amount: borrowerAmount }],
+      [{ denom: lppDenom, amount: downpayment }],
       DEFAULT_FEE,
     );
 
@@ -97,7 +104,6 @@ describe('Leaser contract tests - Open a lease', () => {
         DEFAULT_FEE,
       );
     }
-    console.log(lppLiquidity.amount);
 
     expect(lppLiquidity.amount).not.toBe('0');
 
@@ -125,7 +131,20 @@ describe('Leaser contract tests - Open a lease', () => {
       undefined,
       [{ denom: lppDenom, amount: downpayment }],
     );
-    console.log(openLease);
+
+    const leases = {
+      leases: {
+        owner: borrowerAccount.address,
+      },
+    };
+
+    const queryLeases = await borrowerClient.queryContractSmart(
+      leaserContractAddress,
+      leases,
+    );
+
+    console.log('user 1 leases:', leases);
+    console.log(queryLeases);
 
     const borrowerBalanceAfter = await borrowerClient.getBalance(
       borrowerAccount.address,
@@ -138,18 +157,13 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
 
-    console.log(lppLiquidityAfter);
-
     expect(BigInt(borrowerBalanceAfter.amount)).toBe(
-      BigInt(borrowerBalanceBefore.amount) -
-        BigInt(downpayment) -
-        BigInt(DEFAULT_FEE.amount[0].amount),
+      BigInt(borrowerBalanceBefore.amount) - BigInt(downpayment),
     );
 
     expect(BigInt(lppLiquidityAfter.amount)).toBe(
       BigInt(lppLiquidityBefore.amount) - BigInt(quote.borrow.amount),
     );
-    await sleep(4000);
   });
 
   test('the borrower should be able to open more than one leases', async () => {
@@ -168,7 +182,18 @@ describe('Leaser contract tests - Open a lease', () => {
     await userClient.sendTokens(
       userAccount.address,
       borrower2Account.address,
-      [{ denom: lppDenom, amount: borrowerAmount }],
+      [{ denom: lppDenom, amount: downpayment }],
+      DEFAULT_FEE,
+    );
+    await userClient.sendTokens(
+      userAccount.address,
+      borrower2Account.address,
+      [
+        {
+          denom: NATIVE_TOKEN_DENOM,
+          amount: (+DEFAULT_FEE.amount[0].amount * 2).toString(),
+        },
+      ],
       DEFAULT_FEE,
     );
 
@@ -183,9 +208,13 @@ describe('Leaser contract tests - Open a lease', () => {
       quoteMsg,
     );
 
+    const quote2 = await borrower2Client.queryContractSmart(
+      leaserContractAddress,
+      quoteMsg,
+    );
+    console.log('Two quote queries without openLease between them - passed!');
+
     expect(quote.borrow).toBeDefined();
-    console.log('quote lease 1:');
-    console.log(quote.borrow);
 
     if (+quote.borrow.amount * 2 > +lppLiquidity.amount) {
       // TO DO: we won`t need this in the future - maybe this will be some lender exec msg
@@ -197,7 +226,6 @@ describe('Leaser contract tests - Open a lease', () => {
         DEFAULT_FEE,
       );
     }
-    console.log(lppLiquidity.amount);
 
     expect(lppLiquidity.amount).not.toBe('0');
 
@@ -212,7 +240,7 @@ describe('Leaser contract tests - Open a lease', () => {
       lppContractAddress,
       lppDenom,
     );
-    console.log(lppLiquidityBefore);
+
     const openLeaseMsg = {
       open_lease: { currency: lppDenom },
     };
@@ -227,7 +255,7 @@ describe('Leaser contract tests - Open a lease', () => {
     );
     console.log(openLease);
 
-    await sleep(4000);
+    await sleep(6000);
 
     const quote3 = await borrower2Client.queryContractSmart(
       leaserContractAddress,
@@ -235,8 +263,6 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     expect(quote3.borrow).toBeDefined();
-    console.log('quote lease 2:');
-    console.log(quote3.borrow);
 
     const openLease2 = await borrower2Client.execute(
       borrower2Account.address,
@@ -246,7 +272,6 @@ describe('Leaser contract tests - Open a lease', () => {
       undefined,
       [{ denom: lppDenom, amount: (+downpayment / 2).toString() }],
     );
-    console.log(openLease2);
 
     const borrowerBalanceAfter = await borrower2Client.getBalance(
       borrower2Account.address,
@@ -259,12 +284,8 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
 
-    console.log(lppLiquidityAfter);
-
     expect(BigInt(borrowerBalanceAfter.amount)).toBe(
-      BigInt(borrowerBalanceBefore.amount) -
-        BigInt(downpayment) -
-        BigInt(DEFAULT_FEE.amount[0].amount) * BigInt(2),
+      BigInt(borrowerBalanceBefore.amount) - BigInt(downpayment),
     );
 
     expect(BigInt(lppLiquidityAfter.amount)).toBe(
@@ -273,17 +294,17 @@ describe('Leaser contract tests - Open a lease', () => {
     );
   });
 
-  //TO DO: open 2 leases from different borowers
-
   test('the borrower tries to open lease with unsuported lpp currency - should produce an error', async () => {
     // get borrower balance
     const borrowerBalanceBefore = await borrowerClient.getBalance(
       borrowerAccount.address,
       lppDenom,
     );
-
-    console.log('aaaaaaa');
-    console.log(borrowerBalanceBefore);
+    await sendInitFeeTokens(
+      userClient,
+      userAccount.address,
+      borrowerAccount.address,
+    );
 
     const openLeaseMsg = {
       open_lease: { currency: 'not-existend' },
@@ -307,12 +328,15 @@ describe('Leaser contract tests - Open a lease', () => {
       borrowerAccount.address,
       lppDenom,
     );
-
-    console.log('bbbbbb');
-    console.log(borrowerBalanceAfter);
+    expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });
 
   test('the borrower tries to open a lease with 0 down payment - should produce an error', async () => {
+    // get borrower balance
+    const borrowerBalanceBefore = await borrowerClient.getBalance(
+      borrowerAccount.address,
+      lppDenom,
+    );
     const openLeaseMsg = {
       open_lease: { currency: lppDenom },
     };
@@ -328,10 +352,17 @@ describe('Leaser contract tests - Open a lease', () => {
       );
 
     await expect(openLease).rejects.toThrow(/^.*invalid coins.*/);
+    // get borrower balance
+    const borrowerBalanceAfter = await borrowerClient.getBalance(
+      borrowerAccount.address,
+      lppDenom,
+    );
+    expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });
 
   test('the borrower tries to open a lease with more down payment amount than he owns - should produce an error', async () => {
-    const borrowerBalance = await borrowerClient.getBalance(
+    // get borrower balance
+    const borrowerBalanceBefore = await borrowerClient.getBalance(
       borrowerAccount.address,
       lppDenom,
     );
@@ -347,9 +378,15 @@ describe('Leaser contract tests - Open a lease', () => {
         openLeaseMsg,
         DEFAULT_FEE,
         undefined,
-        [{ denom: lppDenom, amount: borrowerBalance.amount }],
+        [{ denom: lppDenom, amount: borrowerBalanceBefore.amount }],
       );
 
     await expect(openLease).rejects.toThrow(/^.*insufficient fund.*/);
+    // get borrower balance
+    const borrowerBalanceAfter = await borrowerClient.getBalance(
+      borrowerAccount.address,
+      lppDenom,
+    );
+    expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });
 });

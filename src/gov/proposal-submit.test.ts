@@ -23,31 +23,35 @@ import {
 } from 'cosmjs-types/cosmwasm/wasm/v1/proposal';
 import { getUser1Client, getUser1Wallet } from '../util/clients';
 import { UpgradeProposal, ClientUpdateProposal } from '../util/proposals';
+import { ChainConstants } from '@nolus/nolusjs/build/constants';
 
 describe('Proposal submission tests', () => {
-  const NATIVE_TOKEN = 'unolus';
   let client: SigningCosmWasmClient;
   let wallet: DirectSecp256k1Wallet;
   let firstAccount: AccountData;
   let msg: any;
   let fee: StdFee;
   let moduleName: string;
-  fee = {
-    amount: [{ denom: NATIVE_TOKEN, amount: '12' }],
-    gas: '100000',
-  };
+  let NATIVE_TOKEN_DENOM: string;
 
   beforeAll(async () => {
+    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     client = await getUser1Client();
     wallet = await getUser1Wallet();
     [firstAccount] = await wallet.getAccounts();
+
+    fee = {
+      amount: [{ denom: NATIVE_TOKEN_DENOM, amount: '12' }],
+      gas: '100000',
+    };
+
     moduleName = 'gov';
     msg = {
       typeUrl: '/cosmos.gov.v1beta1.MsgSubmitProposal',
       value: {
         content: {},
         proposer: firstAccount.address,
-        initialDeposit: [{ denom: NATIVE_TOKEN, amount: '12' }],
+        initialDeposit: [{ denom: NATIVE_TOKEN_DENOM, amount: '12' }],
       },
     };
   });
@@ -84,7 +88,7 @@ describe('Proposal submission tests', () => {
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
         recipient: firstAccount.address,
-        amount: [{ denom: NATIVE_TOKEN, amount: '1000000' }],
+        amount: [{ denom: NATIVE_TOKEN_DENOM, amount: '1000000' }],
       }).finish(),
     };
     moduleName = 'distribution';
@@ -163,7 +167,7 @@ describe('Proposal submission tests', () => {
       }).finish(),
     };
     fee = {
-      amount: [{ denom: NATIVE_TOKEN, amount: '12' }],
+      amount: [{ denom: NATIVE_TOKEN_DENOM, amount: '12' }],
       gas: '200000',
     };
     moduleName = 'client';
@@ -209,7 +213,7 @@ describe('Proposal submission tests', () => {
         codeId: Long.fromInt(1),
         label: 'contractlabel',
         msg: toUtf8('{}'),
-        funds: [{ denom: NATIVE_TOKEN, amount: '12' }],
+        funds: [{ denom: NATIVE_TOKEN_DENOM, amount: '12' }],
       }).finish(),
     };
     moduleName = 'wasm';

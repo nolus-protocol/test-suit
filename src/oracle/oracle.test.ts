@@ -6,9 +6,8 @@ import {
   createWallet,
 } from '../util/clients';
 import { AccountData } from '@cosmjs/amino';
-import { DEFAULT_FEE, BLOCK_CREATION_TIME, sleep } from '../util/utils';
+import { DEFAULT_FEE, BLOCK_CREATION_TIME_DEV, sleep } from '../util/utils';
 import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
-import { sendInitFeeTokens } from '../util/transfer';
 
 describe('Oracle contract tests', () => {
   let userClient: SigningCosmWasmClient;
@@ -243,7 +242,7 @@ describe('Oracle contract tests', () => {
     expect(afterResult).toBe(EXPECTED_PRICE);
 
     // the price feed period has expired + block creation time
-    await sleep(BLOCK_CREATION_TIME + PRICE_FEED_PERIOD * 1000);
+    await sleep(BLOCK_CREATION_TIME_DEV + PRICE_FEED_PERIOD * 1000);
     const resultAfterPeriod = () =>
       userClient.queryContractSmart(contractAddress, getPriceMsg);
     await expect(resultAfterPeriod).rejects.toThrow(/^.*No price for pair.*/);

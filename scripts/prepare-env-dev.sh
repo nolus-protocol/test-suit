@@ -7,6 +7,8 @@ CONTRACTS_BIN="contracts.tar.gz"
 NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
 GITLAB_API="https://gitlab-nomo.credissimo.net/api/v4"
 IBC_TOKEN='ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2'
+FAUCET_ADDRESS="nolus1vnn8pr2hqrm64mge8724jmzcm7usnsm5e4qqle"
+STABLE_DENOM='ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2'
 SMART_CONTRACTS_PROJECT_ID="8"
 COSMZONE_PROJECT_ID="3"
 CONTRACTS_INFO_ARTIFACT="deploy:cargo"
@@ -88,6 +90,10 @@ USER_3_PRIV_KEY=$(exportKey "test-user-2")
 VALIDATOR_1_ADDRESS=$(getValidatorAddress "0")
 VALIDATOR_2_ADDRESS=$(getValidatorAddress "1")
 
+#send some stable coins to treasury
+TREASURY_ADDRESS=$(nolusd keys show treasury --address --home "$ACCOUNTS_DIR")
+echo 'y' | nolusd tx bank send "$FAUCET_ADDRESS" "$TREASURY_ADDRESS" 10000${STABLE_DENOM}  --node "$NOLUS_DEV_NET" --home "$ACCOUNTS_DIR"
+
 # Get contracts information
 
   if [[ -z ${TAG+x} ]]; then
@@ -99,25 +105,30 @@ VALIDATOR_2_ADDRESS=$(getValidatorAddress "1")
 downloadArtifact  "$CONTRACTS_INFO_ARTIFACT" "$SMART_CONTRACTS_LATEST_VERSION" "$SMART_CONTRACTS_PROJECT_ID"
 tar -xf $CONTRACTS_BIN
 
-ORACLE_ADDRESS=$(jq .contracts_info[0].oracle.instance contracts-info.json | tr -d '"')
+LPP_ADDRESS=$(jq .contracts_info[1].lpp.instance contracts-info.json | tr -d '"')
 LEASER_ADDRESS=$(jq .contracts_info[2].leaser.instance contracts-info.json | tr -d '"')
-LPP_ADDRESS=$(jq .contracts_info[3].leaser.instance contracts-info.json | tr -d '"')
+ORACLE_ADDRESS=$(jq .contracts_info[3].oracle.instance contracts-info.json | tr -d '"')
 TREASURY_ADDRESS=$(jq .contracts_info[4].treasury.instance contracts-info.json | tr -d '"')
+PROFIT_ADDRESS=$(jq .contracts_info[5].profit.instance contracts-info.json | tr -d '"')
+DISPATCHER_ADDRESS=$(jq .contracts_info[6].rewards_dispatcher.instance contracts-info.json | tr -d '"')
 
 # Save the results
 
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${NOLUS_DEV_NET}
+IBC_TOKEN=${IBC_TOKEN}
+STABLE_DENOM=${STABLE_DENOM}
 USER_1_PRIV_KEY=${USER_1_PRIV_KEY}
 USER_2_PRIV_KEY=${USER_2_PRIV_KEY}
 USER_3_PRIV_KEY=${USER_3_PRIV_KEY}
 VALIDATOR_1_ADDRESS=${VALIDATOR_1_ADDRESS}
 VALIDATOR_2_ADDRESS=${VALIDATOR_2_ADDRESS}
-IBC_TOKEN=${IBC_TOKEN}
 ORACLE_ADDRESS=${ORACLE_ADDRESS}
 LEASER_ADDRESS=${LEASER_ADDRESS}
 LPP_ADDRESS=${LPP_ADDRESS}
 TREASURY_ADDRESS=${TREASURY_ADDRESS}
+DISPATCHER_ADDRESS=${DISPATCHER_ADDRESS}
+PROFIT_ADDRESS=${PROFIT_ADDRESS}
 EOF
   )
    echo "$DOT_ENV" > "$ROOT_DIR/.env"

@@ -24,11 +24,8 @@ import {
   getParamsInformation,
   stakingModule,
 } from '../util/staking';
-import {
-  DEFAULT_FEE,
-  NATIVE_TOKEN_DENOM,
-  undefinedHandler,
-} from '../util/utils';
+import { DEFAULT_FEE, undefinedHandler } from '../util/utils';
+import { ChainConstants } from '@nolus/nolusjs/build/constants';
 
 describe('Staking Nolus tokens - Delegation', () => {
   let user1Client: SigningCosmWasmClient;
@@ -37,6 +34,8 @@ describe('Staking Nolus tokens - Delegation', () => {
   let stakeholderWallet: DirectSecp256k1Wallet;
   let stakeholderAccount: AccountData;
   let validatorAddress: string;
+  let NATIVE_TOKEN_DENOM: string;
+
   const delegatedAmount = '13';
 
   const delegateMsg = {
@@ -49,6 +48,7 @@ describe('Staking Nolus tokens - Delegation', () => {
   };
 
   beforeAll(async () => {
+    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     user1Client = await getUser1Client();
     [user1Account] = await (await getUser1Wallet()).getAccounts();
 
