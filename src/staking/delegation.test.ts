@@ -1,20 +1,13 @@
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import {
-  AccountData,
-  Coin,
-  DirectSecp256k1Wallet,
-} from '@cosmjs/proto-signing';
+import { Coin } from '@cosmjs/proto-signing';
 import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
 import {
   BondStatus,
   bondStatusFromJSON,
 } from 'cosmjs-types/cosmos/staking/v1beta1/staking';
-import {
-  getValidatorAddress,
+import NODE_ENDPOINT, {
+  getValidator1Address,
   getUser2Wallet,
   createWallet,
-  getClient,
-  getUser1Client,
   getUser1Wallet,
 } from '../util/clients';
 import {
@@ -25,16 +18,13 @@ import {
   stakingModule,
 } from '../util/staking';
 import { DEFAULT_FEE, undefinedHandler } from '../util/utils';
-import { ChainConstants } from '@nolus/nolusjs/build/constants';
+import { ChainConstants, NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Delegation', () => {
-  let user1Client: SigningCosmWasmClient;
-  let user1Account: AccountData;
-  let stakeholderClient: SigningCosmWasmClient;
-  let stakeholderWallet: DirectSecp256k1Wallet;
-  let stakeholderAccount: AccountData;
+  const NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
+  let user1Wallet: NolusWallet;
+  let stakeholderWallet: NolusWallet;
   let validatorAddress: string;
-  let NATIVE_TOKEN_DENOM: string;
 
   const delegatedAmount = '13';
 
@@ -48,18 +38,15 @@ describe('Staking Nolus tokens - Delegation', () => {
   };
 
   beforeAll(async () => {
-    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
-    user1Client = await getUser1Client();
-    [user1Account] = await (await getUser1Wallet()).getAccounts();
-
+    NolusClient.setInstance(NODE_ENDPOINT);
+    user1Wallet = await getUser1Wallet();
     stakeholderWallet = await createWallet();
-    stakeholderClient = await getClient(stakeholderWallet);
-    [stakeholderAccount] = await stakeholderWallet.getAccounts();
-    console.log(stakeholderAccount.address);
 
-    validatorAddress = getValidatorAddress();
+    console.log(stakeholderWallet.address);
 
-    delegateMsg.value.delegatorAddress = stakeholderAccount.address;
+    validatorAddress = getValidator1Address();
+
+    delegateMsg.value.delegatorAddress = stakeholderWallet.address as string;
     delegateMsg.value.validatorAddress = validatorAddress;
 
     // send some tokens
@@ -68,17 +55,17 @@ describe('Staking Nolus tokens - Delegation', () => {
       amount: delegatedAmount + DEFAULT_FEE.amount[0].amount,
     };
 
-    const broadcastTx = await user1Client.sendTokens(
-      user1Account.address,
-      stakeholderAccount.address,
+    const broadcastTx = await user1Wallet.transferAmount(
+      stakeholderWallet.address as string,
       [initTransfer],
       DEFAULT_FEE,
+      '',
     );
     expect(assertIsDeliverTxSuccess(broadcastTx)).toBeUndefined();
   });
 
   afterEach(() => {
-    delegateMsg.value.delegatorAddress = stakeholderAccount.address;
+    delegateMsg.value.delegatorAddress = stakeholderWallet.address as string;
     delegateMsg.value.validatorAddress = validatorAddress;
     delegateMsg.value.amount.denom = NATIVE_TOKEN_DENOM;
   });
@@ -129,8 +116,8 @@ describe('Staking Nolus tokens - Delegation', () => {
     // delegate tokens
     delegateMsg.value.amount.amount = delegatedAmount;
 
-    const result = await stakeholderClient.signAndBroadcast(
-      stakeholderAccount.address,
+    const result = await stakeholderWallet.signAndBroadcast(
+      stakeholderWallet.address as string,
       [delegateMsg],
       DEFAULT_FEE,
     );
@@ -139,7 +126,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     // see the stakeholder staked tokens to the current validator - after delegation
     const stakeholderDelegationsToValAfter =
       await getDelegatorValidatorPairAmount(
-        stakeholderAccount.address,
+        stakeholderWallet.address as string,
         validatorAddress,
       );
 
@@ -152,7 +139,7 @@ describe('Staking Nolus tokens - Delegation', () => {
 
     // see the stakeholder staked tokens
     const stakeholderDelegatedTokens = (
-      await getDelegatorInformation(stakeholderAccount.address)
+      await getDelegatorInformation(stakeholderWallet.address as string)
     ).delegationResponses[0]?.balance?.amount;
 
     if (!stakeholderDelegatedTokens) {
@@ -180,7 +167,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     // see the stakeholder staked tokens to the current validator - before delegation
     const stakeholderDelegationsToValBefore =
       await getDelegatorValidatorPairAmount(
-        stakeholderAccount.address,
+        stakeholderWallet.address as string,
         validatorAddress,
       );
 
@@ -193,8 +180,8 @@ describe('Staking Nolus tokens - Delegation', () => {
     delegateMsg.value.amount.amount = '0';
 
     const broadcastTx = () =>
-      stakeholderClient.signAndBroadcast(
-        stakeholderAccount.address,
+      stakeholderWallet.signAndBroadcast(
+        stakeholderWallet.address as string,
         [delegateMsg],
         DEFAULT_FEE,
       );
@@ -204,7 +191,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     // see the stakeholder staked tokens to the current validator - after delegation
     const stakeholderDelegationsToValAfter =
       await getDelegatorValidatorPairAmount(
-        stakeholderAccount.address,
+        stakeholderWallet.address as string,
         validatorAddress,
       );
 
@@ -220,22 +207,22 @@ describe('Staking Nolus tokens - Delegation', () => {
 
   test('the stakeholder tries to delegate tokens to non-existent validator - should produce an error', async () => {
     const invalidValidatoWallet = await getUser2Wallet();
-    const [invalidValidatoAccount] = await invalidValidatoWallet.getAccounts();
 
     // see the stakeholder staked tokens to the current validator
     await expect(
       getDelegatorValidatorPairAmount(
-        stakeholderAccount.address,
-        invalidValidatoAccount.address,
+        stakeholderWallet.address as string,
+        invalidValidatoWallet.address as string,
       ),
     ).rejects.toThrow(/^.*expected nolusvaloper, got nolus.*/);
 
     // try to delegate tokens
     delegateMsg.value.amount.amount = delegatedAmount;
-    delegateMsg.value.validatorAddress = invalidValidatoAccount.address;
+    delegateMsg.value.validatorAddress =
+      invalidValidatoWallet.address as string;
 
-    const broadcastTx = await stakeholderClient.signAndBroadcast(
-      stakeholderAccount.address,
+    const broadcastTx = await stakeholderWallet.signAndBroadcast(
+      stakeholderWallet.address as string,
       [delegateMsg],
       DEFAULT_FEE,
     );
@@ -261,8 +248,8 @@ describe('Staking Nolus tokens - Delegation', () => {
     delegateMsg.value.amount.denom = invalidDenom;
     delegateMsg.value.amount.amount = delegatedAmount;
 
-    const broadcastTx = await stakeholderClient.signAndBroadcast(
-      stakeholderAccount.address,
+    const broadcastTx = await stakeholderWallet.signAndBroadcast(
+      stakeholderWallet.address as string,
       [delegateMsg],
       DEFAULT_FEE,
     );

@@ -1,21 +1,13 @@
 import * as fs from 'fs';
-import {
-  InstantiateResult,
-  SigningCosmWasmClient,
-} from '@cosmjs/cosmwasm-stargate';
-import {
-  getUser2Client,
-  getUser2Wallet,
-  getUser1Client,
-  getUser1Wallet,
-} from '../util/clients';
-import { ChainConstants } from '@nolus/nolusjs/build/constants';
-import { AccountData } from '@cosmjs/amino';
+import { InstantiateResult } from '@cosmjs/cosmwasm-stargate';
+import NODE_ENDPOINT, { getUser2Wallet, getUser1Wallet } from '../util/clients';
+import { ChainConstants } from '@nolus/nolusjs';
+import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 
 describe('CW20 transfer', () => {
   const NATIVE_TOKEN = ChainConstants.COIN_MINIMAL_DENOM;
-  let user1Client: SigningCosmWasmClient;
-  let user1Account: AccountData;
+  let user1Wallet: NolusWallet;
+  let user2Wallet: NolusWallet;
   let contractAddress: string;
   const tokenName = 'Test';
   const tokenSymbol = 'TST';
@@ -37,8 +29,9 @@ describe('CW20 transfer', () => {
   };
 
   beforeAll(async () => {
-    user1Client = await getUser1Client();
-    [user1Account] = await (await getUser1Wallet()).getAccounts();
+    NolusClient.setInstance(NODE_ENDPOINT);
+    user1Wallet = await getUser1Wallet();
+    user2Wallet = await getUser2Wallet();
 
     // get wasm binary file
     const wasmBinary: Buffer = fs.readFileSync(
@@ -46,8 +39,8 @@ describe('CW20 transfer', () => {
     );
 
     // upload wasm binary
-    const uploadReceipt = await user1Client.upload(
-      user1Account.address,
+    const uploadReceipt = await user1Wallet.upload(
+      user1Wallet.address as string,
       wasmBinary,
       customFees.upload,
     );
@@ -61,13 +54,13 @@ describe('CW20 transfer', () => {
       decimals: tokenDecimals,
       initial_balances: [
         {
-          address: user1Account.address,
+          address: user1Wallet.address,
           amount: totalSupply,
         },
       ],
     };
-    const contract: InstantiateResult = await user1Client.instantiate(
-      user1Account.address,
+    const contract: InstantiateResult = await user1Wallet.instantiate(
+      user1Wallet.address as string,
       codeId,
       instatiateMsg,
       'Sample CW20',
@@ -83,11 +76,11 @@ describe('CW20 transfer', () => {
     };
     const balanceMsg = {
       balance: {
-        address: user1Account.address,
+        address: user1Wallet.address as string,
       },
     };
 
-    const tokenInfoResponse = await user1Client.queryContractSmart(
+    const tokenInfoResponse = await user1Wallet.queryContractSmart(
       contractAddress,
       tokenInfoMsg,
     );
@@ -98,7 +91,7 @@ describe('CW20 transfer', () => {
     expect(tokenInfoResponse.decimals).toBe(tokenDecimals);
     expect(tokenInfoResponse['total_supply']).toBe(totalSupply);
 
-    const user1BalanceMsgResponse = await user1Client.queryContractSmart(
+    const user1BalanceMsgResponse = await user1Wallet.queryContractSmart(
       contractAddress,
       balanceMsg,
     );
@@ -108,33 +101,30 @@ describe('CW20 transfer', () => {
   });
 
   test('users should be able transfer tokens', async () => {
-    const user2Client = await getUser2Client();
-    const [user2Account] = await (await getUser2Wallet()).getAccounts();
     const amountToTransfer = '1000';
     const balanceMsgUser2 = {
       balance: {
-        address: user2Account.address,
+        address: user2Wallet.address,
       },
     };
     const transferMsg = {
       transfer: {
-        recipient: user2Account.address,
+        recipient: user2Wallet.address,
         amount: amountToTransfer,
       },
     };
 
     const user2BalanceBefore = (
-      await user2Client.queryContractSmart(contractAddress, balanceMsgUser2)
+      await user2Wallet.queryContractSmart(contractAddress, balanceMsgUser2)
     ).balance;
     console.log('User2 before balance:', user2BalanceBefore);
-    await user1Client.execute(
-      user1Account.address,
+    await user1Wallet.еxecuteContract(
       contractAddress,
       transferMsg,
       customFees.exec,
     );
     const user2BalanceAfter = (
-      await user2Client.queryContractSmart(contractAddress, balanceMsgUser2)
+      await user2Wallet.queryContractSmart(contractAddress, balanceMsgUser2)
     ).balance;
     console.log('User2 after balance:', user2BalanceAfter);
 
@@ -144,19 +134,17 @@ describe('CW20 transfer', () => {
   });
 
   test('users should be able to transfer tokens allowed from another user', async () => {
-    const user2Client = await getUser2Client();
-    const [user2Account] = await (await getUser2Wallet()).getAccounts();
     const amountToTransfer = '1000';
     const allowanceMsg = {
       allowance: {
-        owner: user1Account.address,
-        spender: user2Account.address,
+        owner: user1Wallet.address as string,
+        spender: user2Wallet.address as string,
       },
     };
     const transferFromMsg = {
       transfer_from: {
-        owner: user1Account.address,
-        recipient: user2Account.address,
+        owner: user1Wallet.address as string,
+        recipient: user2Wallet.address as string,
         amount: amountToTransfer,
       },
     };
@@ -170,41 +158,39 @@ describe('CW20 transfer', () => {
     };
     const balanceMsg = {
       balance: {
-        address: user2Account.address,
+        address: user2Wallet.address as string,
       },
     };
     const increaseAllowanceMsg = {
       increase_allowance: {
-        spender: user2Account.address,
+        spender: user2Wallet.address as string,
         amount: amountToTransfer,
       },
     };
 
     const user2AllowanceBefore = (
-      await user2Client.queryContractSmart(contractAddress, allowanceMsg)
+      await user2Wallet.queryContractSmart(contractAddress, allowanceMsg)
     ).allowance;
     console.log('User before allowance:', user2AllowanceBefore);
     const user2BalanceBefore = (
-      await user2Client.queryContractSmart(contractAddress, balanceMsg)
+      await user2Wallet.queryContractSmart(contractAddress, balanceMsg)
     ).balance;
     console.log('User before balance:', user2BalanceBefore);
 
     // send some native tokens to the user, so that they can call TransferFrom
-    await user1Client.sendTokens(
-      user1Account.address,
-      user2Account.address,
+    await user1Wallet.transferAmount(
+      user2Wallet.address as string,
       [nativeTokenTransfer],
       fee,
-      'Send transaction',
+      '',
     );
-    await user1Client.execute(
-      user1Account.address,
+    await user1Wallet.еxecuteContract(
       contractAddress,
       increaseAllowanceMsg,
       customFees.exec,
     );
     const user2AllowanceAfter = (
-      await user2Client.queryContractSmart(contractAddress, allowanceMsg)
+      await user2Wallet.queryContractSmart(contractAddress, allowanceMsg)
     ).allowance;
     console.log('User after allowance:', user2AllowanceAfter);
 
@@ -212,19 +198,18 @@ describe('CW20 transfer', () => {
       BigInt(user2AllowanceBefore) + BigInt(amountToTransfer),
     );
 
-    await user2Client.execute(
-      user2Account.address,
+    await user2Wallet.еxecuteContract(
       contractAddress,
       transferFromMsg,
       customFees.exec,
     );
     const user2BalanceAfter = (
-      await user2Client.queryContractSmart(contractAddress, balanceMsg)
+      await user2Wallet.queryContractSmart(contractAddress, balanceMsg)
     ).balance;
     console.log('User after balance:', user2BalanceAfter);
     console.log(
       'User after transfer allowance:',
-      (await user2Client.queryContractSmart(contractAddress, allowanceMsg))
+      (await user2Wallet.queryContractSmart(contractAddress, allowanceMsg))
         .allowance,
     );
 

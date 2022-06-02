@@ -1,12 +1,9 @@
-import {
+import NODE_ENDPOINT, {
   createWallet,
-  getClient,
-  getUser1Client,
   getUser1Wallet,
-  getValidatorAddress,
+  getValidator1Address,
 } from '../util/clients';
-import { AccountData, EncodeObject } from '@cosmjs/proto-signing';
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
+import { EncodeObject } from '@cosmjs/proto-signing';
 import {
   MsgCreateVestingAccount,
   protobufPackage as vestingPackage,
@@ -20,6 +17,8 @@ import {
   stakingModule,
 } from '../util/staking';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { sendInitFeeTokens } from '../util/transfer';
 
 describe('Staking Nolus tokens - Staking of unvested tokens', () => {
   const FULL_AMOUNT: Coin = { denom: 'unolus', amount: '100' };
@@ -28,27 +27,23 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     amount: (+FULL_AMOUNT.amount / 2).toString(),
   };
   const ENDTIME_SECONDS = 30;
-  let user1Client: SigningCosmWasmClient;
-  let user1Account: AccountData;
-  let user2Client: SigningCosmWasmClient;
-  let user2Account: AccountData;
+  let user1Wallet: NolusWallet;
+  let user2Wallet: NolusWallet;
   let validatorAddress: string;
   let NATIVE_TOKEN_DENOM: string;
 
   beforeAll(async () => {
     NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
-    user1Client = await getUser1Client();
-    [user1Account] = await (await getUser1Wallet()).getAccounts();
-    const user2Wallet = await createWallet();
-    user2Client = await getClient(user2Wallet);
-    [user2Account] = await user2Wallet.getAccounts();
-    validatorAddress = getValidatorAddress();
+    NolusClient.setInstance(NODE_ENDPOINT);
+    user1Wallet = await getUser1Wallet();
+    user2Wallet = await createWallet();
+    validatorAddress = getValidator1Address();
   });
 
   test('the stakeholder should not be able to delegate unvested tokens', async () => {
     const createVestingAccountMsg: MsgCreateVestingAccount = {
-      fromAddress: user1Account.address,
-      toAddress: user2Account.address,
+      fromAddress: user1Wallet.address as string,
+      toAddress: user2Wallet.address as string,
       amount: [FULL_AMOUNT],
       endTime: Long.fromNumber(new Date().getTime() / 1000 + ENDTIME_SECONDS),
       delayed: false,
@@ -59,8 +54,8 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     };
 
     // create a brand new vesting account
-    const createVestingAccountResult = await user1Client.signAndBroadcast(
-      user1Account.address,
+    const createVestingAccountResult = await user1Wallet.signAndBroadcast(
+      user1Wallet.address as string,
       [encodedMsg],
       DEFAULT_FEE,
     );
@@ -70,16 +65,15 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
 
     // send some tokens
     const sendInitTokensResult = await sendInitFeeTokens(
-      user1Client,
-      user1Account.address,
-      user2Account.address,
+      user1Wallet,
+      user2Wallet.address as string,
     );
 
     expect(assertIsDeliverTxSuccess(sendInitTokensResult)).toBeUndefined();
 
     // get balance
-    const user2Balance = await user2Client.getBalance(
-      user2Account.address,
+    const user2Balance = await user2Wallet.getBalance(
+      user2Wallet.address as string,
       NATIVE_TOKEN_DENOM,
     );
     console.log(user2Balance); //should be 112 --> 100 from vesting + 12 from user1
@@ -88,14 +82,14 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     const delegateMsg = {
       typeUrl: `${stakingModule}.MsgDelegate`,
       value: {
-        delegatorAddress: user2Account.address,
+        delegatorAddress: user2Wallet.address as string,
         validatorAddress: validatorAddress,
         amount: HALF_AMOUNT,
       },
     };
 
-    const broadcastFailTx = await user2Client.signAndBroadcast(
-      user2Account.address,
+    const broadcastFailTx = await user2Wallet.signAndBroadcast(
+      user2Wallet.address as string,
       [delegateMsg],
       DEFAULT_FEE,
     );
@@ -108,7 +102,7 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     // see the stakeholder staked tokens to the current validator - before delegation
     const stakeholderDelegationsToValBefore =
       await getDelegatorValidatorPairAmount(
-        user2Account.address,
+        user2Wallet.address as string,
         validatorAddress,
       );
 
@@ -122,8 +116,8 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     // wait for tokens to be vested and try to delegate again
     await sleep((ENDTIME_SECONDS / 2) * 1000);
 
-    const broadcastSuccTx = await user2Client.signAndBroadcast(
-      user2Account.address,
+    const broadcastSuccTx = await user2Wallet.signAndBroadcast(
+      user2Wallet.address as string,
       [delegateMsg],
       DEFAULT_FEE,
     );
@@ -133,7 +127,7 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     // see the stakeholder staked tokens to the current validator - after delegation
     const stakeholderDelegationsToValAfter =
       await getDelegatorValidatorPairAmount(
-        user2Account.address,
+        user2Wallet.address as string,
         validatorAddress,
       );
 

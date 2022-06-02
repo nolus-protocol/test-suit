@@ -1,12 +1,8 @@
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { AccountData, DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
 import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
 import {
-  getValidatorAddress,
+  getValidator1Address,
   createWallet,
-  getClient,
   getUser1Wallet,
-  getUser1Client,
 } from '../util/clients';
 import { QueryDelegationRewardsResponse } from 'cosmjs-types/cosmos/distribution/v1beta1/query';
 import {
@@ -17,13 +13,11 @@ import {
 import { DEFAULT_FEE, sleep } from '../util/utils';
 import { stakingModule } from '../util/staking';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
+import { NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Withdraw reward', () => {
-  let user1Client: SigningCosmWasmClient;
-  let user1Account: AccountData;
-  let delegatorClient: SigningCosmWasmClient;
-  let delegatorWallet: DirectSecp256k1Wallet;
-  let delegatorAccount: AccountData;
+  let user1Wallet: NolusWallet;
+  let delegatorWallet: NolusWallet;
   let validatorAddress: string;
   let NATIVE_TOKEN_DENOM: string;
 
@@ -33,15 +27,10 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
 
   beforeAll(async () => {
     NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
-    user1Client = await getUser1Client();
-    [user1Account] = await (await getUser1Wallet()).getAccounts();
-
+    user1Wallet = await getUser1Wallet();
     delegatorWallet = await createWallet();
-    delegatorClient = await getClient(delegatorWallet);
-    [delegatorAccount] = await delegatorWallet.getAccounts();
-    console.log(delegatorAccount.address);
-
-    validatorAddress = getValidatorAddress();
+    console.log(delegatorWallet.address);
+    validatorAddress = getValidator1Address();
 
     // send some tokens
     const initTransfer = {
@@ -51,11 +40,11 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
 
     console.log(initTransfer.amount);
 
-    const broadcastTx = await user1Client.sendTokens(
-      user1Account.address,
-      delegatorAccount.address,
+    const broadcastTx = await user1Wallet.transferAmount(
+      delegatorWallet.address as string,
       [initTransfer],
       DEFAULT_FEE,
+      '',
     );
     assertIsDeliverTxSuccess(broadcastTx);
 
@@ -63,14 +52,14 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     const delegateMsg = {
       typeUrl: `${stakingModule}.MsgDelegate`,
       value: {
-        delegatorAddress: delegatorAccount.address,
+        delegatorAddress: delegatorWallet.address as string,
         validatorAddress: validatorAddress,
         amount: { denom: NATIVE_TOKEN_DENOM, amount: delegatedAmount },
       },
     };
 
-    const result = await delegatorClient.signAndBroadcast(
-      delegatorAccount.address,
+    const result = await delegatorWallet.signAndBroadcast(
+      delegatorWallet.address as string,
       [delegateMsg],
       DEFAULT_FEE,
     );
@@ -79,16 +68,18 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
 
   test('the delegator withdraw address should be his own address', async () => {
     const withdrawAddress = await getDelegatorWithdrawAddress(
-      delegatorAccount.address,
+      delegatorWallet.address as string,
     );
 
-    expect(withdrawAddress.withdrawAddress).toBe(delegatorAccount.address);
+    expect(withdrawAddress.withdrawAddress).toBe(
+      delegatorWallet.address as string,
+    );
   });
 
   test('the successful scenario for withdraw staking rewards - should work as expected', async () => {
     // get delegator balance before
-    const delegatorBalanceBefore = await delegatorClient.getBalance(
-      delegatorAccount.address,
+    const delegatorBalanceBefore = await delegatorWallet.getBalance(
+      delegatorWallet.address as string,
       NATIVE_TOKEN_DENOM,
     );
 
@@ -99,7 +90,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
 
       console.log('Waiting for the reward to become 1unolus.');
       rewardResult = await getDelegatorRewardsFromValidator(
-        delegatorAccount.address,
+        delegatorWallet.address as string,
         validatorAddress,
       );
       console.log(rewardResult.rewards[0]);
@@ -116,20 +107,20 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     const withdrawMsg = {
       typeUrl: `${distributionModule}.MsgWithdrawDelegatorReward`,
       value: {
-        delegatorAddress: delegatorAccount.address,
+        delegatorAddress: delegatorWallet.address as string,
         validatorAddress: validatorAddress,
       },
     };
-    const withdrawResult = await delegatorClient.signAndBroadcast(
-      delegatorAccount.address,
+    const withdrawResult = await delegatorWallet.signAndBroadcast(
+      delegatorWallet.address as string,
       [withdrawMsg],
       DEFAULT_FEE,
     );
     expect(assertIsDeliverTxSuccess(withdrawResult)).toBeUndefined();
 
     // get delegator balance after
-    const delegatorBalanceAfter = await delegatorClient.getBalance(
-      delegatorAccount.address,
+    const delegatorBalanceAfter = await delegatorWallet.getBalance(
+      delegatorWallet.address as string,
       NATIVE_TOKEN_DENOM,
     );
 

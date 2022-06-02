@@ -1,16 +1,12 @@
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import {
-  AccountData,
+  assertIsDeliverTxSuccess,
   Coin,
-  DirectSecp256k1Wallet,
-} from '@cosmjs/proto-signing';
-import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
-import {
-  getValidatorAddress,
+  isDeliverTxFailure,
+} from '@cosmjs/stargate';
+import NODE_ENDPOINT, {
+  getValidator1Address,
   createWallet,
-  getClient,
   getUser1Wallet,
-  getUser1Client,
 } from '../util/clients';
 import {
   getDelegatorValidatorUnboundingInformation,
@@ -20,15 +16,13 @@ import {
 } from '../util/staking';
 import { DEFAULT_FEE, undefinedHandler } from '../util/utils';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Undelegation', () => {
-  let user1Client: SigningCosmWasmClient;
-  let user1Account: AccountData;
-  let delegatorClient: SigningCosmWasmClient;
-  let delegatorWallet: DirectSecp256k1Wallet;
-  let delegatorAccount: AccountData;
+  const NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
+  let user1Wallet: NolusWallet;
+  let delegatorWallet: NolusWallet;
   let validatorAddress: string;
-  let NATIVE_TOKEN_DENOM: string;
 
   const delegatedAmount = '22';
   const undelegatedAmount = (+delegatedAmount / 2).toString();
@@ -44,15 +38,11 @@ describe('Staking Nolus tokens - Undelegation', () => {
   };
 
   beforeAll(async () => {
-    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
-    user1Client = await getUser1Client();
-    [user1Account] = await (await getUser1Wallet()).getAccounts();
-
+    NolusClient.setInstance(NODE_ENDPOINT);
+    user1Wallet = await getUser1Wallet();
     delegatorWallet = await createWallet();
-    delegatorClient = await getClient(delegatorWallet);
-    [delegatorAccount] = await delegatorWallet.getAccounts();
 
-    validatorAddress = getValidatorAddress();
+    validatorAddress = getValidator1Address();
 
     // send some tokens
     const initTransfer: Coin = {
@@ -60,20 +50,20 @@ describe('Staking Nolus tokens - Undelegation', () => {
       amount: delegatedAmount + DEFAULT_FEE.amount[0].amount,
     };
 
-    const broadcastTx = await user1Client.sendTokens(
-      user1Account.address,
-      delegatorAccount.address,
+    const broadcastTx = await user1Wallet.transferAmount(
+      delegatorWallet.address as string,
       [initTransfer],
       DEFAULT_FEE,
+      '',
     );
     expect(assertIsDeliverTxSuccess(broadcastTx)).toBeUndefined();
 
-    generalMsg.value.delegatorAddress = delegatorAccount.address;
+    generalMsg.value.delegatorAddress = delegatorWallet.address as string;
     generalMsg.value.validatorAddress = validatorAddress;
   });
 
   afterEach(() => {
-    generalMsg.value.delegatorAddress = delegatorAccount.address;
+    generalMsg.value.delegatorAddress = delegatorWallet.address as string;
     generalMsg.value.validatorAddress = validatorAddress;
     generalMsg.value.amount.denom = NATIVE_TOKEN_DENOM;
   });
@@ -83,8 +73,8 @@ describe('Staking Nolus tokens - Undelegation', () => {
     generalMsg.value.amount.amount = delegatedAmount;
     generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
 
-    const broadcastTx = await delegatorClient.signAndBroadcast(
-      delegatorAccount.address,
+    const broadcastTx = await delegatorWallet.signAndBroadcast(
+      delegatorWallet.address as string,
       [generalMsg],
       DEFAULT_FEE,
     );
@@ -101,8 +91,8 @@ describe('Staking Nolus tokens - Undelegation', () => {
     generalMsg.value.amount.amount = delegatedAmount;
     generalMsg.typeUrl = `${stakingModule}.MsgDelegate`;
 
-    const delegationResult = await delegatorClient.signAndBroadcast(
-      delegatorAccount.address,
+    const delegationResult = await delegatorWallet.signAndBroadcast(
+      delegatorWallet.address as string,
       [generalMsg],
       DEFAULT_FEE,
     );
@@ -111,7 +101,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     // see the delegator staked tokens to the current validator - before undelegation
     const delegatorDelegationsToValBefore =
       await getDelegatorValidatorPairAmount(
-        delegatorAccount.address,
+        delegatorWallet.address as string,
         validatorAddress,
       );
 
@@ -124,8 +114,8 @@ describe('Staking Nolus tokens - Undelegation', () => {
     generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
     generalMsg.value.amount.amount = undelegatedAmount;
 
-    const undelegationResult = await delegatorClient.signAndBroadcast(
-      delegatorAccount.address,
+    const undelegationResult = await delegatorWallet.signAndBroadcast(
+      delegatorWallet.address as string,
       [generalMsg],
       DEFAULT_FEE,
     );
@@ -136,7 +126,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     // get unbounded delegation list deligator-validator
     const lastEntrie = (
       await getDelegatorValidatorUnboundingInformation(
-        delegatorAccount.address,
+        delegatorWallet.address as string,
         validatorAddress,
       )
     ).unbond?.entries.length;
@@ -147,7 +137,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     }
     const completionTime = (
       await getDelegatorValidatorUnboundingInformation(
-        delegatorAccount.address,
+        delegatorWallet.address as string,
         validatorAddress,
       )
     ).unbond?.entries[lastEntrie - 1].completionTime?.nanos;
@@ -157,7 +147,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     // see the delegator staked tokens to the current validator - after undelegation
     const delegatorDelegationsToValAfter =
       await getDelegatorValidatorPairAmount(
-        delegatorAccount.address,
+        delegatorWallet.address as string,
         validatorAddress,
       );
 
@@ -177,8 +167,8 @@ describe('Staking Nolus tokens - Undelegation', () => {
     generalMsg.value.amount.amount = '0';
 
     const broadcastTx = () =>
-      delegatorClient.signAndBroadcast(
-        delegatorAccount.address,
+      delegatorWallet.signAndBroadcast(
+        delegatorWallet.address as string,
         [generalMsg],
         DEFAULT_FEE,
       );
@@ -204,8 +194,8 @@ describe('Staking Nolus tokens - Undelegation', () => {
     generalMsg.value.amount.amount = undelegatedAmount;
     generalMsg.value.amount.denom = invalidDenom;
 
-    const broadcastTx = await delegatorClient.signAndBroadcast(
-      delegatorAccount.address,
+    const broadcastTx = await delegatorWallet.signAndBroadcast(
+      delegatorWallet.address as string,
       [generalMsg],
       DEFAULT_FEE,
     );
@@ -220,7 +210,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     // see the delegator staked tokens to the current validator - before undelegation
     const delegatorDelegationsToValBefore =
       await getDelegatorValidatorPairAmount(
-        delegatorAccount.address,
+        delegatorWallet.address as string,
         validatorAddress,
       );
 
@@ -234,8 +224,8 @@ describe('Staking Nolus tokens - Undelegation', () => {
     // after the previous tests he has 'delegatedAmount/2' tokens left
     generalMsg.value.amount.amount = delegatedAmount;
 
-    const broadcastTx = await delegatorClient.signAndBroadcast(
-      delegatorAccount.address,
+    const broadcastTx = await delegatorWallet.signAndBroadcast(
+      delegatorWallet.address as string,
       [generalMsg],
       DEFAULT_FEE,
     );
@@ -247,7 +237,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     // see the delegator staked tokens to the current validator - after undelegation
     const delegatorDelegationsToValAfter =
       await getDelegatorValidatorPairAmount(
-        delegatorAccount.address,
+        delegatorWallet.address as string,
         validatorAddress,
       );
 
@@ -265,7 +255,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     // see the delegator staked tokens to the current validator - before undelegation
     const delegatorDelegationsToValBefore =
       await getDelegatorValidatorPairAmount(
-        delegatorAccount.address,
+        delegatorWallet.address as string,
         validatorAddress,
       );
 
@@ -279,8 +269,8 @@ describe('Staking Nolus tokens - Undelegation', () => {
     // after the previous tests he has 'undelegatedAmount = delegatedAmount/2' tokens left
     generalMsg.value.amount.amount = undelegatedAmount;
 
-    const undelegationResult = await delegatorClient.signAndBroadcast(
-      delegatorAccount.address,
+    const undelegationResult = await delegatorWallet.signAndBroadcast(
+      delegatorWallet.address as string,
       [generalMsg],
       DEFAULT_FEE,
     );
@@ -291,7 +281,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     // the validator-delegator pair information should not exist - after undelegation
     await expect(
       getDelegatorValidatorPairAmount(
-        delegatorAccount.address,
+        delegatorWallet.address as string,
         validatorAddress,
       ),
     ).rejects.toThrow(
@@ -304,8 +294,8 @@ describe('Staking Nolus tokens - Undelegation', () => {
     generalMsg.value.amount.amount = delegatedAmount;
     generalMsg.typeUrl = `${stakingModule}.MsgDelegate`;
 
-    const delegationResult = await delegatorClient.signAndBroadcast(
-      delegatorAccount.address,
+    const delegationResult = await delegatorWallet.signAndBroadcast(
+      delegatorWallet.address as string,
       [generalMsg],
       DEFAULT_FEE,
     );
@@ -327,15 +317,15 @@ describe('Staking Nolus tokens - Undelegation', () => {
 
     for (let i = 0; i < loopIteration; i++) {
       // undelegate tokens
-      const undelegationResult = await delegatorClient.signAndBroadcast(
-        delegatorAccount.address,
+      const undelegationResult = await delegatorWallet.signAndBroadcast(
+        delegatorWallet.address as string,
         [generalMsg],
         DEFAULT_FEE,
       );
       expect(assertIsDeliverTxSuccess(undelegationResult)).toBeUndefined();
     }
-    const broadcastTx = await delegatorClient.signAndBroadcast(
-      delegatorAccount.address,
+    const broadcastTx = await delegatorWallet.signAndBroadcast(
+      delegatorWallet.address as string,
       [generalMsg],
       DEFAULT_FEE,
     );

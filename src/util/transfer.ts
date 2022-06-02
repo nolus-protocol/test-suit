@@ -1,17 +1,15 @@
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { DeliverTxResponse } from '@cosmjs/stargate';
+import { NolusWallet } from '@nolus/nolusjs';
 import { DEFAULT_FEE } from './utils';
 
 export async function sendInitFeeTokens(
-  client: SigningCosmWasmClient,
-  senderAdr: string,
+  client: NolusWallet,
   receiverAdr: string,
 ): Promise<DeliverTxResponse> {
-  // send some tokens
-  return await client.sendTokens(
-    senderAdr,
+  return await client.transferAmount(
     receiverAdr,
     DEFAULT_FEE.amount,
     DEFAULT_FEE,
+    '',
   );
 }

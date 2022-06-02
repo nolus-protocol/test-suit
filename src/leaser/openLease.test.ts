@@ -1,19 +1,11 @@
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import {
-  getUser1Client,
-  getUser1Wallet,
-  getClient,
-  createWallet,
-} from '../util/clients';
-import { AccountData, Coin } from '@cosmjs/amino';
+import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
+import { Coin } from '@cosmjs/amino';
 import { DEFAULT_FEE, sleep } from '../util/utils';
-import { ChainConstants } from '@nolus/nolusjs/build/constants';
+import { ChainConstants, NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Leaser contract tests - Open a lease', () => {
-  let userClient: SigningCosmWasmClient;
-  let userAccount: AccountData;
-  let borrowerAccount: AccountData;
-  let borrowerClient: SigningCosmWasmClient;
+  let user1Wallet: NolusWallet;
+  let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;
   let lppDenom: string;
   let NATIVE_TOKEN_DENOM: string;
@@ -25,11 +17,9 @@ describe('Leaser contract tests - Open a lease', () => {
 
   beforeAll(async () => {
     NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
-    userClient = await getUser1Client();
-    [userAccount] = await (await getUser1Wallet()).getAccounts();
-    const borrowerWallet = await createWallet();
-    borrowerClient = await getClient(borrowerWallet);
-    [borrowerAccount] = await borrowerWallet.getAccounts();
+    NolusClient.setInstance(NODE_ENDPOINT);
+    user1Wallet = await getUser1Wallet();
+    borrowerWallet = await createWallet();
 
     // TO DO: We will have a message about that soon
     lppDenom = process.env.STABLE_DENOM as string;
@@ -38,14 +28,14 @@ describe('Leaser contract tests - Open a lease', () => {
     await sleep(6000);
 
     // send init tokens to lpp address to provide liquidity, otherwise cant send query
-    await userClient.sendTokens(
-      userAccount.address,
+    await user1Wallet.sendTokens(
+      user1Wallet.address as string,
       lppContractAddress,
       [{ denom: lppDenom, amount: '1000' }],
       DEFAULT_FEE,
     );
 
-    lppLiquidity = await borrowerClient.getBalance(
+    lppLiquidity = await borrowerWallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -54,9 +44,9 @@ describe('Leaser contract tests - Open a lease', () => {
 
     //  send some tokens to the borrower
     // for the downpayment and fees
-    await userClient.sendTokens(
-      userAccount.address,
-      borrowerAccount.address,
+    await user1Wallet.sendTokens(
+      user1Wallet.address as string,
+      borrowerWallet.address as string,
       [{ denom: lppDenom, amount: downpayment }],
       DEFAULT_FEE,
     );
@@ -69,15 +59,15 @@ describe('Leaser contract tests - Open a lease', () => {
 
   test('the borrower should be able to open lease', async () => {
     // get the liquidity
-    lppLiquidity = await borrowerClient.getBalance(
+    lppLiquidity = await borrowerWallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
     // send some tokens to the borrower
     // for the downpayment and fees
-    await userClient.sendTokens(
-      userAccount.address,
-      borrowerAccount.address,
+    await user1Wallet.sendTokens(
+      user1Wallet.address as string,
+      borrowerWallet.address as string,
       [{ denom: lppDenom, amount: downpayment }],
       DEFAULT_FEE,
     );
@@ -87,7 +77,7 @@ describe('Leaser contract tests - Open a lease', () => {
         downpayment: { denom: lppDenom, amount: downpayment },
       },
     };
-    const quote = await borrowerClient.queryContractSmart(
+    const quote = await borrowerWallet.queryContractSmart(
       leaserContractAddress,
       quoteMsg,
     );
@@ -97,8 +87,8 @@ describe('Leaser contract tests - Open a lease', () => {
     if (+quote.borrow.amount > +lppLiquidity.amount) {
       // TO DO: we won`t need this in the future - maybe this will be some lender exec msg
       // Send tokens to lpp address to provide needed liquidity to open a lease
-      await userClient.sendTokens(
-        userAccount.address,
+      await user1Wallet.sendTokens(
+        user1Wallet.address as string,
         lppContractAddress,
         [{ denom: lppDenom, amount: quote.borrow.amount }],
         DEFAULT_FEE,
@@ -108,13 +98,13 @@ describe('Leaser contract tests - Open a lease', () => {
     expect(lppLiquidity.amount).not.toBe('0');
 
     // get borrower balance
-    const borrowerBalanceBefore = await borrowerClient.getBalance(
-      borrowerAccount.address,
+    const borrowerBalanceBefore = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
       lppDenom,
     );
 
     // get the liquidity before
-    const lppLiquidityBefore = await borrowerClient.getBalance(
+    const lppLiquidityBefore = await borrowerWallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -123,8 +113,8 @@ describe('Leaser contract tests - Open a lease', () => {
       open_lease: { currency: lppDenom },
     };
 
-    const openLease = await borrowerClient.execute(
-      borrowerAccount.address,
+    const openLease = await borrowerWallet.execute(
+      borrowerWallet.address as string,
       leaserContractAddress,
       openLeaseMsg,
       DEFAULT_FEE,
@@ -134,11 +124,11 @@ describe('Leaser contract tests - Open a lease', () => {
 
     const leases = {
       leases: {
-        owner: borrowerAccount.address,
+        owner: borrowerWallet.address as string,
       },
     };
 
-    const queryLeases = await borrowerClient.queryContractSmart(
+    const queryLeases = await borrowerWallet.queryContractSmart(
       leaserContractAddress,
       leases,
     );
@@ -146,13 +136,13 @@ describe('Leaser contract tests - Open a lease', () => {
     console.log('user 1 leases:', leases);
     console.log(queryLeases);
 
-    const borrowerBalanceAfter = await borrowerClient.getBalance(
-      borrowerAccount.address,
+    const borrowerBalanceAfter = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
       lppDenom,
     );
 
     // get the liquidity after
-    const lppLiquidityAfter = await borrowerClient.getBalance(
+    const lppLiquidityAfter = await borrowerWallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -168,26 +158,24 @@ describe('Leaser contract tests - Open a lease', () => {
 
   test('the borrower should be able to open more than one leases', async () => {
     const borrower2wallet = await createWallet();
-    const borrower2Client = await getClient(borrower2wallet);
-    const [borrower2Account] = await borrower2wallet.getAccounts();
 
     // get the liquidity
-    lppLiquidity = await borrowerClient.getBalance(
+    lppLiquidity = await borrowerWallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
 
     // send some tokens to the borrower
     // for the downpayment and fees
-    await userClient.sendTokens(
-      userAccount.address,
-      borrower2Account.address,
+    await user1Wallet.sendTokens(
+      user1Wallet.address as string,
+      borrower2wallet.address as string,
       [{ denom: lppDenom, amount: downpayment }],
       DEFAULT_FEE,
     );
-    await userClient.sendTokens(
-      userAccount.address,
-      borrower2Account.address,
+    await user1Wallet.sendTokens(
+      user1Wallet.address as string,
+      borrower2wallet.address as string,
       [
         {
           denom: NATIVE_TOKEN_DENOM,
@@ -203,12 +191,12 @@ describe('Leaser contract tests - Open a lease', () => {
       },
     };
 
-    const quote = await borrower2Client.queryContractSmart(
+    const quote = await borrower2wallet.queryContractSmart(
       leaserContractAddress,
       quoteMsg,
     );
 
-    const quote2 = await borrower2Client.queryContractSmart(
+    const quote2 = await borrower2wallet.queryContractSmart(
       leaserContractAddress,
       quoteMsg,
     );
@@ -219,8 +207,8 @@ describe('Leaser contract tests - Open a lease', () => {
     if (+quote.borrow.amount * 2 > +lppLiquidity.amount) {
       // TO DO: we won`t need this in the future - maybe this will be some lender exec msg
       // Send tokens to lpp address to provide needed liquidity to open a lease
-      await userClient.sendTokens(
-        userAccount.address,
+      await user1Wallet.sendTokens(
+        user1Wallet.address as string,
         lppContractAddress,
         [{ denom: lppDenom, amount: quote.borrow.amount }],
         DEFAULT_FEE,
@@ -230,13 +218,13 @@ describe('Leaser contract tests - Open a lease', () => {
     expect(lppLiquidity.amount).not.toBe('0');
 
     // get borrower balance
-    const borrowerBalanceBefore = await borrower2Client.getBalance(
-      borrower2Account.address,
+    const borrowerBalanceBefore = await borrower2wallet.getBalance(
+      borrower2wallet.address as string,
       lppDenom,
     );
 
     // get the liquidity before
-    const lppLiquidityBefore = await borrower2Client.getBalance(
+    const lppLiquidityBefore = await borrower2wallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -245,8 +233,8 @@ describe('Leaser contract tests - Open a lease', () => {
       open_lease: { currency: lppDenom },
     };
 
-    const openLease = await borrower2Client.execute(
-      borrower2Account.address,
+    const openLease = await borrower2wallet.execute(
+      borrower2wallet.address as string,
       leaserContractAddress,
       openLeaseMsg,
       DEFAULT_FEE,
@@ -257,15 +245,15 @@ describe('Leaser contract tests - Open a lease', () => {
 
     await sleep(6000);
 
-    const quote3 = await borrower2Client.queryContractSmart(
+    const quote3 = await borrower2wallet.queryContractSmart(
       leaserContractAddress,
       quoteMsg,
     );
 
     expect(quote3.borrow).toBeDefined();
 
-    const openLease2 = await borrower2Client.execute(
-      borrower2Account.address,
+    const openLease2 = await borrower2wallet.execute(
+      borrower2wallet.address as string,
       leaserContractAddress,
       openLeaseMsg,
       DEFAULT_FEE,
@@ -273,13 +261,13 @@ describe('Leaser contract tests - Open a lease', () => {
       [{ denom: lppDenom, amount: (+downpayment / 2).toString() }],
     );
 
-    const borrowerBalanceAfter = await borrower2Client.getBalance(
-      borrower2Account.address,
+    const borrowerBalanceAfter = await borrower2wallet.getBalance(
+      borrower2wallet.address as string,
       lppDenom,
     );
 
     // get the liquidity after
-    const lppLiquidityAfter = await borrower2Client.getBalance(
+    const lppLiquidityAfter = await borrower2wallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -296,8 +284,8 @@ describe('Leaser contract tests - Open a lease', () => {
 
   test('the borrower tries to open lease with unsuported lpp currency - should produce an error', async () => {
     // get borrower balance
-    const borrowerBalanceBefore = await borrowerClient.getBalance(
-      borrowerAccount.address,
+    const borrowerBalanceBefore = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
       lppDenom,
     );
     await sendInitFeeTokens(
@@ -311,8 +299,8 @@ describe('Leaser contract tests - Open a lease', () => {
     };
 
     const openLease = () =>
-      borrowerClient.execute(
-        borrowerAccount.address,
+      borrowerWallet.execute(
+        borrowerWallet.address as string,
         leaserContractAddress,
         openLeaseMsg,
         DEFAULT_FEE,
@@ -324,8 +312,8 @@ describe('Leaser contract tests - Open a lease', () => {
       /^.*instantiate wasm contract failed.*/,
     );
     // get borrower balance
-    const borrowerBalanceAfter = await borrowerClient.getBalance(
-      borrowerAccount.address,
+    const borrowerBalanceAfter = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
       lppDenom,
     );
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
@@ -333,8 +321,8 @@ describe('Leaser contract tests - Open a lease', () => {
 
   test('the borrower tries to open a lease with 0 down payment - should produce an error', async () => {
     // get borrower balance
-    const borrowerBalanceBefore = await borrowerClient.getBalance(
-      borrowerAccount.address,
+    const borrowerBalanceBefore = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
       lppDenom,
     );
     const openLeaseMsg = {
@@ -342,8 +330,8 @@ describe('Leaser contract tests - Open a lease', () => {
     };
 
     const openLease = () =>
-      borrowerClient.execute(
-        borrowerAccount.address,
+      borrowerWallet.execute(
+        borrowerWallet.address as string,
         leaserContractAddress,
         openLeaseMsg,
         DEFAULT_FEE,
@@ -353,8 +341,8 @@ describe('Leaser contract tests - Open a lease', () => {
 
     await expect(openLease).rejects.toThrow(/^.*invalid coins.*/);
     // get borrower balance
-    const borrowerBalanceAfter = await borrowerClient.getBalance(
-      borrowerAccount.address,
+    const borrowerBalanceAfter = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
       lppDenom,
     );
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
@@ -362,8 +350,8 @@ describe('Leaser contract tests - Open a lease', () => {
 
   test('the borrower tries to open a lease with more down payment amount than he owns - should produce an error', async () => {
     // get borrower balance
-    const borrowerBalanceBefore = await borrowerClient.getBalance(
-      borrowerAccount.address,
+    const borrowerBalanceBefore = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
       lppDenom,
     );
 
@@ -372,8 +360,8 @@ describe('Leaser contract tests - Open a lease', () => {
     };
 
     const openLease = () =>
-      borrowerClient.execute(
-        borrowerAccount.address,
+      borrowerWallet.execute(
+        borrowerWallet.address as string,
         leaserContractAddress,
         openLeaseMsg,
         DEFAULT_FEE,
@@ -383,8 +371,8 @@ describe('Leaser contract tests - Open a lease', () => {
 
     await expect(openLease).rejects.toThrow(/^.*insufficient fund.*/);
     // get borrower balance
-    const borrowerBalanceAfter = await borrowerClient.getBalance(
-      borrowerAccount.address,
+    const borrowerBalanceAfter = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
       lppDenom,
     );
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);

@@ -1,18 +1,11 @@
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import {
-  getClient,
-  createWallet,
-  getUser1Client,
-  getUser1Wallet,
-} from '../util/clients';
-import { AccountData, Coin } from '@cosmjs/amino';
+import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
+import { Coin } from '@cosmjs/amino';
 import { DEFAULT_FEE, sleep } from '../util/utils';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Leaser contract tests - Apply for a lease', () => {
-  let borrowerAccount: AccountData;
-  let borrowerClient: SigningCosmWasmClient;
-  let userClient: SigningCosmWasmClient;
-  let userAccount: AccountData;
+  let user1Wallet: NolusWallet;
+  let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;
   let lppDenom: string;
 
@@ -23,24 +16,22 @@ describe('Leaser contract tests - Apply for a lease', () => {
 
   beforeAll(async () => {
     //await sleep(50000);
-    userClient = await getUser1Client();
-    [userAccount] = await (await getUser1Wallet()).getAccounts();
-    const borrower1wallet = await createWallet();
-    borrowerClient = await getClient(borrower1wallet);
-    [borrowerAccount] = await borrower1wallet.getAccounts();
+    NolusClient.setInstance(NODE_ENDPOINT);
+    user1Wallet = await getUser1Wallet();
+    borrowerWallet = await createWallet();
 
     // TO DO: We will have a message about that soon
     lppDenom = 'unolus';
 
     // get the liquidity
-    lppLiquidity = await userClient.getBalance(lppContractAddress, lppDenom);
+    lppLiquidity = await user1Wallet.getBalance(lppContractAddress, lppDenom);
 
     const quoteMsg = {
       quote: {
         downpayment: { denom: lppDenom, amount: downpayment },
       },
     };
-    const quote = await userClient.queryContractSmart(
+    const quote = await user1Wallet.queryContractSmart(
       leaserContractAddress,
       quoteMsg,
     );
@@ -48,8 +39,8 @@ describe('Leaser contract tests - Apply for a lease', () => {
     if (+quote.borrow.amount > +lppLiquidity.amount) {
       // TO DO: we won`t need this in the future
       // Send tokens to lpp address to provide liquidity
-      await userClient.sendTokens(
-        userAccount.address,
+      await user1Wallet.sendTokens(
+        user1Wallet.address as string,
         lppContractAddress,
         [{ denom: lppDenom, amount: quote.borrow.amount }],
         DEFAULT_FEE,
@@ -61,8 +52,8 @@ describe('Leaser contract tests - Apply for a lease', () => {
   });
 
   test('the borrower should be able to get information depending on the down payment', async () => {
-    const borrowerBalanceBefore = await borrowerClient.getBalance(
-      borrowerAccount.address,
+    const borrowerBalanceBefore = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
       lppDenom,
     );
 
@@ -71,13 +62,13 @@ describe('Leaser contract tests - Apply for a lease', () => {
         downpayment: { denom: lppDenom, amount: downpayment },
       },
     };
-    const quote = await borrowerClient.queryContractSmart(
+    const quote = await borrowerWallet.queryContractSmart(
       leaserContractAddress,
       quoteMsg,
     );
 
-    const borrowerBalanceAfter = await borrowerClient.getBalance(
-      borrowerAccount.address,
+    const borrowerBalanceAfter = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
       lppDenom,
     );
 
@@ -94,7 +85,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
       },
     };
     const quoteQueryResult = () =>
-      borrowerClient.queryContractSmart(leaserContractAddress, quoteMsg);
+      borrowerWallet.queryContractSmart(leaserContractAddress, quoteMsg);
     await expect(quoteQueryResult).rejects.toThrow(
       /^.*cannot open lease with zero downpayment.*/,
     );
@@ -102,7 +93,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
 
   test('the borrower tries to apply for a loan with tokens more than the liquidity in lpp - should be rejected with an information message', async () => {
     // get the liquidity
-    lppLiquidity = await borrowerClient.getBalance(
+    lppLiquidity = await borrowerWallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -116,7 +107,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
       },
     };
     const quoteQueryResult = () =>
-      borrowerClient.queryContractSmart(leaserContractAddress, quoteMsg);
+      borrowerWallet.queryContractSmart(leaserContractAddress, quoteMsg);
     await expect(quoteQueryResult).rejects.toThrow(/^.*NoLiquidity.*/);
   });
 
@@ -127,7 +118,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
       },
     };
     const quoteQueryResult = () =>
-      borrowerClient.queryContractSmart(leaserContractAddress, quoteMsg);
+      borrowerWallet.queryContractSmart(leaserContractAddress, quoteMsg);
     await expect(quoteQueryResult).rejects.toThrow(/^.*invalid request.*/);
   });
 });

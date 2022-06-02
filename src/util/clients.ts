@@ -21,8 +21,12 @@ export async function getWallet(privateKey: Uint8Array): Promise<NolusWallet> {
 
 export default NODE_ENDPOINT;
 
-export function getValidatorAddress(): string {
+export function getValidator1Address(): string {
   return process.env.VALIDATOR_1_ADDRESS as string;
+}
+
+export function getValidator2Address(): string {
+  return process.env.VALIDATOR_2_ADDRESS as string;
 }
 
 export async function getUser1Wallet(): Promise<NolusWallet> {

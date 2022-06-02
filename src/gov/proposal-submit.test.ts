@@ -2,8 +2,6 @@ import Long from 'long';
 import { isDeliverTxFailure } from '@cosmjs/stargate';
 import { StdFee } from '@cosmjs/amino';
 import { toUtf8 } from '@cosmjs/encoding';
-import { AccountData, DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { TextProposal } from 'cosmjs-types/cosmos/gov/v1beta1/gov';
 import { ParameterChangeProposal } from 'cosmjs-types/cosmos/params/v1beta1/params';
 import { CommunityPoolSpendProposal } from 'cosmjs-types/cosmos/distribution/v1beta1/distribution';
@@ -21,14 +19,13 @@ import {
   PinCodesProposal,
   UnpinCodesProposal,
 } from 'cosmjs-types/cosmwasm/wasm/v1/proposal';
-import { getUser1Client, getUser1Wallet } from '../util/clients';
+import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 import { UpgradeProposal, ClientUpdateProposal } from '../util/proposals';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
+import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 
 describe('Proposal submission tests', () => {
-  let client: SigningCosmWasmClient;
-  let wallet: DirectSecp256k1Wallet;
-  let firstAccount: AccountData;
+  let wallet: NolusWallet;
   let msg: any;
   let fee: StdFee;
   let moduleName: string;
@@ -36,9 +33,8 @@ describe('Proposal submission tests', () => {
 
   beforeAll(async () => {
     NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
-    client = await getUser1Client();
+    NolusClient.setInstance(NODE_ENDPOINT);
     wallet = await getUser1Wallet();
-    [firstAccount] = await wallet.getAccounts();
 
     fee = {
       amount: [{ denom: NATIVE_TOKEN_DENOM, amount: '12' }],
@@ -50,15 +46,15 @@ describe('Proposal submission tests', () => {
       typeUrl: '/cosmos.gov.v1beta1.MsgSubmitProposal',
       value: {
         content: {},
-        proposer: firstAccount.address,
+        proposer: wallet.address as string,
         initialDeposit: [{ denom: NATIVE_TOKEN_DENOM, amount: '12' }],
       },
     };
   });
 
   afterEach(async () => {
-    const result = await client.signAndBroadcast(
-      firstAccount.address,
+    const result = await wallet.signAndBroadcast(
+      wallet.address as string,
       [msg],
       fee,
     );
@@ -87,7 +83,7 @@ describe('Proposal submission tests', () => {
         description:
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
-        recipient: firstAccount.address,
+        recipient: wallet.address as string,
         amount: [{ denom: NATIVE_TOKEN_DENOM, amount: '1000000' }],
       }).finish(),
     };
@@ -194,7 +190,7 @@ describe('Proposal submission tests', () => {
         description:
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
-        runAs: firstAccount.address,
+        runAs: wallet.address as string,
         wasmByteCode: new Uint8Array(2),
       }).finish(),
     };
@@ -208,8 +204,8 @@ describe('Proposal submission tests', () => {
         description:
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
-        runAs: firstAccount.address,
-        admin: firstAccount.address,
+        runAs: wallet.address as string,
+        admin: wallet.address as string,
         codeId: Long.fromInt(1),
         label: 'contractlabel',
         msg: toUtf8('{}'),
@@ -227,8 +223,8 @@ describe('Proposal submission tests', () => {
         title: 'Test Proposal',
         description:
           'This proposal proposes to test whether this proposal passes',
-        runAs: firstAccount.address,
-        contract: firstAccount.address,
+        runAs: wallet.address as string,
+        contract: wallet.address as string,
         codeId: Long.fromInt(1),
         msg: toUtf8('{}'),
       }).finish(),
@@ -243,8 +239,8 @@ describe('Proposal submission tests', () => {
         description:
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
-        newAdmin: firstAccount.address,
-        contract: firstAccount.address,
+        newAdmin: wallet.address as string,
+        contract: wallet.address as string,
       }).finish(),
     };
     moduleName = 'wasm';
@@ -257,7 +253,7 @@ describe('Proposal submission tests', () => {
         description:
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
-        contract: firstAccount.address,
+        contract: wallet.address as string,
       }).finish(),
     };
     moduleName = 'wasm';

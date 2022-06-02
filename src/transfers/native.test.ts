@@ -1,12 +1,9 @@
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { AccountData } from '@cosmjs/proto-signing';
 import {
   assertIsDeliverTxSuccess,
   Coin,
   DeliverTxResponse,
   isDeliverTxFailure,
 } from '@cosmjs/stargate';
-import { sendInitFeeTokens } from '../util/transfer';
 import NODE_ENDPOINT, {
   getUser1Wallet,
   getUser2Wallet,
@@ -14,8 +11,7 @@ import NODE_ENDPOINT, {
 } from '../util/clients';
 import { DEFAULT_FEE } from '../util/utils';
 import { ChainConstants } from '@nolus/nolusjs';
-import { NolusWallet } from '@nolus/nolusjs';
-import { NolusClient } from '@nolus/nolusjs';
+import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 
 describe('Transfers - Native transfer', () => {
   let user1Wallet: NolusWallet;
@@ -64,12 +60,12 @@ describe('Transfers - Native transfer', () => {
       NATIVE_TOKEN_DENOM,
     );
     let previousUser2Balance = await user2Wallet.getBalance(
-      user2Wallet.address as string as string,
+      user2Wallet.address as string,
       NATIVE_TOKEN_DENOM,
     );
     const broadcastTxResponse1: DeliverTxResponse =
       await user1Wallet.transferAmount(
-        user2Wallet.address as string as string,
+        user2Wallet.address as string,
         [transfer1],
         DEFAULT_FEE,
         '',
@@ -82,7 +78,7 @@ describe('Transfers - Native transfer', () => {
       NATIVE_TOKEN_DENOM,
     );
     let nextUser2Balance = await user2Wallet.getBalance(
-      user2Wallet.address as string as string,
+      user2Wallet.address as string,
       NATIVE_TOKEN_DENOM,
     );
 
@@ -97,7 +93,7 @@ describe('Transfers - Native transfer', () => {
 
     // user2 -> user3
     previousUser2Balance = await user2Wallet.getBalance(
-      user2Wallet.address as string as string,
+      user2Wallet.address as string,
       NATIVE_TOKEN_DENOM,
     );
     const previousUser3Balance = await user3Wallet.getBalance(
@@ -134,11 +130,11 @@ describe('Transfers - Native transfer', () => {
     // user 3 -> user 1 - isolate the test and finish in the initial state
 
     const broadcastTxResponse3: DeliverTxResponse =
-      await user3Wallet.sendTokens(
-        user3Wallet.address as string,
+      await user3Wallet.transferAmount(
         user1Wallet.address as string,
         [transfer3],
         DEFAULT_FEE,
+        '',
       );
     assertIsDeliverTxSuccess(broadcastTxResponse3);
 
@@ -175,11 +171,11 @@ describe('Transfers - Native transfer', () => {
     );
 
     const broadcastTx = () =>
-      user2Wallet.sendTokens(
-        user2Wallet.address as string,
+      user2Wallet.transferAmount(
         user3Wallet.address as string,
         [transfer],
         DEFAULT_FEE,
+        '',
       );
 
     await expect(broadcastTx).rejects.toThrow(/^.*0unolus: invalid coins.*/);
@@ -217,12 +213,13 @@ describe('Transfers - Native transfer', () => {
       NATIVE_TOKEN_DENOM,
     );
 
-    const broadcastTxResponse: DeliverTxResponse = await user2Wallet.sendTokens(
-      user2Wallet.address as string,
-      user3Wallet.address as string,
-      [transfer],
-      DEFAULT_FEE,
-    );
+    const broadcastTxResponse: DeliverTxResponse =
+      await user2Wallet.transferAmount(
+        user3Wallet.address as string,
+        [transfer],
+        DEFAULT_FEE,
+        '',
+      );
 
     expect(isDeliverTxFailure(broadcastTxResponse)).toBeTruthy();
     expect(broadcastTxResponse.rawLog).toMatch(/^.*insufficient funds.*/);
@@ -254,11 +251,11 @@ describe('Transfers - Native transfer', () => {
     );
 
     const broadcastTx = () =>
-      user2Wallet.sendTokens(
-        user2Wallet.address as string,
+      user2Wallet.transferAmount(
         WRONG_WALLET_ADDRESS,
         [transfer2],
         DEFAULT_FEE,
+        '',
       );
     await expect(broadcastTx).rejects.toThrow(/^.*invalid address.*/);
 

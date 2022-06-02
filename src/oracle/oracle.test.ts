@@ -1,7 +1,6 @@
 import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { AccountData } from '@cosmjs/amino';
 import { DEFAULT_FEE, BLOCK_CREATION_TIME_DEV, sleep } from '../util/utils';
-import { sendInitFeeTokens } from '../util/transfer';
 
 describe('Oracle contract tests', () => {
   let userClient: SigningCosmWasmClient;
