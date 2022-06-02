@@ -1,14 +1,21 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { Coin } from '@cosmjs/amino';
 import { DEFAULT_FEE, sleep } from '../util/utils';
-import { ChainConstants, NolusClient, NolusWallet } from '@nolus/nolusjs';
+import {
+  ChainConstants,
+  NolusClient,
+  NolusContracts,
+  NolusWallet,
+} from '@nolus/nolusjs';
+import { sendInitFeeTokens } from '../util/transfer';
 
 describe('Leaser contract tests - Open a lease', () => {
+  let NATIVE_TOKEN_DENOM: string;
   let user1Wallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;
   let lppDenom: string;
-  let NATIVE_TOKEN_DENOM: string;
+  let leaseInstance: NolusContracts.Lease;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -20,16 +27,13 @@ describe('Leaser contract tests - Open a lease', () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     borrowerWallet = await createWallet();
+    leaseInstance = new NolusContracts.Lease();
 
     // TO DO: We will have a message about that soon
     lppDenom = process.env.STABLE_DENOM as string;
 
-    // if the leaseOpening tests start first, the current tests will fail due to a problem with the qoute request, so sleep()
-    await sleep(6000);
-
     // send init tokens to lpp address to provide liquidity, otherwise cant send query
-    await user1Wallet.sendTokens(
-      user1Wallet.address as string,
+    await user1Wallet.transferAmount(
       lppContractAddress,
       [{ denom: lppDenom, amount: '1000' }],
       DEFAULT_FEE,
@@ -44,17 +48,12 @@ describe('Leaser contract tests - Open a lease', () => {
 
     //  send some tokens to the borrower
     // for the downpayment and fees
-    await user1Wallet.sendTokens(
-      user1Wallet.address as string,
+    await user1Wallet.transferAmount(
       borrowerWallet.address as string,
       [{ denom: lppDenom, amount: downpayment }],
       DEFAULT_FEE,
     );
-    await sendInitFeeTokens(
-      userClient,
-      userAccount.address,
-      borrowerAccount.address,
-    );
+    await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
   });
 
   test('the borrower should be able to open lease', async () => {
@@ -65,30 +64,30 @@ describe('Leaser contract tests - Open a lease', () => {
     );
     // send some tokens to the borrower
     // for the downpayment and fees
-    await user1Wallet.sendTokens(
-      user1Wallet.address as string,
+    await user1Wallet.transferAmount(
       borrowerWallet.address as string,
-      [{ denom: lppDenom, amount: downpayment }],
+      [
+        {
+          denom: lppDenom,
+          amount: (+downpayment + +DEFAULT_FEE.amount[0].amount * 2).toString(),
+        },
+      ],
       DEFAULT_FEE,
     );
 
-    const quoteMsg = {
-      quote: {
-        downpayment: { denom: lppDenom, amount: downpayment },
-      },
-    };
-    const quote = await borrowerWallet.queryContractSmart(
+    // get the ~required liquidity
+    const quote = await leaseInstance.makeLeaseApply(
       leaserContractAddress,
-      quoteMsg,
+      downpayment,
+      lppDenom,
     );
 
     expect(quote.borrow).toBeDefined();
-
+    // provide it
     if (+quote.borrow.amount > +lppLiquidity.amount) {
       // TO DO: we won`t need this in the future - maybe this will be some lender exec msg
       // Send tokens to lpp address to provide needed liquidity to open a lease
-      await user1Wallet.sendTokens(
-        user1Wallet.address as string,
+      await user1Wallet.transferAmount(
         lppContractAddress,
         [{ denom: lppDenom, amount: quote.borrow.amount }],
         DEFAULT_FEE,
@@ -109,32 +108,31 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
 
-    const openLeaseMsg = {
-      open_lease: { currency: lppDenom },
-    };
-
-    const openLease = await borrowerWallet.execute(
-      borrowerWallet.address as string,
+    const leasesBefore = await leaseInstance.getCurrentOpenLeases(
       leaserContractAddress,
-      openLeaseMsg,
+      borrowerWallet.address as string,
+    );
+
+    const openLease = await leaseInstance.openLease(
+      leaserContractAddress,
+      borrowerWallet,
+      lppDenom,
       DEFAULT_FEE,
-      undefined,
       [{ denom: lppDenom, amount: downpayment }],
     );
+    console.log(openLease);
 
-    const leases = {
-      leases: {
-        owner: borrowerWallet.address as string,
-      },
-    };
-
-    const queryLeases = await borrowerWallet.queryContractSmart(
+    const leasesAfter = await leaseInstance.getCurrentOpenLeases(
       leaserContractAddress,
-      leases,
+      borrowerWallet.address as string,
     );
 
-    console.log('user 1 leases:', leases);
-    console.log(queryLeases);
+    expect(leasesAfter.length).toBe(leasesBefore.length + 1);
+
+    // get the new lease state
+    const currentLeaseState = await leaseInstance.getLeaseStatus(
+      leasesAfter[leasesAfter.length - 1],
+    );
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
       borrowerWallet.address as string,
@@ -152,12 +150,14 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     expect(BigInt(lppLiquidityAfter.amount)).toBe(
-      BigInt(lppLiquidityBefore.amount) - BigInt(quote.borrow.amount),
+      BigInt(lppLiquidityBefore.amount) -
+        (BigInt(currentLeaseState.amount.amount) - BigInt(downpayment)),
     );
   });
 
   test('the borrower should be able to open more than one leases', async () => {
     const borrower2wallet = await createWallet();
+    let opened_leases = 0;
 
     // get the liquidity
     lppLiquidity = await borrowerWallet.getBalance(
@@ -167,14 +167,12 @@ describe('Leaser contract tests - Open a lease', () => {
 
     // send some tokens to the borrower
     // for the downpayment and fees
-    await user1Wallet.sendTokens(
-      user1Wallet.address as string,
+    await user1Wallet.transferAmount(
       borrower2wallet.address as string,
       [{ denom: lppDenom, amount: downpayment }],
       DEFAULT_FEE,
     );
-    await user1Wallet.sendTokens(
-      user1Wallet.address as string,
+    await user1Wallet.transferAmount(
       borrower2wallet.address as string,
       [
         {
@@ -185,32 +183,21 @@ describe('Leaser contract tests - Open a lease', () => {
       DEFAULT_FEE,
     );
 
-    const quoteMsg = {
-      quote: {
-        downpayment: { denom: lppDenom, amount: (+downpayment / 2).toString() },
-      },
-    };
-
-    const quote = await borrower2wallet.queryContractSmart(
+    const quote = await leaseInstance.makeLeaseApply(
       leaserContractAddress,
-      quoteMsg,
+      (+downpayment / 2).toString(),
+      lppDenom,
     );
-
-    const quote2 = await borrower2wallet.queryContractSmart(
-      leaserContractAddress,
-      quoteMsg,
-    );
-    console.log('Two quote queries without openLease between them - passed!');
+    console.log('quote', quote);
 
     expect(quote.borrow).toBeDefined();
 
     if (+quote.borrow.amount * 2 > +lppLiquidity.amount) {
       // TO DO: we won`t need this in the future - maybe this will be some lender exec msg
       // Send tokens to lpp address to provide needed liquidity to open a lease
-      await user1Wallet.sendTokens(
-        user1Wallet.address as string,
+      await user1Wallet.transferAmount(
         lppContractAddress,
-        [{ denom: lppDenom, amount: quote.borrow.amount }],
+        [{ denom: lppDenom, amount: (+quote.borrow.amount * 2).toString() }], // *2 because in the next moment qoute.borrow.amoutn may be different
         DEFAULT_FEE,
       );
     }
@@ -229,37 +216,64 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
 
-    const openLeaseMsg = {
-      open_lease: { currency: lppDenom },
-    };
-
-    const openLease = await borrower2wallet.execute(
-      borrower2wallet.address as string,
+    const leasesBefore = await leaseInstance.getCurrentOpenLeases(
       leaserContractAddress,
-      openLeaseMsg,
+      borrower2wallet.address as string,
+    );
+
+    await leaseInstance.openLease(
+      leaserContractAddress,
+      borrower2wallet,
+      lppDenom,
       DEFAULT_FEE,
-      undefined,
       [{ denom: lppDenom, amount: (+downpayment / 2).toString() }],
     );
-    console.log(openLease);
+    opened_leases++;
 
+    //test if can query a quote after open a lease
     await sleep(6000);
 
-    const quote3 = await borrower2wallet.queryContractSmart(
+    const quote2 = await leaseInstance.makeLeaseApply(
       leaserContractAddress,
-      quoteMsg,
+      (+downpayment / 2).toString(),
+      lppDenom,
+    );
+    expect(quote2.borrow).toBeDefined();
+
+    const leasesAfter = await leaseInstance.getCurrentOpenLeases(
+      leaserContractAddress,
+      borrower2wallet.address as string,
+    );
+    expect(leasesAfter.length).toBe(leasesBefore.length + opened_leases);
+
+    // get the new lease1 state
+    const firstLeaseState = await leaseInstance.getLeaseStatus(
+      leasesAfter[leasesAfter.length - 1],
     );
 
-    expect(quote3.borrow).toBeDefined();
+    console.log('First lease state:', firstLeaseState);
 
-    const openLease2 = await borrower2wallet.execute(
-      borrower2wallet.address as string,
+    await leaseInstance.openLease(
       leaserContractAddress,
-      openLeaseMsg,
+      borrower2wallet,
+      lppDenom,
       DEFAULT_FEE,
-      undefined,
       [{ denom: lppDenom, amount: (+downpayment / 2).toString() }],
     );
+    opened_leases++;
+
+    const finalLeases = await leaseInstance.getCurrentOpenLeases(
+      leaserContractAddress,
+      borrower2wallet.address as string,
+    );
+    expect(finalLeases.length).toBe(leasesBefore.length + opened_leases);
+
+    // get the new lease2 state
+    const secondLeaseState = await leaseInstance.getLeaseStatus(
+      leasesAfter[leasesAfter.length - 1],
+    );
+
+    console.log('Second lease state:', secondLeaseState);
 
     const borrowerBalanceAfter = await borrower2wallet.getBalance(
       borrower2wallet.address as string,
@@ -278,7 +292,10 @@ describe('Leaser contract tests - Open a lease', () => {
 
     expect(BigInt(lppLiquidityAfter.amount)).toBe(
       BigInt(lppLiquidityBefore.amount) -
-        BigInt(quote.borrow.amount) * BigInt(2),
+        (BigInt(firstLeaseState.amount.amount) -
+          BigInt(downpayment) / BigInt(2)) -
+        (BigInt(secondLeaseState.amount.amount) -
+          BigInt(downpayment) / BigInt(2)),
     );
   });
 
@@ -288,29 +305,21 @@ describe('Leaser contract tests - Open a lease', () => {
       borrowerWallet.address as string,
       lppDenom,
     );
-    await sendInitFeeTokens(
-      userClient,
-      userAccount.address,
-      borrowerAccount.address,
-    );
-
-    const openLeaseMsg = {
-      open_lease: { currency: 'not-existend' },
-    };
+    await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
 
     const openLease = () =>
-      borrowerWallet.execute(
-        borrowerWallet.address as string,
+      leaseInstance.openLease(
         leaserContractAddress,
-        openLeaseMsg,
+        borrowerWallet,
+        'not-existend',
         DEFAULT_FEE,
-        undefined,
         [{ denom: lppDenom, amount: '1' }],
       );
 
     await expect(openLease).rejects.toThrow(
       /^.*instantiate wasm contract failed.*/,
     );
+
     // get borrower balance
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
       borrowerWallet.address as string,
@@ -325,17 +334,13 @@ describe('Leaser contract tests - Open a lease', () => {
       borrowerWallet.address as string,
       lppDenom,
     );
-    const openLeaseMsg = {
-      open_lease: { currency: lppDenom },
-    };
 
     const openLease = () =>
-      borrowerWallet.execute(
-        borrowerWallet.address as string,
+      leaseInstance.openLease(
         leaserContractAddress,
-        openLeaseMsg,
+        borrowerWallet,
+        lppDenom,
         DEFAULT_FEE,
-        undefined,
         [{ denom: lppDenom, amount: '0' }],
       );
 
@@ -355,17 +360,12 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
 
-    const openLeaseMsg = {
-      open_lease: { currency: lppDenom },
-    };
-
     const openLease = () =>
-      borrowerWallet.execute(
-        borrowerWallet.address as string,
+      leaseInstance.openLease(
         leaserContractAddress,
-        openLeaseMsg,
+        borrowerWallet,
+        lppDenom,
         DEFAULT_FEE,
-        undefined,
         [{ denom: lppDenom, amount: borrowerBalanceBefore.amount }],
       );
 

@@ -12,6 +12,7 @@ import NODE_ENDPOINT, {
 import { DEFAULT_FEE } from '../util/utils';
 import { ChainConstants } from '@nolus/nolusjs';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
+import { sendInitFeeTokens } from '../util/transfer';
 
 describe('Transfers - Native transfer', () => {
   let user1Wallet: NolusWallet;
@@ -198,7 +199,7 @@ describe('Transfers - Native transfer', () => {
   });
 
   test('user tries to send the entire amount tokens he owns - should produce an error message', async () => {
-    //TODO add transfer amount method here
+    await sendInitFeeTokens(user1Wallet, user2Wallet.address as string);
 
     const previousUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,

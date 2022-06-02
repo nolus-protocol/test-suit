@@ -1,11 +1,11 @@
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { AccountData } from '@cosmjs/amino';
 import { DEFAULT_FEE, BLOCK_CREATION_TIME_DEV, sleep } from '../util/utils';
+import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { sendInitFeeTokens } from '../util/transfer';
 
 describe('Oracle contract tests', () => {
-  let userClient: SigningCosmWasmClient;
-  let userAccount: AccountData;
-  let feederAccount: AccountData;
+  let user1Wallet: NolusWallet;
+  let feederWallet: NolusWallet;
   let PRICE_FEED_PERIOD: number;
   let PERCENTAGE_NEEDED: number;
   let BASE_ASSET: string;
@@ -14,16 +14,15 @@ describe('Oracle contract tests', () => {
   const contractAddress = process.env.ORACLE_ADDRESS as string;
 
   beforeAll(async () => {
-    userClient = await getUser1Client();
-    [userAccount] = await (await getUser1Wallet()).getAccounts();
-    const feeder1wallet = await createWallet();
-    [feederAccount] = await feeder1wallet.getAccounts();
+    NolusClient.setInstance(NODE_ENDPOINT);
+    user1Wallet = await getUser1Wallet();
+    feederWallet = await createWallet();
 
     // get needed params
     const configMsg = {
       config: {},
     };
-    const config = await userClient.queryContractSmart(
+    const config = await user1Wallet.queryContractSmart(
       contractAddress,
       configMsg,
     );
@@ -33,11 +32,7 @@ describe('Oracle contract tests', () => {
     PERCENTAGE_NEEDED = config.feeders_percentage_needed;
 
     // send some tokens to the feeder
-    await sendInitFeeTokens(
-      userClient,
-      userAccount.address,
-      feederAccount.address,
-    );
+    await sendInitFeeTokens(user1Wallet, feederWallet.address as string);
 
     // this period must expires
     await sleep(PRICE_FEED_PERIOD * 1000);
@@ -45,11 +40,10 @@ describe('Oracle contract tests', () => {
     // add feeder
     const addFeederMsg = {
       register_feeder: {
-        feeder_address: feederAccount.address,
+        feeder_address: feederWallet.address as string,
       },
     };
-    await userClient.execute(
-      userAccount.address,
+    await user1Wallet.еxecuteContract(
       contractAddress,
       addFeederMsg,
       DEFAULT_FEE,
@@ -59,7 +53,7 @@ describe('Oracle contract tests', () => {
       supported_denom_pairs: {},
     };
 
-    supportedPairsBefore = await userClient.queryContractSmart(
+    supportedPairsBefore = await user1Wallet.queryContractSmart(
       contractAddress,
       supportedPairsMsg,
     );
@@ -71,8 +65,7 @@ describe('Oracle contract tests', () => {
       supported_denom_pairs: { pairs: newSupportedPairs },
     };
 
-    await userClient.execute(
-      userAccount.address,
+    await user1Wallet.еxecuteContract(
       contractAddress,
       updateSupportedPairsMsg,
       DEFAULT_FEE,
@@ -83,10 +76,10 @@ describe('Oracle contract tests', () => {
     // query - is feeder
     const isFeederMsg = {
       is_feeder: {
-        address: feederAccount.address,
+        address: feederWallet.address as string,
       },
     };
-    const isFeeder = await userClient.queryContractSmart(
+    const isFeeder = await user1Wallet.queryContractSmart(
       contractAddress,
       isFeederMsg,
     );
@@ -111,8 +104,7 @@ describe('Oracle contract tests', () => {
         feeders_percentage_needed: 1,
       },
     };
-    await userClient.execute(
-      userAccount.address,
+    await user1Wallet.еxecuteContract(
       contractAddress,
       changeConfigMsg,
       DEFAULT_FEE,
@@ -122,7 +114,7 @@ describe('Oracle contract tests', () => {
     const feedersMsg = {
       feeders: {},
     };
-    const listFeeders = await userClient.queryContractSmart(
+    const listFeeders = await user1Wallet.queryContractSmart(
       contractAddress,
       feedersMsg,
     );
@@ -133,28 +125,21 @@ describe('Oracle contract tests', () => {
     // create the required number of feeders - 1
     for (let i = 1; i < onePercentNeeded; i++) {
       const newFeederWallet = await createWallet();
-      const newFeederClient = await getClient(newFeederWallet);
-      const [newFeederAccount] = await newFeederWallet.getAccounts();
 
       // add a new feeder
       const addFeederMsg = {
         register_feeder: {
-          feeder_address: newFeederAccount.address,
+          feeder_address: newFeederWallet.address as string,
         },
       };
-      await userClient.execute(
-        userAccount.address,
+      await user1Wallet.еxecuteContract(
         contractAddress,
         addFeederMsg,
         DEFAULT_FEE,
       );
 
       // send tokens to the new feeder
-      await sendInitFeeTokens(
-        userClient,
-        userAccount.address,
-        feederAccount.address,
-      );
+      await sendInitFeeTokens(user1Wallet, feederWallet.address as string);
 
       // add feed price
       const feedPriceMsg = {
@@ -168,8 +153,7 @@ describe('Oracle contract tests', () => {
         },
       };
 
-      await newFeederClient.execute(
-        newFeederAccount.address,
+      await newFeederWallet.еxecuteContract(
         contractAddress,
         feedPriceMsg,
         DEFAULT_FEE,
@@ -184,7 +168,7 @@ describe('Oracle contract tests', () => {
     };
 
     const price = () =>
-      userClient.queryContractSmart(contractAddress, getPriceMsg);
+      user1Wallet.queryContractSmart(contractAddress, getPriceMsg);
 
     // there are still not enough votes
     await expect(price).rejects.toThrow(/^.*No price for pair.*/);
@@ -202,39 +186,34 @@ describe('Oracle contract tests', () => {
     };
     // create the last required feeder
     const lastFeederWallet = await createWallet();
-    const lastFeederClient = await getClient(lastFeederWallet);
-    const [lastFeederAccount] = await lastFeederWallet.getAccounts();
 
     // add the feeder
     const addFeederMsg = {
       register_feeder: {
-        feeder_address: lastFeederAccount.address,
+        feeder_address: lastFeederWallet.address as string,
       },
     };
-    await userClient.execute(
-      userAccount.address,
+    await user1Wallet.еxecuteContract(
       contractAddress,
       addFeederMsg,
       DEFAULT_FEE,
     );
 
     // send tokens
-    await userClient.sendTokens(
-      userAccount.address,
-      lastFeederAccount.address,
+    await user1Wallet.transferAmount(
+      lastFeederWallet.address as string,
       DEFAULT_FEE.amount,
       DEFAULT_FEE,
     );
 
     // add the last required price information
-    await lastFeederClient.execute(
-      lastFeederAccount.address,
+    await lastFeederWallet.еxecuteContract(
       contractAddress,
       feedPrice2Msg,
       DEFAULT_FEE,
     );
 
-    const afterResult = await userClient.queryContractSmart(
+    const afterResult = await user1Wallet.queryContractSmart(
       contractAddress,
       getPriceMsg,
     );
@@ -246,7 +225,7 @@ describe('Oracle contract tests', () => {
     // the price feed period has expired + block creation time
     await sleep(BLOCK_CREATION_TIME_DEV + PRICE_FEED_PERIOD * 1000);
     const resultAfterPeriod = () =>
-      userClient.queryContractSmart(contractAddress, getPriceMsg);
+      user1Wallet.queryContractSmart(contractAddress, getPriceMsg);
     await expect(resultAfterPeriod).rejects.toThrow(/^.*No price for pair.*/);
 
     // recovery percentage needed init value
@@ -256,8 +235,7 @@ describe('Oracle contract tests', () => {
         feeders_percentage_needed: PERCENTAGE_NEEDED,
       },
     };
-    await userClient.execute(
-      userAccount.address,
+    await user1Wallet.еxecuteContract(
       contractAddress,
       changeConfig2Msg,
       DEFAULT_FEE,
@@ -268,8 +246,7 @@ describe('Oracle contract tests', () => {
       supported_denom_pairs: { pairs: supportedPairsBefore },
     };
 
-    await userClient.execute(
-      userAccount.address,
+    await user1Wallet.еxecuteContract(
       contractAddress,
       updateSupportedPairsMsg,
       DEFAULT_FEE,

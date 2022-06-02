@@ -1,13 +1,15 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { Coin } from '@cosmjs/amino';
 import { DEFAULT_FEE, sleep } from '../util/utils';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
+// import { Lease } from '@nolus/nolusjs/build/contracts';
 
 describe('Leaser contract tests - Apply for a lease', () => {
   let user1Wallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;
   let lppDenom: string;
+  let leaseInstance: NolusContracts.Lease;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -15,32 +17,29 @@ describe('Leaser contract tests - Apply for a lease', () => {
   const downpayment = '100';
 
   beforeAll(async () => {
-    //await sleep(50000);
+    // if the openLease tests start first, the current tests will fail due to a problem with the qoute request, so sleep()
+    await sleep(60000);
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     borrowerWallet = await createWallet();
+    leaseInstance = new NolusContracts.Lease();
 
     // TO DO: We will have a message about that soon
-    lppDenom = 'unolus';
+    lppDenom = process.env.STABLE_DENOM as string;
 
     // get the liquidity
     lppLiquidity = await user1Wallet.getBalance(lppContractAddress, lppDenom);
 
-    const quoteMsg = {
-      quote: {
-        downpayment: { denom: lppDenom, amount: downpayment },
-      },
-    };
-    const quote = await user1Wallet.queryContractSmart(
+    const quote = await leaseInstance.makeLeaseApply(
       leaserContractAddress,
-      quoteMsg,
+      downpayment,
+      lppDenom,
     );
 
     if (+quote.borrow.amount > +lppLiquidity.amount) {
       // TO DO: we won`t need this in the future
       // Send tokens to lpp address to provide liquidity
-      await user1Wallet.sendTokens(
-        user1Wallet.address as string,
+      await user1Wallet.transferAmount(
         lppContractAddress,
         [{ denom: lppDenom, amount: quote.borrow.amount }],
         DEFAULT_FEE,
@@ -57,14 +56,10 @@ describe('Leaser contract tests - Apply for a lease', () => {
       lppDenom,
     );
 
-    const quoteMsg = {
-      quote: {
-        downpayment: { denom: lppDenom, amount: downpayment },
-      },
-    };
-    const quote = await borrowerWallet.queryContractSmart(
+    const quote = await leaseInstance.makeLeaseApply(
       leaserContractAddress,
-      quoteMsg,
+      downpayment,
+      lppDenom,
     );
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
@@ -74,18 +69,13 @@ describe('Leaser contract tests - Apply for a lease', () => {
 
     expect(quote.total).toBeDefined();
     expect(quote.borrow).toBeDefined();
-    expect(quote.annual_interest_rate).toBeDefined();
+    expect(quote.annualInterestRate).toBeDefined();
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });
 
   test('the borrower tries to apply for a lease with 0 tokens as a down payment - should produce an error', async () => {
-    const quoteMsg = {
-      quote: {
-        downpayment: { denom: lppDenom, amount: '0' },
-      },
-    };
     const quoteQueryResult = () =>
-      borrowerWallet.queryContractSmart(leaserContractAddress, quoteMsg);
+      leaseInstance.makeLeaseApply(leaserContractAddress, '0', lppDenom);
     await expect(quoteQueryResult).rejects.toThrow(
       /^.*cannot open lease with zero downpayment.*/,
     );
@@ -98,27 +88,18 @@ describe('Leaser contract tests - Apply for a lease', () => {
       lppDenom,
     );
 
-    const quoteMsg = {
-      quote: {
-        downpayment: {
-          denom: lppDenom,
-          amount: (+lppLiquidity.amount + 1).toString(),
-        }, // more than the liquidity by 1
-      },
-    };
     const quoteQueryResult = () =>
-      borrowerWallet.queryContractSmart(leaserContractAddress, quoteMsg);
+      leaseInstance.makeLeaseApply(
+        leaserContractAddress,
+        (+lppLiquidity.amount + 1).toString(),
+        lppDenom,
+      );
     await expect(quoteQueryResult).rejects.toThrow(/^.*NoLiquidity.*/);
   });
 
   test('the borrower tries to apply for a lease with unsupported lpp denom as a down payment denom - should produce an error', async () => {
-    const quoteMsg = {
-      quote: {
-        downpayment: { denom: 'A', amount: '100' },
-      },
-    };
     const quoteQueryResult = () =>
-      borrowerWallet.queryContractSmart(leaserContractAddress, quoteMsg);
+      leaseInstance.makeLeaseApply(leaserContractAddress, '100', 'A');
     await expect(quoteQueryResult).rejects.toThrow(/^.*invalid request.*/);
   });
 });

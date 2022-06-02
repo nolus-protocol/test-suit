@@ -1,5 +1,5 @@
 import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
-import {
+import NODE_ENDPOINT, {
   getValidator1Address,
   createWallet,
   getUser1Wallet,
@@ -13,7 +13,7 @@ import {
 import { DEFAULT_FEE, sleep } from '../util/utils';
 import { stakingModule } from '../util/staking';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
-import { NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Withdraw reward', () => {
   let user1Wallet: NolusWallet;
@@ -27,6 +27,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
 
   beforeAll(async () => {
     NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
+    NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     delegatorWallet = await createWallet();
     console.log(delegatorWallet.address);
