@@ -85,8 +85,6 @@ describe('Leaser contract tests - Open a lease', () => {
     expect(quote.borrow).toBeDefined();
     // provide it
     if (+quote.borrow.amount > +lppLiquidity.amount) {
-      // TO DO: we won`t need this in the future - maybe this will be some lender exec msg
-      // Send tokens to lpp address to provide needed liquidity to open a lease
       await user1Wallet.transferAmount(
         lppContractAddress,
         [{ denom: lppDenom, amount: quote.borrow.amount }],
@@ -120,7 +118,6 @@ describe('Leaser contract tests - Open a lease', () => {
       DEFAULT_FEE,
       [{ denom: lppDenom, amount: downpayment }],
     );
-    console.log(openLease);
 
     const leasesAfter = await leaseInstance.getCurrentOpenLeases(
       leaserContractAddress,
@@ -190,14 +187,14 @@ describe('Leaser contract tests - Open a lease', () => {
     );
     console.log('quote', quote);
 
+    const quoteInterestRateBefore = quote.annual_interest_rate;
+
     expect(quote.borrow).toBeDefined();
 
     if (+quote.borrow.amount * 2 > +lppLiquidity.amount) {
-      // TO DO: we won`t need this in the future - maybe this will be some lender exec msg
-      // Send tokens to lpp address to provide needed liquidity to open a lease
       await user1Wallet.transferAmount(
         lppContractAddress,
-        [{ denom: lppDenom, amount: (+quote.borrow.amount * 2).toString() }], // *2 because in the next moment qoute.borrow.amoutn may be different
+        [{ denom: lppDenom, amount: (+quote.borrow.amount * 2).toString() }], // *2 because the next moment qoute.borrow.amount may be different
         DEFAULT_FEE,
       );
     }
@@ -239,12 +236,16 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
     expect(quote2.borrow).toBeDefined();
+    const quoteInterestRateAfter = quote2.annual_interest_rate;
 
     const leasesAfter = await leaseInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrower2wallet.address as string,
     );
     expect(leasesAfter.length).toBe(leasesBefore.length + opened_leases);
+    console.log(+quoteInterestRateAfter);
+    console.log(+quoteInterestRateBefore);
+    expect(+quoteInterestRateAfter).toBeGreaterThan(+quoteInterestRateBefore);
 
     // get the new lease1 state
     const firstLeaseState = await leaseInstance.getLeaseStatus(

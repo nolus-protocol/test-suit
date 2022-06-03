@@ -2,7 +2,6 @@ import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { Coin } from '@cosmjs/amino';
 import { DEFAULT_FEE, sleep } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-// import { Lease } from '@nolus/nolusjs/build/contracts';
 
 describe('Leaser contract tests - Apply for a lease', () => {
   let user1Wallet: NolusWallet;
@@ -37,15 +36,12 @@ describe('Leaser contract tests - Apply for a lease', () => {
     );
 
     if (+quote.borrow.amount > +lppLiquidity.amount) {
-      // TO DO: we won`t need this in the future
-      // Send tokens to lpp address to provide liquidity
       await user1Wallet.transferAmount(
         lppContractAddress,
         [{ denom: lppDenom, amount: quote.borrow.amount }],
         DEFAULT_FEE,
       );
     }
-    console.log(lppLiquidity.amount);
 
     expect(lppLiquidity.amount).not.toBe('0');
   });
@@ -69,7 +65,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
 
     expect(quote.total).toBeDefined();
     expect(quote.borrow).toBeDefined();
-    expect(quote.annualInterestRate).toBeDefined();
+    expect(quote.annual_interest_rate).toBeDefined();
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });
 
