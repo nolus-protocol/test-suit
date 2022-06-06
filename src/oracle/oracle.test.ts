@@ -39,7 +39,7 @@ describe('Oracle contract tests', () => {
       DEFAULT_FEE,
     );
 
-    const supportedPairsBefore = await oracleInstance.getSupportedPairs(
+    supportedPairsBefore = await oracleInstance.getSupportedPairs(
       contractAddress,
     );
 
@@ -176,6 +176,7 @@ describe('Oracle contract tests', () => {
       oracleInstance.getPrices(contractAddress, [testPairMember]);
     await expect(resultAfterPeriod).rejects.toThrow(/^.*No price for pair.*/);
 
+    // set config to the init state
     await oracleInstance.changeConfig(
       contractAddress,
       user1Wallet,
@@ -184,6 +185,7 @@ describe('Oracle contract tests', () => {
       DEFAULT_FEE,
     );
 
+    // set SupportPairs to the init state
     await oracleInstance.updateSupportPairs(
       contractAddress,
       user1Wallet,
