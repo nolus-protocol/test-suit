@@ -108,18 +108,4 @@ describe('Leaser contract tests - Config', () => {
 
     await expect(result).rejects.toThrow(/^.*failed to execute message.*/);
   });
-
-  test('the business tries to set the lease interest rate margin to 100% - should produce an error', async () => {
-    leaserConfigMsg.config.lease_interest_rate_margin = 0;
-
-    const result = () =>
-      leaseInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        DEFAULT_FEE,
-      );
-
-    await expect(result).rejects.toThrow(/^.*failed to execute message.*/);
-  });
 });
