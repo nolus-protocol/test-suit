@@ -7,7 +7,6 @@ CONTRACTS_BIN="contracts.tar.gz"
 NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
 GITLAB_API="https://gitlab-nomo.credissimo.net/api/v4"
 IBC_TOKEN='ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2'
-FAUCET_ADDRESS="nolus1vnn8pr2hqrm64mge8724jmzcm7usnsm5e4qqle"
 STABLE_DENOM='ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2'
 SMART_CONTRACTS_PROJECT_ID="8"
 COSMZONE_PROJECT_ID="3"
@@ -36,10 +35,10 @@ else
 fi
 
 downloadArtifact() {
-  local name="$1"
-  local version="$2"
-  local project_id="$3"
-  local response
+  local -r name="$1"
+  local -r version="$2"
+  local -r project_id="$3"
+  local -r response
 
   response=$(curl --output "$name".zip -w '%{http_code}' --header "$TOKEN_TYPE: $TOKEN_VALUE" "$GITLAB_API/projects/$project_id/jobs/artifacts/$version/download?job=$name")
   if [[ $response -ne 200 ]]; then
@@ -50,21 +49,21 @@ downloadArtifact() {
 }
 
 addKey() {
-  local name="$1"
-  local account_dir="$ACCOUNTS_DIR"
+  local -r name="$1"
+  local -r account_dir="$ACCOUNTS_DIR"
 
   echo 'y' | nolusd keys add "$name" --keyring-backend "test" --home "$account_dir"
 }
 
 exportKey() {
-  local name="$1"
-  local account_dir="$ACCOUNTS_DIR"
+  local -r name="$1"
+  local -r account_dir="$ACCOUNTS_DIR"
 
   echo 'y' | nolusd keys export "$name" --unsafe --unarmored-hex --keyring-backend "test" --home "$account_dir"
 }
 
 getValidatorAddress() {
-  local index="$1"
+  local -r index="$1"
   nolusd query staking validators --output json --node "$NOLUS_DEV_NET"| jq '.validators['$index'].operator_address' | tr -d '"'
 }
 
@@ -89,10 +88,6 @@ USER_2_PRIV_KEY=$(exportKey "test-user-1")
 USER_3_PRIV_KEY=$(exportKey "test-user-2")
 VALIDATOR_1_ADDRESS=$(getValidatorAddress "0")
 VALIDATOR_2_ADDRESS=$(getValidatorAddress "1")
-
-#send some stable coins to treasury
-TREASURY_ADDRESS=$(nolusd keys show treasury --address --home "$ACCOUNTS_DIR")
-echo 'y' | nolusd tx bank send "$FAUCET_ADDRESS" "$TREASURY_ADDRESS" 10000${STABLE_DENOM}  --node "$NOLUS_DEV_NET" --home "$ACCOUNTS_DIR"
 
 # Get contracts information
 
