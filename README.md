@@ -49,14 +49,36 @@ This will show you the results of the ESLint analysis.
 
 Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://robertcooper.me/post/using-eslint-and-prettier-in-a-typescript-project).
 
-## Starting integration tests
+## Run integration tests
 
-For running on dev-net:
+1. On dev-net:
 
-```sh
-yarn prepare-env-dev <your_gitlab_access_token>
-```
+    ```sh
+    yarn prepare-env-dev <your_gitlab_access_token>
+    ```
 
-```sh
-yarn test
-```
+    ```sh
+    yarn test-dev
+    ```
+
+2. On local-net:
+
+    ```sh
+    yarn prepare-env-local --contracts-result-file-path <path_to_contracts_info_file>
+    ```
+
+    * **--contracts-result-file-path** - you must pass the path to the directory where the smart contracts information file  is located (thе file produced by **smart-contract/scripts/deploy-contracts-local-net.sh**)
+
+    More flags:
+
+    * **--nolus-local-network <nolus-local-net-url>**, by default this is: http://localhost:26612
+
+    * **--ibc-token <ibc-denom>**, by default this is: ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2
+
+    * **--stable-denom <stable-denom>**, by default this is: ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2
+
+    * **--home-dir <nolus_accounts_dir>**, by default this is: home/.nolus
+
+    ```sh
+    yarn test-local
+    ```

@@ -7,8 +7,10 @@
     "dev": "ts-node-dev --exit-child src/index.ts",
     "start": "ts-node src/index.ts",
     "prepare-env-dev": "/bin/bash ./scripts/prepare-env-dev.sh",
+    "prepare-env-local": "/bin/bash ./scripts/prepare-env-local.sh",
     "run-tests-pipeline": "/bin/bash ./scripts/run-tests-pipeline.sh",
-    "test": "jest --runInBand",
+    "test-dev": "jest --runInBand",
+    "test-local": "jest --runInBand src/app.test.ts src/cw20 src/vesting src/transfers/native.test.ts src/gov src/leaser src/oracle src/staking/delegation.test.ts src/staking/withdrawing.test.ts src/staking/undelegation.test.ts src/staking/vesting.test.ts",
     "lint": "eslint 'src/**/*.{js,ts,tsx}' --quiet --fix"
   },
   "keywords": [],
