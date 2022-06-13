@@ -25,6 +25,12 @@ describe('Leaser contract tests - Apply for a lease', () => {
 
     // TO DO: We will have a message about that soon
     lppDenom = process.env.STABLE_DENOM as string;
+    // send init tokens to lpp address to provide liquidity, otherwise cant send query
+    await user1Wallet.transferAmount(
+      lppContractAddress,
+      [{ denom: lppDenom, amount: '10000' }],
+      DEFAULT_FEE,
+    );
 
     // get the liquidity
     lppLiquidity = await user1Wallet.getBalance(lppContractAddress, lppDenom);

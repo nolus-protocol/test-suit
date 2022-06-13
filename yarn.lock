@@ -356,7 +356,7 @@
     pako "^2.0.2"
     protobufjs "~6.10.2"
 
-"@cosmjs/cosmwasm-stargate@^0.28.4":
+"@cosmjs/cosmwasm-stargate@0.28.4":
   version "0.28.4"
   resolved "https://registry.yarnpkg.com/@cosmjs/cosmwasm-stargate/-/cosmwasm-stargate-0.28.4.tgz#5f06f31cd932ae409dc75a07993ed258279fd9a7"
   integrity sha512-dkTwTD+j2mjk7+l3pQQ3io2D0U7NIA4LXzkKtfBN87PGlj2G+VJFzcXk1T4DYmvrXjsQOi1kYeQRGWFA0XdvnQ==
@@ -403,7 +403,7 @@
     elliptic "^6.5.3"
     libsodium-wrappers "^0.7.6"
 
-"@cosmjs/crypto@0.28.4", "@cosmjs/crypto@^0.28.4":
+"@cosmjs/crypto@0.28.4":
   version "0.28.4"
   resolved "https://registry.yarnpkg.com/@cosmjs/crypto/-/crypto-0.28.4.tgz#b2f1ccb9edee7d357ed1dcd92bdb61f6a1ca06d3"
   integrity sha512-JRxNLlED3DDh9d04A0RcRw3mYkoobN7q7wafUFy3vI1TjoyWx33v0gqqaYE6/hoo9ghUrJSVOfzVihl8fZajJA==
@@ -520,7 +520,7 @@
     axios "^0.21.2"
     fast-deep-equal "^3.1.3"
 
-"@cosmjs/ledger-amino@^0.28.4":
+"@cosmjs/ledger-amino@0.28.4":
   version "0.28.4"
   resolved "https://registry.yarnpkg.com/@cosmjs/ledger-amino/-/ledger-amino-0.28.4.tgz#1762cdf2572731d529aad7ac20472b7ddbf0d93a"
   integrity sha512-SdKGk3jElpF5lbBJ8f/xvgk1GkItezpaZosAeOIgyzeGfDJL/nPFl0K0vs9L2PLCzLPEScA+9EocMC7F90UA4w==
@@ -580,7 +580,7 @@
     long "^4.0.0"
     protobufjs "~6.10.2"
 
-"@cosmjs/proto-signing@0.28.4", "@cosmjs/proto-signing@^0.28.4":
+"@cosmjs/proto-signing@0.28.4":
   version "0.28.4"
   resolved "https://registry.yarnpkg.com/@cosmjs/proto-signing/-/proto-signing-0.28.4.tgz#7007651042bd05b3eee7e1c8562417bbed630198"
   integrity sha512-4vgCLK9gOsdWzD78V5XbAsupSSyntPEzokWYhgRQNwgVTcKX1kg0eKZqUvF5ua5iL9x6MevfH/sgwPyiYleMBw==
@@ -688,7 +688,7 @@
     readonly-date "^1.0.0"
     xstream "^11.14.0"
 
-"@cosmjs/tendermint-rpc@0.28.4", "@cosmjs/tendermint-rpc@^0.28.4":
+"@cosmjs/tendermint-rpc@0.28.4":
   version "0.28.4"
   resolved "https://registry.yarnpkg.com/@cosmjs/tendermint-rpc/-/tendermint-rpc-0.28.4.tgz#78835fdc8126baa3122c8b2b396c1d7d290c7167"
   integrity sha512-iz6p4UW2QUZNh55WeJy9wHbMdqM8COo0AJdrGU4Ikb/xU0/H6b0dFPoEK+i6ngR0cSizh+hpTMzh3AA7ySUKlA==
@@ -1161,16 +1161,16 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@nolus/nolusjs@^0.0.17":
-  version "0.0.17"
-  resolved "https://registry.yarnpkg.com/@nolus/nolusjs/-/nolusjs-0.0.17.tgz#f1492d92ad7f8a65b783196fb4475aeea283a6bc"
-  integrity sha512-5r2cUjyQ3Yn989R9vR7PWGpXpwPKHOrE+8Uxs3zpjFOvcHfAFkGvDR2KCAuREMafSyUN8cEas1Yl9Cf6VO9M9w==
+"@nolus/nolusjs@^0.0.18":
+  version "0.0.18"
+  resolved "https://registry.yarnpkg.com/@nolus/nolusjs/-/nolusjs-0.0.18.tgz#1b21868e30022a728ea630bde26cd237ea82b6b6"
+  integrity sha512-/Qq4vuCWhzd3qFExDGYWwLrP4OhAPxj7ACkFJfywSdjxGer6+tMKIUAEQPTC7xHfz1M25NG2wl56JHNfVvuhyQ==
   dependencies:
-    "@cosmjs/cosmwasm-stargate" "^0.28.4"
-    "@cosmjs/crypto" "^0.28.4"
-    "@cosmjs/ledger-amino" "^0.28.4"
-    "@cosmjs/proto-signing" "^0.28.4"
-    "@cosmjs/tendermint-rpc" "^0.28.4"
+    "@cosmjs/cosmwasm-stargate" "0.28.4"
+    "@cosmjs/crypto" "0.28.4"
+    "@cosmjs/ledger-amino" "0.28.4"
+    "@cosmjs/proto-signing" "0.28.4"
+    "@cosmjs/tendermint-rpc" "0.28.4"
     "@keplr-wallet/crypto" "^0.10.5"
     "@keplr-wallet/unit" "^0.10.5"
     "@ledgerhq/hw-app-cosmos" "^6.27.1"

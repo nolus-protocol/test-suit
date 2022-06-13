@@ -111,7 +111,7 @@ describe('Leaser contract tests - Open a lease', () => {
       borrowerWallet.address as string,
     );
 
-    const openLease = await leaseInstance.openLease(
+    await leaseInstance.openLease(
       leaserContractAddress,
       borrowerWallet,
       lppDenom,
@@ -185,7 +185,6 @@ describe('Leaser contract tests - Open a lease', () => {
       (+downpayment / 2).toString(),
       lppDenom,
     );
-    console.log('quote', quote);
 
     const quoteInterestRateBefore = quote.annual_interest_rate;
 
@@ -243,16 +242,12 @@ describe('Leaser contract tests - Open a lease', () => {
       borrower2wallet.address as string,
     );
     expect(leasesAfter.length).toBe(leasesBefore.length + opened_leases);
-    console.log(+quoteInterestRateAfter);
-    console.log(+quoteInterestRateBefore);
     expect(+quoteInterestRateAfter).toBeGreaterThan(+quoteInterestRateBefore);
 
     // get the new lease1 state
     const firstLeaseState = await leaseInstance.getLeaseStatus(
       leasesAfter[leasesAfter.length - 1],
     );
-
-    console.log('First lease state:', firstLeaseState);
 
     await leaseInstance.openLease(
       leaserContractAddress,
@@ -273,8 +268,6 @@ describe('Leaser contract tests - Open a lease', () => {
     const secondLeaseState = await leaseInstance.getLeaseStatus(
       leasesAfter[leasesAfter.length - 1],
     );
-
-    console.log('Second lease state:', secondLeaseState);
 
     const borrowerBalanceAfter = await borrower2wallet.getBalance(
       borrower2wallet.address as string,
@@ -318,7 +311,7 @@ describe('Leaser contract tests - Open a lease', () => {
       );
 
     await expect(openLease).rejects.toThrow(
-      /^.*instantiate wasm contract failed.*/,
+      /^.*Aborted: panicked at 'assertion failed.*/,
     );
 
     // get borrower balance
