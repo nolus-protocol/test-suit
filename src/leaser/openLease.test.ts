@@ -111,6 +111,11 @@ describe('Leaser contract tests - Open a lease', () => {
       borrowerWallet.address as string,
     );
 
+    //get config before open a lease
+    const leaserConfig = await leaseInstance.getLeaserConfig(
+      leaserContractAddress,
+    );
+
     await leaseInstance.openLease(
       leaserContractAddress,
       borrowerWallet,
@@ -129,6 +134,12 @@ describe('Leaser contract tests - Open a lease', () => {
     // get the new lease state
     const currentLeaseState = await leaseInstance.getLeaseStatus(
       leasesAfter[leasesAfter.length - 1],
+    );
+
+    //check if this borrow<=init%*LeaseTotal(borrow+downpayment);
+    expect(+currentLeaseState.amount.amount - +downpayment).toBeLessThanOrEqual(
+      (leaserConfig.config.liability.initial / 100) *
+        +currentLeaseState.amount.amount,
     );
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
