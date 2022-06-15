@@ -79,6 +79,11 @@ Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://
 
     * **--home-dir <nolus_accounts_dir>**, by default this is: home/.nolus
 
+    You can get selected IBC and stable in your account through: **/cosmzone/scripts/init-local-network.sh**.
+    Example:
+
+    `` ./scripts/init-local-network.sh --treasury-tokens 1000000000000ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2,1000000000000unolus ``
+
     ```sh
     yarn test-local
     ```
