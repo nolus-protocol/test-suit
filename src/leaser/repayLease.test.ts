@@ -43,7 +43,7 @@ describe('Leaser contract tests - Repay loan', () => {
     expect(lppLiquidity.amount).not.toBe('0');
   });
 
-  test('the borrower should be able to repay the loan at any time by first paying interest', async () => {
+  test('the successful lease repayment scenario - should work as expected', async () => {
     // send some tokens to the borrower
     // for the downpayment and fees
     await user1Wallet.transferAmount(
@@ -102,7 +102,7 @@ describe('Leaser contract tests - Repay loan', () => {
 
     //TO DO: calc how to get >0 interest
 
-    await leaseInstance.openLease(
+    const result = await leaseInstance.openLease(
       leaserContractAddress,
       borrowerWallet,
       lppDenom,
@@ -110,15 +110,12 @@ describe('Leaser contract tests - Repay loan', () => {
       [{ denom: lppDenom, amount: downpayment }],
     );
 
-    const leases = await leaseInstance.getCurrentOpenLeases(
-      leaserContractAddress,
-      borrowerWallet.address as string,
-    );
+    const leaseAddress = result.logs[0].events[7].attributes[3].value;
+
+    expect(leaseAddress).not.toBe('');
 
     // get the new lease state
-    const currentLeaseState = await leaseInstance.getLeaseStatus(
-      leases[leases.length - 1],
-    );
+    const currentLeaseState = await leaseInstance.getLeaseStatus(leaseAddress);
 
     // get amount interest and principal due
     const currentLeaseInterest = currentLeaseState.interest_due.amount;
@@ -152,15 +149,12 @@ describe('Leaser contract tests - Repay loan', () => {
       lppDenom,
     );
 
-    await leaseInstance.repayLease(
-      leases[leases.length - 1],
-      borrowerWallet,
-      DEFAULT_FEE,
-      [firstPayment],
-    );
+    await leaseInstance.repayLease(leaseAddress, borrowerWallet, DEFAULT_FEE, [
+      firstPayment,
+    ]);
 
     const leaseStateAfterRepay = await leaseInstance.getLeaseStatus(
-      leases[leases.length - 1],
+      leaseAddress,
     );
 
     expect(+leaseStateAfterRepay.principal_due.amount).toBe(
@@ -299,16 +293,11 @@ describe('Leaser contract tests - Repay loan', () => {
       borrowerWallet.address as string,
     );
 
-    const leases = await leaseInstance.getCurrentOpenLeases(
-      leaserContractAddress,
-      borrowerWallet.address as string,
-    );
-
     await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
 
     const result = () =>
       leaseInstance.closeLease(
-        leases[leases.length - 1],
+        leasesBefore[leasesBefore.length - 1],
         borrowerWallet,
         DEFAULT_FEE,
       );
@@ -341,7 +330,6 @@ describe('Leaser contract tests - Repay loan', () => {
     );
 
     const loanAmount = leaseStateBeforeRepay.amount.amount;
-    console.log(leaseStateBeforeRepay);
 
     // send some tokens to the borrower
     // for the payment and fees
@@ -378,7 +366,7 @@ describe('Leaser contract tests - Repay loan', () => {
       borrowerWallet.address as string,
     );
 
-    // colose
+    // close
     await leaseInstance.closeLease(
       leases[leases.length - 1],
       borrowerWallet,
@@ -400,6 +388,9 @@ describe('Leaser contract tests - Repay loan', () => {
     expect(+borrowerBalanceAfter.amount).toBe(
       +borrowerBalanceBefore.amount + +loanAmount,
     );
+
+    console.log('The first lease address is:');
+    console.log(leases[leases.length - 1]);
   });
 
   test('the borrower tries to close an already closed lease - should produce an error', async () => {
@@ -430,7 +421,7 @@ describe('Leaser contract tests - Repay loan', () => {
     );
     await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
 
-    await leaseInstance.openLease(
+    const openLeaseResult = await leaseInstance.openLease(
       leaserContractAddress,
       borrowerWallet,
       lppDenom,
@@ -438,19 +429,14 @@ describe('Leaser contract tests - Repay loan', () => {
       [{ denom: lppDenom, amount: downpayment }],
     );
 
-    const leases = await leaseInstance.getCurrentOpenLeases(
-      leaserContractAddress,
-      borrowerWallet.address as string,
-    );
+    const leaseAddress = openLeaseResult.logs[0].events[7].attributes[3].value;
+
+    expect(leaseAddress).not.toBe('');
 
     await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
 
     const result = () =>
-      leaseInstance.closeLease(
-        leases[leases.length - 1],
-        borrowerWallet,
-        DEFAULT_FEE,
-      );
+      leaseInstance.closeLease(leaseAddress, borrowerWallet, DEFAULT_FEE);
 
     await expect(result).rejects.toThrow(
       /^.*The underlying loan is not fully repaid.*/,

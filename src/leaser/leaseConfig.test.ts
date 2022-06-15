@@ -76,7 +76,9 @@ describe('Leaser contract tests - Config', () => {
         DEFAULT_FEE,
       );
 
-    await expect(result).rejects.toThrow(/^.*failed to execute message.*/);
+    await expect(result).rejects.toThrow(
+      /^.*LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%*/,
+    );
   });
 
   test('the business tries to set initial liability % > max liability % - should produce an error', async () => {
@@ -91,7 +93,9 @@ describe('Leaser contract tests - Config', () => {
         DEFAULT_FEE,
       );
 
-    await expect(result).rejects.toThrow(/^.*failed to execute message.*/);
+    await expect(result).rejects.toThrow(
+      /^.*'LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%'*/,
+    );
   });
 
   test('the business tries to set healthy liability % > max liability % - should produce an error', async () => {
@@ -106,6 +110,8 @@ describe('Leaser contract tests - Config', () => {
         DEFAULT_FEE,
       );
 
-    await expect(result).rejects.toThrow(/^.*failed to execute message.*/);
+    await expect(result).rejects.toThrow(
+      /^.*'LeaseHealthyLiability% must be less than LeaseMaxLiability%'*/,
+    );
   });
 });
