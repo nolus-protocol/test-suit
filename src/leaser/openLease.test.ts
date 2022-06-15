@@ -56,7 +56,7 @@ describe('Leaser contract tests - Open a lease', () => {
     await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
   });
 
-  test('the borrower should be able to open lease', async () => {
+  test('the successful scenario for opening a lease - should work as expected', async () => {
     // get the liquidity
     lppLiquidity = await borrowerWallet.getBalance(
       lppContractAddress,

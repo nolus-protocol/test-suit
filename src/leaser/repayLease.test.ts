@@ -16,6 +16,8 @@ describe('Leaser contract tests - Repay loan', () => {
   let lppLiquidity: Coin;
   let lppDenom: string;
   let leaseInstance: NolusContracts.Lease;
+  let mainLeaseAddress: string;
+  let secondLeaseAddress: string;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -43,6 +45,7 @@ describe('Leaser contract tests - Repay loan', () => {
     expect(lppLiquidity.amount).not.toBe('0');
   });
 
+  // //TO DO - interest
   test('the successful lease repayment scenario - should work as expected', async () => {
     // send some tokens to the borrower
     // for the downpayment and fees
@@ -94,10 +97,6 @@ describe('Leaser contract tests - Repay loan', () => {
       DEFAULT_FEE,
     );
 
-    // const leaserConfig = await leaseInstance.getLeaserConfig(
-    //   leaserContractAddress,
-    // );
-
     await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
 
     //TO DO: calc how to get >0 interest
@@ -111,6 +110,8 @@ describe('Leaser contract tests - Repay loan', () => {
     );
 
     const leaseAddress = result.logs[0].events[7].attributes[3].value;
+    mainLeaseAddress = leaseAddress;
+    console.log('mainLease', mainLeaseAddress);
 
     expect(leaseAddress).not.toBe('');
 
@@ -314,19 +315,71 @@ describe('Leaser contract tests - Repay loan', () => {
     expect(leasesBefore.length).toEqual(leasesAfter.length);
   });
 
-  test('the borrower tries to repay the lease at once', async () => {
-    const leases = await leaseInstance.getCurrentOpenLeases(
-      leaserContractAddress,
-      borrowerWallet.address as string,
+  test('a user, other than the lease owner, tries to pay', async () => {
+    const userWallet = await createWallet();
+
+    const leaseStateBeforeRepay = await leaseInstance.getLeaseStatus(
+      mainLeaseAddress,
     );
 
+    const pay = {
+      denom: lppDenom,
+      amount: Math.floor(
+        +leaseStateBeforeRepay.principal_due.amount / 2,
+      ).toString(),
+    };
+
+    // send some tokens to the borrower
+    // for the payment and fees
+    await user1Wallet.transferAmount(
+      userWallet.address as string,
+      [pay],
+      DEFAULT_FEE,
+    );
+    await sendInitFeeTokens(user1Wallet, userWallet.address as string);
+
+    const userBalanceBefore = await userWallet.getBalance(
+      userWallet.address as string,
+      lppDenom,
+    );
+
+    await leaseInstance.repayLease(mainLeaseAddress, userWallet, DEFAULT_FEE, [
+      pay,
+    ]);
+
+    const leaseStateAfterRepay = await leaseInstance.getLeaseStatus(
+      mainLeaseAddress,
+    );
+
+    const userBalanceAfter = await userWallet.getBalance(
+      userWallet.address as string,
+      lppDenom,
+    );
+
+    expect(
+      +(
+        +leaseStateAfterRepay.principal_due.amount +
+        +leaseStateAfterRepay.interest_due.amount
+      ),
+    ).toBe(
+      +leaseStateBeforeRepay.principal_due.amount +
+        +leaseStateBeforeRepay.interest_due.amount -
+        +pay.amount,
+    );
+
+    expect(+userBalanceAfter.amount).toBe(
+      +userBalanceBefore.amount - +pay.amount,
+    );
+  });
+
+  test('the borrower tries to repay the lease at once and to close it', async () => {
     const borrowerBalanceBefore = await borrowerWallet.getBalance(
       borrowerWallet.address as string,
       lppDenom,
     );
 
     const leaseStateBeforeRepay = await leaseInstance.getLeaseStatus(
-      leases[leases.length - 1],
+      mainLeaseAddress,
     );
 
     const loanAmount = leaseStateBeforeRepay.amount.amount;
@@ -349,14 +402,14 @@ describe('Leaser contract tests - Repay loan', () => {
     await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
 
     await leaseInstance.repayLease(
-      leases[leases.length - 1],
+      mainLeaseAddress,
       borrowerWallet,
       DEFAULT_FEE,
       [repayAll],
     );
 
     const leaseStateAfterRepay = await leaseInstance.getLeaseStatus(
-      leases[leases.length - 1],
+      mainLeaseAddress,
     );
 
     expect(leaseStateAfterRepay).toBe(null); // TO DO: one day maybe this will return 'Closed'
@@ -368,7 +421,7 @@ describe('Leaser contract tests - Repay loan', () => {
 
     // close
     await leaseInstance.closeLease(
-      leases[leases.length - 1],
+      mainLeaseAddress,
       borrowerWallet,
       DEFAULT_FEE,
     );
@@ -388,9 +441,6 @@ describe('Leaser contract tests - Repay loan', () => {
     expect(+borrowerBalanceAfter.amount).toBe(
       +borrowerBalanceBefore.amount + +loanAmount,
     );
-
-    console.log('The first lease address is:');
-    console.log(leases[leases.length - 1]);
   });
 
   test('the borrower tries to close an already closed lease - should produce an error', async () => {
@@ -429,18 +479,63 @@ describe('Leaser contract tests - Repay loan', () => {
       [{ denom: lppDenom, amount: downpayment }],
     );
 
-    const leaseAddress = openLeaseResult.logs[0].events[7].attributes[3].value;
+    secondLeaseAddress = openLeaseResult.logs[0].events[7].attributes[3].value;
 
-    expect(leaseAddress).not.toBe('');
+    expect(secondLeaseAddress).not.toBe('');
 
     await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
 
     const result = () =>
-      leaseInstance.closeLease(leaseAddress, borrowerWallet, DEFAULT_FEE);
+      leaseInstance.closeLease(secondLeaseAddress, borrowerWallet, DEFAULT_FEE);
 
     await expect(result).rejects.toThrow(
       /^.*The underlying loan is not fully repaid.*/,
     );
+  });
+
+  test('unauthorized user tries to close the lease - should produce an error', async () => {
+    const userWallet = await createWallet();
+
+    const leaseStateBeforeRepay = await leaseInstance.getLeaseStatus(
+      secondLeaseAddress,
+    );
+
+    // send some tokens to the borrower
+    // for the payment and fees
+    const repayAll = {
+      denom: lppDenom,
+      amount: Math.floor(
+        +leaseStateBeforeRepay.interest_due.amount +
+          +leaseStateBeforeRepay.principal_due.amount,
+      ).toString(),
+    };
+
+    await user1Wallet.transferAmount(
+      userWallet.address as string,
+      [repayAll],
+      DEFAULT_FEE,
+    );
+    await sendInitFeeTokens(user1Wallet, userWallet.address as string);
+
+    await leaseInstance.repayLease(
+      secondLeaseAddress,
+      userWallet,
+      DEFAULT_FEE,
+      [repayAll],
+    );
+
+    const leaseStateAfterRepay = await leaseInstance.getLeaseStatus(
+      secondLeaseAddress,
+    );
+
+    expect(leaseStateAfterRepay).toBe(null); // TO DO: one day maybe this will return 'Closed'
+
+    // close
+    await sendInitFeeTokens(user1Wallet, userWallet.address as string);
+    const result = () =>
+      leaseInstance.closeLease(secondLeaseAddress, userWallet, DEFAULT_FEE);
+
+    await expect(result).rejects.toThrow(/^.*Unauthorized.*/);
   });
 
   // TO DO: partial liquidation , complete liquidation; Liability max%
