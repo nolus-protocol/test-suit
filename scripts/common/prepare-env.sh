@@ -40,7 +40,7 @@ local -r accounts_dir=$5
 addKey "test-user-1" "$accounts_dir"
 addKey "test-user-2" "$accounts_dir"
 
-local -r user_1_priv_key=$(exportKey "treasury" "$accounts_dir")
+local -r user_1_priv_key=$(exportKey "reserve" "$accounts_dir")
 local -r user_2_priv_key=$(exportKey "test-user-1" "$accounts_dir")
 local -r user_3_priv_key=$(exportKey "test-user-2" "$accounts_dir")
 local -r validator_1_address=$(getValidatorAddress "0" "$accounts_dir" "$node_url")
@@ -48,12 +48,12 @@ local -r validator_2_address=$(getValidatorAddress "1" "$accounts_dir" "$node_ur
 
 # Get contracts addresses and ids
 
+local -r treasury_address=$(jq .contracts_info[0].treasury.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 local -r lpp_address=$(jq .contracts_info[1].lpp.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 local -r leaser_address=$(jq .contracts_info[2].leaser.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 local -r oracle_address=$(jq .contracts_info[3].oracle.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r treasury_address=$(jq .contracts_info[4].treasury.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r profit_address=$(jq .contracts_info[5].profit.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r dispatcher_address=$(jq .contracts_info[6].rewards_dispatcher.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
+local -r profit_address=$(jq .contracts_info[4].profit.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
+local -r dispatcher_address=$(jq .contracts_info[5].rewards_dispatcher.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 
 # Save the results
 

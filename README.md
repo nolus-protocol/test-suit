@@ -67,7 +67,7 @@ Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://
     yarn prepare-env-local --contracts-result-file-path <path_to_contracts_info_file>
     ```
 
-    * **--contracts-result-file-path** - you must pass the path to the directory where the smart contracts information file  is located (thе file produced by **smart-contract/scripts/deploy-contracts-local-net.sh**)
+    * **--contracts-result-file-path** - you must pass the path to the directory where the smart contracts information file is located (thе file produced by **cosmzone/scripts/init-local-network.sh**)
 
     More flags:
 
@@ -82,7 +82,7 @@ Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://
     You can get selected IBC and stable in your account through: **/cosmzone/scripts/init-local-network.sh**.
     Example:
 
-    `` ./scripts/init-local-network.sh --treasury-tokens 1000000000000ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2,1000000000000unolus ``
+    ``./scripts/init-local-network.sh --wasm-code-path <path_to_contracts_wasm_files> --wasm-script-path <path_to_"smart-contracts/scripts/deploy-contracts-genesis.sh"> --reserve-tokens 1000000000bc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2,100000000unolus``
 
     ```sh
     yarn test-local

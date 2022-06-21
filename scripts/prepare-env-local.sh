@@ -4,7 +4,8 @@ set -euxo pipefail
 NOLUS_LOCAL_NET="http://localhost:26612"
 STABLE_DENOM="ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2"
 IBC_TOKEN="ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2"
-NULUS_HOME_DIR="$HOME/.nolus"
+NOLUS_HOME_DIR="$HOME/.nolus"
+CONTRACTS_INFO_PATH=""
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -23,34 +24,39 @@ while [[ $# -gt 0 ]]; do
     exit 0
     ;;
 
-    --nolus-local-network)
+  --nolus-local-network)
     NOLUS_LOCAL_NET="$2"
     shift
     shift
     ;;
 
-    --contracts-result-file-path)
+  --contracts-result-file-path)
     CONTRACTS_INFO_PATH="$2"
     shift
     shift
     ;;
 
-    --ibc-denom)
+  --ibc-denom)
     IBC_TOKEN="$2"
     shift
     shift
     ;;
 
-    --stable-denom)
+  --stable-denom)
     STABLE_DENOM="$2"
     shift
     shift
     ;;
 
-    --home-dir)
-    HOME_DIR="$2"
+  --home-dir)
+    NOLUS_HOME_DIR="$2"
     shift
     shift
+    ;;
+
+  *)
+    echo "unknown option '$key'"
+    exit 1
     ;;
 
   esac
@@ -60,5 +66,8 @@ done
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR"/common/prepare-env.sh
+source "$SCRIPT_DIR"/verify.sh
 
-prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$IBC_TOKEN" "$NOLUS_LOCAL_NET" "$NULUS_HOME_DIR"
+verify_mandatory "$CONTRACTS_INFO_PATH" "contracts info file path"
+
+prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$IBC_TOKEN" "$NOLUS_LOCAL_NET" "$NOLUS_HOME_DIR"
