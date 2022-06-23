@@ -3,7 +3,7 @@ import { Coin } from './codec/cosmos/base/v1beta1/coin';
 export const BLOCK_CREATION_TIME_DEV = 5000;
 
 export const DEFAULT_FEE = {
-  amount: [{ denom: 'unolus', amount: '12' }],
+  amount: [{ denom: 'unolus', amount: '10000' }],
   gas: '2000000',
 };
 

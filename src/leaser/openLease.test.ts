@@ -8,14 +8,27 @@ import {
   NolusWallet,
 } from '@nolus/nolusjs';
 import { sendInitFeeTokens } from '../util/transfer';
+import {
+  calcQuoteAnnualInterestRate,
+  calcUtilization,
+} from '../util/smart-contracts';
 
 describe('Leaser contract tests - Open a lease', () => {
   let NATIVE_TOKEN_DENOM: string;
   let user1Wallet: NolusWallet;
   let borrowerWallet: NolusWallet;
-  let lppLiquidity: Coin;
   let lppDenom: string;
   let leaseInstance: NolusContracts.Lease;
+
+  // TO DO: nolusjs
+  const lppBalanceMsg = {
+    lpp_balance: [],
+  };
+
+  // TO DO: message about that soon
+  const baseInterestRate = 7; //%
+  const utilizationOptimal = 70; //%
+  const addonOptimalInterestRate = 2; //%
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -39,7 +52,7 @@ describe('Leaser contract tests - Open a lease', () => {
       DEFAULT_FEE,
     );
 
-    lppLiquidity = await borrowerWallet.getBalance(
+    const lppLiquidity = await borrowerWallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -57,11 +70,6 @@ describe('Leaser contract tests - Open a lease', () => {
   });
 
   test('the successful scenario for opening a lease - should work as expected', async () => {
-    // get the liquidity
-    lppLiquidity = await borrowerWallet.getBalance(
-      lppContractAddress,
-      lppDenom,
-    );
     // send some tokens to the borrower
     // for the downpayment and fees
     await user1Wallet.transferAmount(
@@ -75,7 +83,6 @@ describe('Leaser contract tests - Open a lease', () => {
       DEFAULT_FEE,
     );
 
-    // get the ~required liquidity
     const quote = await leaseInstance.makeLeaseApply(
       leaserContractAddress,
       downpayment,
@@ -83,16 +90,36 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     expect(quote.borrow).toBeDefined();
-    // provide it
-    if (+quote.borrow.amount > +lppLiquidity.amount) {
-      await user1Wallet.transferAmount(
-        lppContractAddress,
-        [{ denom: lppDenom, amount: quote.borrow.amount }],
-        DEFAULT_FEE,
-      );
-    }
+
+    const lppInformation = await borrowerWallet.queryContractSmart(
+      lppContractAddress,
+      lppBalanceMsg,
+    );
+    const totalPrincipalDueByNow = lppInformation.total_principal_due;
+    const totalInterestDueByNow = lppInformation.total_interest_due;
+    const lppLiquidity = lppInformation.balance;
+
+    // console.log(totalPrincipalDueByNow);
+    // console.log(totalInterestDueByNow);
+    // console.log(lppLiquidity);
 
     expect(lppLiquidity.amount).not.toBe('0');
+
+    const utilization = calcUtilization(
+      +totalPrincipalDueByNow.amount,
+      +quote.borrow.amount,
+      +totalInterestDueByNow.amount,
+      +lppLiquidity.amount,
+    );
+
+    expect(
+      calcQuoteAnnualInterestRate(
+        utilization,
+        utilizationOptimal,
+        baseInterestRate,
+        addonOptimalInterestRate,
+      ),
+    ).toBe(quote.annual_interest_rate);
 
     // get borrower balance
     const borrowerBalanceBefore = await borrowerWallet.getBalance(
@@ -167,12 +194,6 @@ describe('Leaser contract tests - Open a lease', () => {
     const borrower2wallet = await createWallet();
     let opened_leases = 0;
 
-    // get the liquidity
-    lppLiquidity = await borrowerWallet.getBalance(
-      lppContractAddress,
-      lppDenom,
-    );
-
     // send some tokens to the borrower
     // for the downpayment and fees
     await user1Wallet.transferAmount(
@@ -197,21 +218,37 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
 
-    const quoteInterestRateBefore = quote.annual_interest_rate;
-
     expect(quote.borrow).toBeDefined();
 
-    if (+quote.borrow.amount * 2 > +lppLiquidity.amount) {
-      await user1Wallet.transferAmount(
-        lppContractAddress,
-        [{ denom: lppDenom, amount: (+quote.borrow.amount * 2).toString() }], // *2 because the next moment qoute.borrow.amount may be different
-        DEFAULT_FEE,
-      );
-    }
+    // test quote annual_interest_rate calculation
+
+    const lppInformation = await borrowerWallet.queryContractSmart(
+      lppContractAddress,
+      lppBalanceMsg,
+    );
+    const totalPrincipalDueByNow = lppInformation.total_principal_due;
+    const totalInterestDueByNow = lppInformation.total_interest_due;
+    const lppLiquidity = lppInformation.balance;
 
     expect(lppLiquidity.amount).not.toBe('0');
 
-    // get borrower balance
+    const utilization = calcUtilization(
+      +totalPrincipalDueByNow.amount,
+      +quote.borrow.amount,
+      +totalInterestDueByNow.amount,
+      +lppLiquidity.amount,
+    );
+
+    expect(
+      calcQuoteAnnualInterestRate(
+        utilization,
+        utilizationOptimal,
+        baseInterestRate,
+        addonOptimalInterestRate,
+      ),
+    ).toBe(quote.annual_interest_rate);
+
+    // get borrower balance before
     const borrowerBalanceBefore = await borrower2wallet.getBalance(
       borrower2wallet.address as string,
       lppDenom,
@@ -246,14 +283,12 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
     expect(quote2.borrow).toBeDefined();
-    const quoteInterestRateAfter = quote2.annual_interest_rate;
 
     const leasesAfter = await leaseInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrower2wallet.address as string,
     );
     expect(leasesAfter.length).toBe(leasesBefore.length + opened_leases);
-    expect(+quoteInterestRateAfter).toBeGreaterThan(+quoteInterestRateBefore);
 
     // get the new lease1 state
     const firstLeaseState = await leaseInstance.getLeaseStatus(
@@ -371,7 +406,12 @@ describe('Leaser contract tests - Open a lease', () => {
         borrowerWallet,
         lppDenom,
         DEFAULT_FEE,
-        [{ denom: lppDenom, amount: borrowerBalanceBefore.amount }],
+        [
+          {
+            denom: lppDenom,
+            amount: (+borrowerBalanceBefore.amount + 1).toString(),
+          },
+        ],
       );
 
     await expect(openLease).rejects.toThrow(/^.*insufficient fund.*/);

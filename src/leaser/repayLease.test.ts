@@ -75,27 +75,27 @@ describe('Leaser contract tests - Repay loan', () => {
 
     expect(+lppLiquidity.amount).toBeGreaterThanOrEqual(+quote.borrow.amount);
 
-    const leaserConfigMsg: LeaserConfig = {
-      config: {
-        lease_interest_rate_margin: 50,
-        liability: {
-          max: 90,
-          healthy: 50,
-          initial: 45,
-        },
-        repayment: {
-          period_sec: 30000,
-          grace_period_sec: 23000,
-        },
-      },
-    };
+    // const leaserConfigMsg: LeaserConfig = {
+    //   config: {
+    //     lease_interest_rate_margin: 50,
+    //     liability: {
+    //       max: 90,
+    //       healthy: 50,
+    //       initial: 45,
+    //     },
+    //     repayment: {
+    //       period_sec: 30000,
+    //       grace_period_sec: 23000,
+    //     },
+    //   },
+    // };
 
-    await leaseInstance.setLeaserConfig(
-      leaserContractAddress,
-      user1Wallet,
-      leaserConfigMsg,
-      DEFAULT_FEE,
-    );
+    // await leaseInstance.setLeaserConfig(
+    //   leaserContractAddress,
+    //   user1Wallet,
+    //   leaserConfigMsg,
+    //   DEFAULT_FEE,
+    // );
 
     await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
 
@@ -225,7 +225,9 @@ describe('Leaser contract tests - Repay loan', () => {
         [repayAll],
       );
 
-    await expect(result).rejects.toThrow(/^.*Denoms are different.*/);
+    await expect(result).rejects.toThrow(
+      /^.*Found currency unolus expecting uusdc.*/,
+    );
   });
 
   test('the borrower tries to pay a lease with more amount than he has - should produce an error', async () => {
@@ -538,7 +540,7 @@ describe('Leaser contract tests - Repay loan', () => {
     await expect(result).rejects.toThrow(/^.*Unauthorized.*/);
   });
 
-  // TO DO: partial liquidation , complete liquidation; Liability max%
+  // TO DO: partial liquidation , complete liquidation; Liability max% - in a new file
 
   // test('the borrower doesnt repay the interest during the grace period - ??', async () => {
   // //
