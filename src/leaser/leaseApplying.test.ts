@@ -1,6 +1,6 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { Coin } from '@cosmjs/amino';
-import { DEFAULT_FEE, sleep } from '../util/utils';
+import { customFees, sleep } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 
 describe('Leaser contract tests - Apply for a lease', () => {
@@ -29,7 +29,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
     await user1Wallet.transferAmount(
       lppContractAddress,
       [{ denom: lppDenom, amount: '10000' }],
-      DEFAULT_FEE,
+      customFees.transfer,
     );
 
     // get the liquidity
@@ -45,7 +45,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
       await user1Wallet.transferAmount(
         lppContractAddress,
         [{ denom: lppDenom, amount: quote.borrow.amount }],
-        DEFAULT_FEE,
+        customFees.transfer,
       );
     }
 

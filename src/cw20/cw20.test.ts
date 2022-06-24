@@ -26,6 +26,10 @@ describe('CW20 transfer', () => {
       amount: [{ amount: '500000', denom: NATIVE_TOKEN }],
       gas: '500000',
     },
+    transfer: {
+      amount: [{ denom: NATIVE_TOKEN, amount: '1000' }],
+      gas: '200000',
+    },
   };
 
   beforeAll(async () => {
@@ -118,10 +122,10 @@ describe('CW20 transfer', () => {
       await user2Wallet.queryContractSmart(contractAddress, balanceMsgUser2)
     ).balance;
     console.log('User2 before balance:', user2BalanceBefore);
-    await user1Wallet.еxecuteContract(
+    await user1Wallet.executeContract(
       contractAddress,
       transferMsg,
-      customFees.exec,
+      customFees.transfer,
     );
     const user2BalanceAfter = (
       await user2Wallet.queryContractSmart(contractAddress, balanceMsgUser2)
@@ -152,10 +156,7 @@ describe('CW20 transfer', () => {
       denom: NATIVE_TOKEN,
       amount: '2000000',
     };
-    const fee = {
-      amount: [{ denom: NATIVE_TOKEN, amount: '12' }],
-      gas: '100000',
-    };
+
     const balanceMsg = {
       balance: {
         address: user2Wallet.address as string,
@@ -181,10 +182,10 @@ describe('CW20 transfer', () => {
     await user1Wallet.transferAmount(
       user2Wallet.address as string,
       [nativeTokenTransfer],
-      fee,
+      customFees.transfer,
       '',
     );
-    await user1Wallet.еxecuteContract(
+    await user1Wallet.executeContract(
       contractAddress,
       increaseAllowanceMsg,
       customFees.exec,
@@ -198,7 +199,7 @@ describe('CW20 transfer', () => {
       BigInt(user2AllowanceBefore) + BigInt(amountToTransfer),
     );
 
-    await user2Wallet.еxecuteContract(
+    await user2Wallet.executeContract(
       contractAddress,
       transferFromMsg,
       customFees.exec,

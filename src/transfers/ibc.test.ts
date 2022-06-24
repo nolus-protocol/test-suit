@@ -4,13 +4,13 @@ import {
   DeliverTxResponse,
 } from '@cosmjs/stargate';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
-import { sendInitFeeTokens } from '../util/transfer';
+import { sendInitTransferFeeTokens } from '../util/transfer';
 import NODE_ENDPOINT, {
   getUser1Wallet,
   getUser2Wallet,
   getUser3Wallet,
 } from '../util/clients';
-import { DEFAULT_FEE } from '../util/utils';
+import { customFees } from '../util/utils';
 
 describe('Transfers - IBC tokens', () => {
   const ibcToken = process.env.IBC_TOKEN as string;
@@ -31,7 +31,7 @@ describe('Transfers - IBC tokens', () => {
       amount: transferAmount,
     };
     // send some native tokens
-    await sendInitFeeTokens(user1Wallet, user2Wallet.address as string);
+    await sendInitTransferFeeTokens(user1Wallet, user2Wallet.address as string);
   });
 
   test('user should have some balance and ibc token should be defined', async () => {
@@ -56,7 +56,7 @@ describe('Transfers - IBC tokens', () => {
       await user1Wallet.transferAmount(
         user2Wallet.address as string,
         [transfer],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
     assertIsDeliverTxSuccess(sendTokensResponse);
@@ -75,7 +75,7 @@ describe('Transfers - IBC tokens', () => {
       await user2Wallet.transferAmount(
         user3Wallet.address as string,
         [transfer],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
     assertIsDeliverTxSuccess(sendTokensResponse1);
@@ -100,13 +100,13 @@ describe('Transfers - IBC tokens', () => {
     // user 3 -> user 1 - isolate the test and finish in the initial state
 
     // send unolus for fee
-    await sendInitFeeTokens(user1Wallet, user3Wallet.address as string);
+    await sendInitTransferFeeTokens(user1Wallet, user3Wallet.address as string);
 
     const sendTokensResponse2: DeliverTxResponse =
       await user3Wallet.transferAmount(
         user1Wallet.address as string,
         [transfer],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
     assertIsDeliverTxSuccess(sendTokensResponse2);
@@ -148,7 +148,7 @@ describe('Transfers - IBC tokens', () => {
       user2Wallet.transferAmount(
         user3Wallet.address as string,
         [transfer],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
     await expect(broadcastTx).rejects.toThrow(/^.*invalid coins.*/);
@@ -182,7 +182,7 @@ describe('Transfers - IBC tokens', () => {
       user2Wallet.transferAmount(
         WRONG_WALLET_ADDRESS,
         [transfer],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
     await expect(broadcastTx).rejects.toThrow(/^.*invalid address.*/);

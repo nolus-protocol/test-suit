@@ -1,7 +1,7 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { DEFAULT_FEE } from '../util/utils';
+import { customFees } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { sendInitFeeTokens } from '../util/transfer';
+import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
 
 describe('Leaser contract tests - Config', () => {
@@ -51,14 +51,14 @@ describe('Leaser contract tests - Config', () => {
   });
 
   test('an unauthorized user tries to change the configuration - should produce an error', async () => {
-    await sendInitFeeTokens(user1Wallet, wallet.address as string);
+    await sendInitExecuteFeeTokens(user1Wallet, wallet.address as string);
 
     const result = () =>
       leaseInstance.setLeaserConfig(
         leaserContractAddress,
         wallet,
         leaserConfigMsg,
-        DEFAULT_FEE,
+        customFees.exec,
       );
 
     await expect(result).rejects.toThrow(/^.*Unauthorized.*/);
@@ -73,7 +73,7 @@ describe('Leaser contract tests - Config', () => {
         leaserContractAddress,
         user1Wallet,
         leaserConfigMsg,
-        DEFAULT_FEE,
+        customFees.exec,
       );
 
     await expect(result).rejects.toThrow(
@@ -90,7 +90,7 @@ describe('Leaser contract tests - Config', () => {
         leaserContractAddress,
         user1Wallet,
         leaserConfigMsg,
-        DEFAULT_FEE,
+        customFees.exec,
       );
 
     await expect(result).rejects.toThrow(
@@ -107,7 +107,7 @@ describe('Leaser contract tests - Config', () => {
         leaserContractAddress,
         user1Wallet,
         leaserConfigMsg,
-        DEFAULT_FEE,
+        customFees.exec,
       );
 
     await expect(result).rejects.toThrow(

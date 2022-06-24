@@ -1,13 +1,12 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { Coin } from '@cosmjs/amino';
-import { DEFAULT_FEE, sleep } from '../util/utils';
+import { customFees, sleep } from '../util/utils';
 import {
   ChainConstants,
   NolusClient,
   NolusContracts,
   NolusWallet,
 } from '@nolus/nolusjs';
-import { sendInitFeeTokens } from '../util/transfer';
+import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   calcQuoteAnnualInterestRate,
   calcUtilization,
@@ -49,7 +48,7 @@ describe('Leaser contract tests - Open a lease', () => {
     await user1Wallet.transferAmount(
       lppContractAddress,
       [{ denom: lppDenom, amount: '1000' }],
-      DEFAULT_FEE,
+      customFees.transfer,
     );
 
     const lppLiquidity = await borrowerWallet.getBalance(
@@ -64,9 +63,12 @@ describe('Leaser contract tests - Open a lease', () => {
     await user1Wallet.transferAmount(
       borrowerWallet.address as string,
       [{ denom: lppDenom, amount: downpayment }],
-      DEFAULT_FEE,
+      customFees.transfer,
     );
-    await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
+    await sendInitExecuteFeeTokens(
+      user1Wallet,
+      borrowerWallet.address as string,
+    );
   });
 
   test('the successful scenario for opening a lease - should work as expected', async () => {
@@ -77,10 +79,13 @@ describe('Leaser contract tests - Open a lease', () => {
       [
         {
           denom: lppDenom,
-          amount: (+downpayment + +DEFAULT_FEE.amount[0].amount * 2).toString(),
+          amount: (
+            +downpayment +
+            +customFees.exec.amount[0].amount * 2
+          ).toString(),
         },
       ],
-      DEFAULT_FEE,
+      customFees.transfer,
     );
 
     const quote = await leaseInstance.makeLeaseApply(
@@ -147,7 +152,7 @@ describe('Leaser contract tests - Open a lease', () => {
       leaserContractAddress,
       borrowerWallet,
       lppDenom,
-      DEFAULT_FEE,
+      customFees.exec,
       [{ denom: lppDenom, amount: downpayment }],
     );
 
@@ -199,17 +204,17 @@ describe('Leaser contract tests - Open a lease', () => {
     await user1Wallet.transferAmount(
       borrower2wallet.address as string,
       [{ denom: lppDenom, amount: downpayment }],
-      DEFAULT_FEE,
+      customFees.transfer,
     );
     await user1Wallet.transferAmount(
       borrower2wallet.address as string,
       [
         {
           denom: NATIVE_TOKEN_DENOM,
-          amount: (+DEFAULT_FEE.amount[0].amount * 2).toString(),
+          amount: (+customFees.exec.amount[0].amount * 2).toString(),
         },
       ],
-      DEFAULT_FEE,
+      customFees.transfer,
     );
 
     const quote = await leaseInstance.makeLeaseApply(
@@ -269,7 +274,7 @@ describe('Leaser contract tests - Open a lease', () => {
       leaserContractAddress,
       borrower2wallet,
       lppDenom,
-      DEFAULT_FEE,
+      customFees.exec,
       [{ denom: lppDenom, amount: (+downpayment / 2).toString() }],
     );
     opened_leases++;
@@ -299,7 +304,7 @@ describe('Leaser contract tests - Open a lease', () => {
       leaserContractAddress,
       borrower2wallet,
       lppDenom,
-      DEFAULT_FEE,
+      customFees.exec,
       [{ denom: lppDenom, amount: (+downpayment / 2).toString() }],
     );
     opened_leases++;
@@ -345,14 +350,17 @@ describe('Leaser contract tests - Open a lease', () => {
       borrowerWallet.address as string,
       lppDenom,
     );
-    await sendInitFeeTokens(user1Wallet, borrowerWallet.address as string);
+    await sendInitExecuteFeeTokens(
+      user1Wallet,
+      borrowerWallet.address as string,
+    );
 
     const openLease = () =>
       leaseInstance.openLease(
         leaserContractAddress,
         borrowerWallet,
         'not-existend',
-        DEFAULT_FEE,
+        customFees.exec,
         [{ denom: lppDenom, amount: '1' }],
       );
 
@@ -380,7 +388,7 @@ describe('Leaser contract tests - Open a lease', () => {
         leaserContractAddress,
         borrowerWallet,
         lppDenom,
-        DEFAULT_FEE,
+        customFees.exec,
         [{ denom: lppDenom, amount: '0' }],
       );
 
@@ -405,7 +413,7 @@ describe('Leaser contract tests - Open a lease', () => {
         leaserContractAddress,
         borrowerWallet,
         lppDenom,
-        DEFAULT_FEE,
+        customFees.exec,
         [
           {
             denom: lppDenom,

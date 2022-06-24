@@ -10,7 +10,7 @@ import {
 } from '../util/codec/cosmos/vesting/v1beta1/tx';
 import Long from 'long';
 import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
-import { DEFAULT_FEE, sleep, undefinedHandler } from '../util/utils';
+import { customFees, sleep, undefinedHandler } from '../util/utils';
 import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
 import {
   getDelegatorValidatorPairAmount,
@@ -18,7 +18,6 @@ import {
 } from '../util/staking';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
-import { sendInitFeeTokens } from '../util/transfer';
 
 describe('Staking Nolus tokens - Staking of unvested tokens', () => {
   const FULL_AMOUNT: Coin = { denom: 'unolus', amount: '100' };
@@ -57,16 +56,18 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     const createVestingAccountResult = await user1Wallet.signAndBroadcast(
       user1Wallet.address as string,
       [encodedMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
     expect(
       assertIsDeliverTxSuccess(createVestingAccountResult),
     ).toBeUndefined();
 
     // send some tokens
-    const sendInitTokensResult = await sendInitFeeTokens(
-      user1Wallet,
+    const sendInitTokensResult = await user1Wallet.transferAmount(
       user2Wallet.address as string,
+      customFees.configs.amount,
+      customFees.transfer,
+      '',
     );
 
     expect(assertIsDeliverTxSuccess(sendInitTokensResult)).toBeUndefined();
@@ -91,7 +92,7 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     const broadcastFailTx = await user2Wallet.signAndBroadcast(
       user2Wallet.address as string,
       [delegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     // TO DO: should produce an error due to insufficient amount
@@ -119,7 +120,7 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
     const broadcastSuccTx = await user2Wallet.signAndBroadcast(
       user2Wallet.address as string,
       [delegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     expect(assertIsDeliverTxSuccess(broadcastSuccTx)).toBeUndefined();

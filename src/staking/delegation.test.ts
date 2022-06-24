@@ -17,7 +17,7 @@ import {
   getParamsInformation,
   stakingModule,
 } from '../util/staking';
-import { DEFAULT_FEE, undefinedHandler } from '../util/utils';
+import { customFees, undefinedHandler } from '../util/utils';
 import { ChainConstants, NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Delegation', () => {
@@ -52,13 +52,13 @@ describe('Staking Nolus tokens - Delegation', () => {
     // send some tokens
     const initTransfer: Coin = {
       denom: NATIVE_TOKEN_DENOM,
-      amount: delegatedAmount + DEFAULT_FEE.amount[0].amount,
+      amount: delegatedAmount + customFees.transfer.amount[0].amount,
     };
 
     const broadcastTx = await user1Wallet.transferAmount(
       stakeholderWallet.address as string,
       [initTransfer],
-      DEFAULT_FEE,
+      customFees.transfer,
       '',
     );
     expect(assertIsDeliverTxSuccess(broadcastTx)).toBeUndefined();
@@ -119,7 +119,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     const result = await stakeholderWallet.signAndBroadcast(
       stakeholderWallet.address as string,
       [delegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
     expect(assertIsDeliverTxSuccess(result)).toBeUndefined();
 
@@ -183,7 +183,7 @@ describe('Staking Nolus tokens - Delegation', () => {
       stakeholderWallet.signAndBroadcast(
         stakeholderWallet.address as string,
         [delegateMsg],
-        DEFAULT_FEE,
+        customFees.configs,
       );
 
     await expect(broadcastTx).rejects.toThrow(/^.*invalid delegation amount.*/);
@@ -224,7 +224,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     const broadcastTx = await stakeholderWallet.signAndBroadcast(
       stakeholderWallet.address as string,
       [delegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
@@ -251,7 +251,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     const broadcastTx = await stakeholderWallet.signAndBroadcast(
       stakeholderWallet.address as string,
       [delegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();

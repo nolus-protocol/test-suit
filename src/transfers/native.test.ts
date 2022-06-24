@@ -9,10 +9,10 @@ import NODE_ENDPOINT, {
   getUser2Wallet,
   getUser3Wallet,
 } from '../util/clients';
-import { DEFAULT_FEE } from '../util/utils';
+import { customFees } from '../util/utils';
 import { ChainConstants } from '@nolus/nolusjs';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
-import { sendInitFeeTokens } from '../util/transfer';
+import { sendInitTransferFeeTokens } from '../util/transfer';
 
 describe('Transfers - Native transfer', () => {
   let user1Wallet: NolusWallet;
@@ -33,11 +33,16 @@ describe('Transfers - Native transfer', () => {
 
     transfer1 = {
       denom: NATIVE_TOKEN_DENOM,
-      amount: (transferAmount + +DEFAULT_FEE.amount[0].amount * 2).toString(),
+      amount: (
+        transferAmount +
+        +customFees.transfer.amount[0].amount * 2
+      ).toString(),
     };
     transfer2 = {
       denom: NATIVE_TOKEN_DENOM,
-      amount: (transferAmount + +DEFAULT_FEE.amount[0].amount).toString(),
+      amount: (
+        transferAmount + +customFees.transfer.amount[0].amount
+      ).toString(),
     };
     transfer3 = {
       denom: NATIVE_TOKEN_DENOM,
@@ -68,7 +73,7 @@ describe('Transfers - Native transfer', () => {
       await user1Wallet.transferAmount(
         user2Wallet.address as string,
         [transfer1],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
 
@@ -86,7 +91,7 @@ describe('Transfers - Native transfer', () => {
     expect(BigInt(nextUser1Balance.amount)).toBe(
       BigInt(previousUser1Balance.amount) -
         BigInt(transfer1.amount) -
-        BigInt(DEFAULT_FEE.amount[0].amount),
+        BigInt(customFees.transfer.amount[0].amount),
     );
     expect(BigInt(nextUser2Balance.amount)).toBe(
       BigInt(previousUser2Balance.amount) + BigInt(transfer1.amount),
@@ -106,7 +111,7 @@ describe('Transfers - Native transfer', () => {
       await user2Wallet.transferAmount(
         user3Wallet.address as string,
         [transfer2],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
     assertIsDeliverTxSuccess(broadcastTxResponse2);
@@ -122,7 +127,7 @@ describe('Transfers - Native transfer', () => {
     expect(BigInt(nextUser2Balance.amount)).toBe(
       BigInt(previousUser2Balance.amount) -
         BigInt(transfer2.amount) -
-        BigInt(DEFAULT_FEE.amount[0].amount),
+        BigInt(customFees.transfer.amount[0].amount),
     );
     expect(BigInt(nextUser3Balance.amount)).toBe(
       BigInt(previousUser3Balance.amount) + BigInt(transfer2.amount),
@@ -134,7 +139,7 @@ describe('Transfers - Native transfer', () => {
       await user3Wallet.transferAmount(
         user1Wallet.address as string,
         [transfer3],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
     assertIsDeliverTxSuccess(broadcastTxResponse3);
@@ -150,7 +155,7 @@ describe('Transfers - Native transfer', () => {
 
     expect(BigInt(user1Balance.amount)).toBe(
       BigInt(previousUser1Balance.amount) -
-        BigInt(+DEFAULT_FEE.amount[0].amount * 3), //3 -> transfer1 -> amount=2*fee.amount; fee=1*fee.amount
+        BigInt(+customFees.transfer.amount[0].amount * 3), //3 -> transfer1 -> amount=2*fee.amount; fee=1*fee.amount
     );
     expect(BigInt(user3Balance.amount)).toBe(
       BigInt(previousUser3Balance.amount),
@@ -175,7 +180,7 @@ describe('Transfers - Native transfer', () => {
       user2Wallet.transferAmount(
         user3Wallet.address as string,
         [transfer],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
 
@@ -199,7 +204,7 @@ describe('Transfers - Native transfer', () => {
   });
 
   test('user tries to send the entire amount tokens he owns - should produce an error message', async () => {
-    await sendInitFeeTokens(user1Wallet, user2Wallet.address as string);
+    await sendInitTransferFeeTokens(user1Wallet, user2Wallet.address as string);
 
     const previousUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
@@ -218,7 +223,7 @@ describe('Transfers - Native transfer', () => {
       await user2Wallet.transferAmount(
         user3Wallet.address as string,
         [transfer],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
 
@@ -236,7 +241,7 @@ describe('Transfers - Native transfer', () => {
 
     expect(BigInt(nextUser2Balance.amount)).toBe(
       BigInt(previousUser2Balance.amount) -
-        BigInt(DEFAULT_FEE.amount[0].amount),
+        BigInt(customFees.transfer.amount[0].amount),
     );
     expect(BigInt(nextUser3Balance.amount)).toBe(
       BigInt(previousUser3Balance.amount),
@@ -255,7 +260,7 @@ describe('Transfers - Native transfer', () => {
       user2Wallet.transferAmount(
         WRONG_WALLET_ADDRESS,
         [transfer2],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       );
     await expect(broadcastTx).rejects.toThrow(/^.*invalid address.*/);

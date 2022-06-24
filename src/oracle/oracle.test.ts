@@ -1,7 +1,7 @@
-import { DEFAULT_FEE, BLOCK_CREATION_TIME_DEV, sleep } from '../util/utils';
+import { customFees, BLOCK_CREATION_TIME_DEV, sleep } from '../util/utils';
 import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
-import { sendInitFeeTokens } from '../util/transfer';
+import { sendInitExecuteFeeTokens } from '../util/transfer';
 
 describe('Oracle contract tests', () => {
   let user1Wallet: NolusWallet;
@@ -27,7 +27,7 @@ describe('Oracle contract tests', () => {
     PERCENTAGE_NEEDED = config.feeders_percentage_needed;
 
     // send some tokens to the feeder
-    await sendInitFeeTokens(user1Wallet, feederWallet.address as string);
+    await sendInitExecuteFeeTokens(user1Wallet, feederWallet.address as string);
 
     // this period must expires
     await sleep(PRICE_FEED_PERIOD * 1000);
@@ -36,7 +36,7 @@ describe('Oracle contract tests', () => {
       contractAddress,
       user1Wallet,
       feederWallet.address as string,
-      DEFAULT_FEE,
+      customFees.exec,
     );
 
     supportedPairsBefore = await oracleInstance.getSupportedPairs(
@@ -50,7 +50,7 @@ describe('Oracle contract tests', () => {
       contractAddress,
       user1Wallet,
       newSupportedPairs,
-      DEFAULT_FEE,
+      customFees.exec,
     );
   });
 
@@ -81,7 +81,7 @@ describe('Oracle contract tests', () => {
       user1Wallet,
       PRICE_FEED_PERIOD,
       1,
-      DEFAULT_FEE,
+      customFees.exec,
     );
 
     const listFeeders = await oracleInstance.getFeeders(contractAddress);
@@ -97,11 +97,14 @@ describe('Oracle contract tests', () => {
         contractAddress,
         user1Wallet,
         newFeederWallet.address as string,
-        DEFAULT_FEE,
+        customFees.exec,
       );
 
       // send tokens to the new feeder
-      await sendInitFeeTokens(user1Wallet, feederWallet.address as string);
+      await sendInitExecuteFeeTokens(
+        user1Wallet,
+        feederWallet.address as string,
+      );
 
       // add feed price
       const feedPrices = {
@@ -117,7 +120,7 @@ describe('Oracle contract tests', () => {
         contractAddress,
         newFeederWallet,
         feedPrices,
-        DEFAULT_FEE,
+        customFees.exec,
       );
     }
 
@@ -134,14 +137,14 @@ describe('Oracle contract tests', () => {
       contractAddress,
       user1Wallet,
       lastFeederWallet.address as string,
-      DEFAULT_FEE,
+      customFees.exec,
     );
 
     // send tokens
     await user1Wallet.transferAmount(
       lastFeederWallet.address as string,
-      DEFAULT_FEE.amount,
-      DEFAULT_FEE,
+      customFees.exec.amount,
+      customFees.transfer,
     );
 
     const EXPECTED_PRICE = '3.3';
@@ -159,7 +162,7 @@ describe('Oracle contract tests', () => {
       contractAddress,
       lastFeederWallet,
       feedPrices,
-      DEFAULT_FEE,
+      customFees.exec,
     );
 
     const afterResult = await oracleInstance.getPrices(contractAddress, [
@@ -182,7 +185,7 @@ describe('Oracle contract tests', () => {
       user1Wallet,
       PRICE_FEED_PERIOD,
       PERCENTAGE_NEEDED,
-      DEFAULT_FEE,
+      customFees.exec,
     );
 
     // set SupportPairs to the init state
@@ -190,7 +193,7 @@ describe('Oracle contract tests', () => {
       contractAddress,
       user1Wallet,
       supportedPairsBefore,
-      DEFAULT_FEE,
+      customFees.exec,
     );
   });
 });

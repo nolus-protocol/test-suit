@@ -1,6 +1,5 @@
 import Long from 'long';
 import { isDeliverTxFailure } from '@cosmjs/stargate';
-import { StdFee } from '@cosmjs/amino';
 import { toUtf8 } from '@cosmjs/encoding';
 import { TextProposal } from 'cosmjs-types/cosmos/gov/v1beta1/gov';
 import { ParameterChangeProposal } from 'cosmjs-types/cosmos/params/v1beta1/params';
@@ -23,11 +22,12 @@ import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 import { UpgradeProposal, ClientUpdateProposal } from '../util/proposals';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
+import { customFees } from '../util/utils';
 
 describe('Proposal submission tests', () => {
   let wallet: NolusWallet;
   let msg: any;
-  let fee: StdFee;
+  let fee = customFees.transfer;
   let moduleName: string;
   let NATIVE_TOKEN_DENOM: string;
 
@@ -35,11 +35,6 @@ describe('Proposal submission tests', () => {
     NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     NolusClient.setInstance(NODE_ENDPOINT);
     wallet = await getUser1Wallet();
-
-    fee = {
-      amount: [{ denom: NATIVE_TOKEN_DENOM, amount: '12' }],
-      gas: '100000',
-    };
 
     moduleName = 'gov';
     msg = {
@@ -161,10 +156,6 @@ describe('Proposal submission tests', () => {
           }).finish(),
         },
       }).finish(),
-    };
-    fee = {
-      amount: [{ denom: NATIVE_TOKEN_DENOM, amount: '12' }],
-      gas: '200000',
     };
     moduleName = 'client';
   });

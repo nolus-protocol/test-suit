@@ -10,7 +10,7 @@ import {
   getDelegatorRewardsFromValidator,
   getDelegatorWithdrawAddress,
 } from '../util/distribution';
-import { DEFAULT_FEE, sleep } from '../util/utils';
+import { customFees, sleep } from '../util/utils';
 import { stakingModule } from '../util/staking';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
@@ -36,7 +36,10 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     // send some tokens
     const initTransfer = {
       denom: NATIVE_TOKEN_DENOM,
-      amount: (+initTokens + +DEFAULT_FEE.amount[0].amount * 2).toString(),
+      amount: (
+        +initTokens +
+        +customFees.configs.amount[0].amount * 2
+      ).toString(),
     };
 
     console.log(initTransfer.amount);
@@ -44,7 +47,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     const broadcastTx = await user1Wallet.transferAmount(
       delegatorWallet.address as string,
       [initTransfer],
-      DEFAULT_FEE,
+      customFees.transfer,
       '',
     );
     assertIsDeliverTxSuccess(broadcastTx);
@@ -62,7 +65,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     const result = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [delegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
     assertIsDeliverTxSuccess(result);
   });
@@ -115,7 +118,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     const withdrawResult = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [withdrawMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
     expect(assertIsDeliverTxSuccess(withdrawResult)).toBeUndefined();
 
@@ -127,7 +130,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
 
     expect(BigInt(+delegatorBalanceAfter.amount)).toBeGreaterThan(
       BigInt(+delegatorBalanceBefore.amount) -
-        BigInt(+DEFAULT_FEE.amount[0].amount),
+        BigInt(+customFees.configs.amount[0].amount),
     );
   });
 });

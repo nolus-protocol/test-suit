@@ -4,12 +4,12 @@ import {
 } from '../util/codec/cosmos/vesting/v1beta1/tx';
 import Long from 'long';
 import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
-import { DEFAULT_FEE, sleep } from '../util/utils';
+import { customFees, sleep } from '../util/utils';
 import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
-import { sendInitFeeTokens } from '../util/transfer';
+import { sendInitTransferFeeTokens } from '../util/transfer';
 import { EncodeObject } from '@cosmjs/proto-signing';
 
 describe('Continuous vesting tests', () => {
@@ -55,7 +55,7 @@ describe('Continuous vesting tests', () => {
       user1Wallet.signAndBroadcast(
         user1Wallet.address as string,
         [encodedMsg],
-        DEFAULT_FEE,
+        customFees.configs,
       );
 
     await expect(broadcastTx).rejects.toThrow(/^.*0unolus: invalid coins.*/);
@@ -79,7 +79,7 @@ describe('Continuous vesting tests', () => {
       user1Wallet.signAndBroadcast(
         user1Wallet.address as string,
         [encodedMsg],
-        DEFAULT_FEE,
+        customFees.configs,
       );
 
     await expect(broadcastTx).rejects.toThrow(/^.*internal.*/);
@@ -98,7 +98,7 @@ describe('Continuous vesting tests', () => {
       user1Wallet.signAndBroadcast(
         user1Wallet.address as string,
         [encodedMsg],
-        DEFAULT_FEE,
+        customFees.configs,
       );
 
     await expect(broadcastTx).rejects.toThrow(
@@ -123,7 +123,7 @@ describe('Continuous vesting tests', () => {
     const result = await user1Wallet.signAndBroadcast(
       user1Wallet.address as string,
       [encodedMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
     expect(assertIsDeliverTxSuccess(result)).toBeUndefined();
 
@@ -132,12 +132,11 @@ describe('Continuous vesting tests', () => {
       vestingWallet.address as string,
       NATIVE_TOKEN_DENOM,
     );
-    console.log(vestingAccountBalanceBefore);
 
     expect(vestingAccountBalanceBefore.amount).toBe(FULL_AMOUNT.amount);
 
     // send some tokens - non-vesting coins - would be immediately transferable
-    const sendInitTokensResult = await sendInitFeeTokens(
+    const sendInitTokensResult = await sendInitTransferFeeTokens(
       user1Wallet,
       vestingWallet.address as string,
     );
@@ -147,20 +146,20 @@ describe('Continuous vesting tests', () => {
     let sendFailTx = await vestingWallet.transferAmount(
       user1Wallet.address as string,
       [HALF_AMOUNT],
-      DEFAULT_FEE,
+      customFees.transfer,
       '',
     );
     expect(isDeliverTxFailure(sendFailTx)).toBeTruthy();
     expect(sendFailTx.rawLog).toMatch(
       /^.*smaller than 5000unolus: insufficient funds.*/,
     );
-    await sleep((ENDTIME_SECONDS / 2) * 1000);
+    await sleep((ENDTIME_SECONDS / 2) * 1000 + 1000);
 
     // half the tokens are provided now but not all
     sendFailTx = await vestingWallet.transferAmount(
       user1Wallet.address as string,
       [FULL_AMOUNT],
-      DEFAULT_FEE,
+      customFees.transfer,
       '',
     );
 
@@ -173,7 +172,7 @@ describe('Continuous vesting tests', () => {
       await vestingWallet.transferAmount(
         user1Wallet.address as string,
         [HALF_AMOUNT],
-        DEFAULT_FEE,
+        customFees.transfer,
         '',
       ),
     );
@@ -187,7 +186,7 @@ describe('Continuous vesting tests', () => {
     expect(+vestingAccountBalanceAfter.amount).toBe(
       +vestingAccountBalanceBefore.amount -
         +HALF_AMOUNT.amount -
-        +DEFAULT_FEE.amount[0].amount * 2,
+        +customFees.transfer.amount[0].amount * 2,
     );
   });
 
@@ -200,7 +199,7 @@ describe('Continuous vesting tests', () => {
     const broadcastTx = await user1Wallet.signAndBroadcast(
       user1Wallet.address as string,
       [encodedMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
     expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
     expect(broadcastTx.rawLog).toEqual(

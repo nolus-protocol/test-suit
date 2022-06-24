@@ -15,7 +15,7 @@ import {
   getDelegatorValidatorsRedelegationsInformation,
   stakingModule,
 } from '../util/staking';
-import { DEFAULT_FEE, undefinedHandler } from '../util/utils';
+import { customFees, undefinedHandler } from '../util/utils';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
@@ -68,13 +68,13 @@ describe('Staking Nolus tokens - Redelegation', () => {
     // send some tokens
     const initTransfer: Coin = {
       denom: NATIVE_TOKEN_DENOM,
-      amount: delegatedAmount + DEFAULT_FEE.amount[0].amount,
+      amount: delegatedAmount + customFees.transfer.amount[0].amount,
     };
 
     const broadcastTx = await user1Wallet.transferAmount(
       delegatorWallet.address as string,
       [initTransfer],
-      DEFAULT_FEE,
+      customFees.transfer,
       '',
     );
     assertIsDeliverTxSuccess(broadcastTx);
@@ -92,7 +92,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     const delegationResult = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [redelegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     // the delegator is a new user and in this first test he has not delegated tokens yet
@@ -107,7 +107,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     const delegationResult = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [delegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     expect(assertIsDeliverTxSuccess(delegationResult)).toBeUndefined();
@@ -127,7 +127,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     const redelegationResult = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [redelegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     expect(assertIsDeliverTxSuccess(redelegationResult)).toBeUndefined();
@@ -189,7 +189,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
       delegatorWallet.signAndBroadcast(
         delegatorWallet.address as string,
         [redelegateMsg],
-        DEFAULT_FEE,
+        customFees.configs,
       );
 
     await expect(broadcastTx).rejects.toThrow(/^.*invalid shares amount.*/);
@@ -214,7 +214,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     const broadcastTx = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [redelegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
@@ -241,7 +241,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     const broadcastTx = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [redelegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     // after the previous tests he has 'redelegatedAmount = delegatedAmount/2' tokens left so that:
@@ -270,7 +270,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     const broadcastTx = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [redelegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
@@ -284,7 +284,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     const broadcastTx = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [redelegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
@@ -298,7 +298,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     const delegationResult = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [delegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
     expect(assertIsDeliverTxSuccess(delegationResult)).toBeUndefined();
 
@@ -321,7 +321,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
       const redelegationResult = await delegatorWallet.signAndBroadcast(
         delegatorWallet.address as string,
         [redelegateMsg],
-        DEFAULT_FEE,
+        customFees.configs,
       );
       expect(assertIsDeliverTxSuccess(redelegationResult)).toBeUndefined();
     }
@@ -329,7 +329,7 @@ describe('Staking Nolus tokens - Redelegation', () => {
     const broadcastTx = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [redelegateMsg],
-      DEFAULT_FEE,
+      customFees.configs,
     );
 
     // maxEntries has already been reached
