@@ -30,7 +30,9 @@ describe('Leaser contract tests - Config', () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     wallet = await createWallet();
-    leaseInstance = new NolusContracts.Lease();
+
+    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+    leaseInstance = new NolusContracts.Lease(cosm);
   });
 
   afterEach(() => {

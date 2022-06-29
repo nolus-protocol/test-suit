@@ -21,7 +21,9 @@ describe('Leaser contract tests - Apply for a lease', () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     borrowerWallet = await createWallet();
-    leaseInstance = new NolusContracts.Lease();
+
+    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+    leaseInstance = new NolusContracts.Lease(cosm);
 
     // TO DO: We will have a message about that soon
     lppDenom = process.env.STABLE_DENOM as string;

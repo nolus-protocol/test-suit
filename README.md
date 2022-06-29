@@ -75,14 +75,14 @@ Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://
 
     * **--ibc-token <ibc-denom>**, by default this is: ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2
 
-    * **--stable-denom <stable-denom>**, by default this is: ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2
+    * **--lpp-native <stable-denom>**, by default this is: uusdc
 
-    * **--home-dir <nolus_accounts_dir>**, by default this is: home/.nolus
+    * **--home-dir <nolus-accounts-dir>**, by default this is: home/.nolus
 
-    You can get selected IBC and stable in your account through: **/cosmzone/scripts/init-local-network.sh**.
+    You can get selected IBC and lpp-native in reserve account through: **/cosmzone/scripts/init-local-network.sh**.
     Example:
 
-    ``./scripts/init-local-network.sh --wasm-code-path <path_to_contracts_wasm_files> --wasm-script-path <path_to_"smart-contracts/scripts/deploy-contracts-genesis.sh"> --reserve-tokens 1000000000bc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2,100000000unolus``
+    ``./scripts/init-local-network.sh --wasm-code-path <path_to_contracts_wasm_files> --wasm-script-path <path_to_"smart-contracts/scripts/deploy-contracts-genesis.sh"> --reserve-tokens 1000000000uusdc,100000000unolus``
 
     ```sh
     yarn test-local

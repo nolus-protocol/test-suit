@@ -18,7 +18,9 @@ describe('Oracle contract tests', () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     feederWallet = await createWallet();
-    oracleInstance = new NolusContracts.Oracle();
+
+    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+    oracleInstance = new NolusContracts.Oracle(cosm);
 
     const config = await oracleInstance.getConfig(contractAddress);
 

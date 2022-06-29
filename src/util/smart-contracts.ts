@@ -1,3 +1,5 @@
+const NANOSEC_YEAR = 365 * 24 * 60 * 60 * 1000000000;
+
 export function calcUtilization( // %
   totalPrincipalDueByNow: number,
   quoteBorrow: number,
@@ -6,13 +8,13 @@ export function calcUtilization( // %
 ): number {
   const totalLiabilityPast =
     totalInterestDueByNow + quoteBorrow + totalPrincipalDueByNow;
-  return Math.floor(
+  return (
     (totalLiabilityPast / (totalLiabilityPast + (lppLiquidity - quoteBorrow))) *
-      100,
+    100
   );
 }
 
-export function calcQuoteAnnualInterestRate( // primile
+export function calcQuoteAnnualInterestRate( // permille
   utilization: number,
   utilizationOptimal: number,
   baseInterestRate: number,
@@ -21,6 +23,19 @@ export function calcQuoteAnnualInterestRate( // primile
   return Math.floor(
     (baseInterestRate +
       ((utilization - utilizationOptimal) / 100) * addonOptimalInterestRate) *
-      10, // to promile
+      10,
+  );
+}
+
+export function calcInterestRate(
+  principalDue: number,
+  annualInterestRatePercentage: number,
+  outstandingBySec: number, //now (in nanosec)
+  interestPaidByNanoSec: number, //until when (date) the interest is paid (in nanosec)
+): number {
+  return Math.floor(
+    principalDue *
+      (annualInterestRatePercentage / 100) *
+      ((outstandingBySec - interestPaidByNanoSec) / NANOSEC_YEAR),
   );
 }

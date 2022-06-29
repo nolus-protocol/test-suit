@@ -1,5 +1,5 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { customFees, sleep } from '../util/utils';
+import { customFees } from '../util/utils';
 import {
   ChainConstants,
   NolusClient,
@@ -19,11 +19,6 @@ describe('Leaser contract tests - Open a lease', () => {
   let lppDenom: string;
   let leaseInstance: NolusContracts.Lease;
 
-  // TO DO: nolusjs
-  const lppBalanceMsg = {
-    lpp_balance: [],
-  };
-
   // TO DO: message about that soon
   const baseInterestRate = 7; //%
   const utilizationOptimal = 70; //%
@@ -39,15 +34,17 @@ describe('Leaser contract tests - Open a lease', () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     borrowerWallet = await createWallet();
-    leaseInstance = new NolusContracts.Lease();
+
+    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+    leaseInstance = new NolusContracts.Lease(cosm);
 
     // TO DO: We will have a message about that soon
     lppDenom = process.env.STABLE_DENOM as string;
 
-    // send init tokens to lpp address to provide liquidity, otherwise cant send query
+    // send init tokens to lpp address to provide liquidity
     await user1Wallet.transferAmount(
       lppContractAddress,
-      [{ denom: lppDenom, amount: '1000' }],
+      [{ denom: lppDenom, amount: '100000000' }],
       customFees.transfer,
     );
 
@@ -96,17 +93,13 @@ describe('Leaser contract tests - Open a lease', () => {
 
     expect(quote.borrow).toBeDefined();
 
-    const lppInformation = await borrowerWallet.queryContractSmart(
+    const lppInformation = await leaseInstance.getLppBalance(
       lppContractAddress,
-      lppBalanceMsg,
     );
+
     const totalPrincipalDueByNow = lppInformation.total_principal_due;
     const totalInterestDueByNow = lppInformation.total_interest_due;
     const lppLiquidity = lppInformation.balance;
-
-    // console.log(totalPrincipalDueByNow);
-    // console.log(totalInterestDueByNow);
-    // console.log(lppLiquidity);
 
     expect(lppLiquidity.amount).not.toBe('0');
 
@@ -227,9 +220,8 @@ describe('Leaser contract tests - Open a lease', () => {
 
     // test quote annual_interest_rate calculation
 
-    const lppInformation = await borrowerWallet.queryContractSmart(
+    const lppInformation = await leaseInstance.getLppBalance(
       lppContractAddress,
-      lppBalanceMsg,
     );
     const totalPrincipalDueByNow = lppInformation.total_principal_due;
     const totalInterestDueByNow = lppInformation.total_interest_due;
@@ -280,7 +272,6 @@ describe('Leaser contract tests - Open a lease', () => {
     opened_leases++;
 
     //test if can query a quote after open a lease
-    await sleep(6000);
 
     const quote2 = await leaseInstance.makeLeaseApply(
       leaserContractAddress,
