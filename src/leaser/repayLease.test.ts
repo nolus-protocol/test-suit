@@ -11,6 +11,7 @@ import {
   sendInitExecuteFeeTokens,
   sendInitTransferFeeTokens,
 } from '../util/transfer';
+import { calcInterestRate } from '../util/smart-contracts';
 
 describe('Leaser contract tests - Repay lease', () => {
   let user1Wallet: NolusWallet;
@@ -91,8 +92,7 @@ describe('Leaser contract tests - Repay lease', () => {
 
     //wait for >0 interest
     await sleep(outstandingBySec * 1000);
-    // const outstandingTimestamp = Timestamp.fromDate(new Date()).getNano(); //new Date().getTime() * 1000000000;
-    // console.log(outstandingTimestamp);
+    const outstandingTimestamp = (new Date().getTime() * 1000000).toString();
 
     let currentLeaseState = await leaseInstance.getLeaseStatus(
       mainLeaseAddress,
@@ -101,32 +101,55 @@ describe('Leaser contract tests - Repay lease', () => {
     let currentLeasePrincipal = currentLeaseState.principal_due.amount;
 
     // get annual_interest for loan
-    // const leaserConfig = await leaseInstance.getLeaserConfig(
-    //   leaserContractAddress,
-    // );
+    const leaserConfig = await leaseInstance.getLeaserConfig(
+      leaserContractAddress,
+    );
 
-    // const anualInterest =
-    //   +currentLeaseState.annual_interest -
-    //   +leaserConfig.config.lease_interest_rate_margin;
+    const anualInterest =
+      +currentLeaseState.annual_interest -
+      +leaserConfig.config.lease_interest_rate_margin;
 
-    // const outstandingInterestMsg = {
-    //   loan_outstanding_interest: {
-    //     lease_addr: mainLeaseAddress,
-    //     outstanding_time: outstandingTimestamp, //nanosec
-    //   },
-    // };
+    const outstandingInterestMsg = {
+      loan_outstanding_interest: {
+        lease_addr: mainLeaseAddress,
+        outstanding_time: outstandingTimestamp,
+      },
+    };
 
-    // const outstandingInterest = await borrowerWallet.queryContractSmart(
-    //   lppContractAddress,
-    //   outstandingInterestMsg,
-    // );
+    const loanMsg = {
+      loan: {
+        lease_addr: mainLeaseAddress,
+      },
+    };
 
-    //console.log(outstandingInterest);
+    const loan = await borrowerWallet.queryContractSmart(
+      lppContractAddress,
+      loanMsg,
+    );
 
-    // TO DO: verify interest calc
-    // expect(outstandingInterest).toBe(
-    //   calcInterestRate(+currentLeasePrincipal, anualInterest, outstandingBySec),
-    // );
+    const outstandingInterest = await borrowerWallet.queryContractSmart(
+      lppContractAddress,
+      outstandingInterestMsg,
+    );
+
+    // verify interest calc
+    expect(+outstandingInterest.amount).toBe(
+      calcInterestRate(
+        +currentLeasePrincipal,
+        anualInterest / 10,
+        +outstandingTimestamp,
+        loan.interest_paid,
+      ),
+    );
+
+    expect(+loan.interest_due.amount).toBe(
+      calcInterestRate(
+        +currentLeasePrincipal,
+        anualInterest / 10,
+        +outstandingTimestamp,
+        loan.interest_paid,
+      ),
+    );
 
     // get the annual_interest before all payments
     const leaseAnnualInterestBeforeAll = currentLeaseState.annual_interest;
@@ -204,7 +227,6 @@ describe('Leaser contract tests - Repay lease', () => {
 
     // get the new lease state
     currentLeaseState = await leaseInstance.getLeaseStatus(mainLeaseAddress);
-    console.log(currentLeaseState);
     currentLeaseInterest = currentLeaseState.interest_due.amount;
     currentLeasePrincipal = currentLeaseState.principal_due.amount;
 
@@ -249,7 +271,6 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     leaseStateAfterRepay = await leaseInstance.getLeaseStatus(mainLeaseAddress);
-    console.log(leaseStateAfterRepay);
 
     // check that the repayment sequence is correct
     expect(+leaseStateAfterRepay.principal_due.amount).toBe(
