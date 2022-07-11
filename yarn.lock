@@ -1161,10 +1161,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@nolus/nolusjs@^0.0.20":
-  version "0.0.20"
-  resolved "https://registry.yarnpkg.com/@nolus/nolusjs/-/nolusjs-0.0.20.tgz#d7285eac1ccc5cd954232b181abfc93483f7873f"
-  integrity sha512-AJJWGJxp4gV0Eu5N20JLrvQ83/84gckWXnXpvIuv0HmCeqY3/UkYTtXfo97T+yPaTBH6pkNnl7i2XH593lzrHQ==
+"@nolus/nolusjs@^0.0.24":
+  version "0.0.24"
+  resolved "https://registry.yarnpkg.com/@nolus/nolusjs/-/nolusjs-0.0.24.tgz#589db7fd623d0c869349fefac1d591a4dd0c0a01"
+  integrity sha512-hI4CJWy9E4+7c14013Wu2wlqVcieRBgeDYLdg4WgUf7jUEnf6dkZ381DcX8eRxLrKqQSYrafhiPc/O41FPsm2g==
   dependencies:
     "@cosmjs/cosmwasm-stargate" "0.28.4"
     "@cosmjs/crypto" "0.28.4"
