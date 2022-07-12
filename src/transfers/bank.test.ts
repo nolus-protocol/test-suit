@@ -12,8 +12,8 @@ import NODE_ENDPOINT, {
 } from '../util/clients';
 import { customFees } from '../util/utils';
 
-describe('Transfers - IBC tokens', () => {
-  const ibcToken = process.env.IBC_TOKEN as string;
+describe('Transfers - tokens other than native', () => {
+  const existingDenom = process.env.STABLE_DENOM as string;
   let user1Wallet: NolusWallet;
   let user2Wallet: NolusWallet;
   let user3Wallet: NolusWallet;
@@ -27,31 +27,33 @@ describe('Transfers - IBC tokens', () => {
     user3Wallet = await getUser3Wallet();
 
     transfer = {
-      denom: ibcToken,
+      denom: existingDenom,
       amount: transferAmount,
     };
     // send some native tokens
     await sendInitTransferFeeTokens(user1Wallet, user2Wallet.address as string);
   });
 
-  test('user should have some balance and ibc token should be defined', async () => {
+  test('user should have some balance and the current token should be defined', async () => {
     const balance = await user1Wallet.getBalance(
       user1Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
 
-    expect(ibcToken).toBeDefined();
-    expect(ibcToken.length > 0).toBeTruthy();
+    expect(existingDenom).toBeDefined();
+    expect(existingDenom.length > 0).toBeTruthy();
     expect(BigInt(balance.amount) > 0).toBeTruthy();
   });
 
-  test('user should be able to transfer and receive ibc tokens including sending the entire amount tokens he owns', async () => {
+  test('user should be able to transfer and receive current tokens including sending the entire amount tokens he owns', async () => {
     const previousUser1Balance = await user1Wallet.getBalance(
       user1Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
 
-    // send some ibc tokens
+    await sendInitTransferFeeTokens(user1Wallet, user2Wallet.address as string);
+
+    // send some tokens
     const sendTokensResponse: DeliverTxResponse =
       await user1Wallet.transferAmount(
         user2Wallet.address as string,
@@ -62,14 +64,13 @@ describe('Transfers - IBC tokens', () => {
     assertIsDeliverTxSuccess(sendTokensResponse);
 
     // user2 -> user3
-
     const previousUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
     const previousUser3Balance = await user3Wallet.getBalance(
       user3Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
     const sendTokensResponse1: DeliverTxResponse =
       await user2Wallet.transferAmount(
@@ -82,11 +83,11 @@ describe('Transfers - IBC tokens', () => {
 
     const nextUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
     let nextUser3Balance = await user3Wallet.getBalance(
       user3Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
 
     expect(BigInt(nextUser2Balance.amount)).toBe(
@@ -113,12 +114,12 @@ describe('Transfers - IBC tokens', () => {
 
     const nextUser1Balance = await user1Wallet.getBalance(
       user1Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
 
     nextUser3Balance = await user3Wallet.getBalance(
       user3Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
 
     expect(BigInt(nextUser3Balance.amount)).toBe(
@@ -129,19 +130,19 @@ describe('Transfers - IBC tokens', () => {
     );
   });
 
-  test('user tries to send 0 ibc tokens - should produce an error', async () => {
+  test('user tries to send 0 tokens - should produce an error', async () => {
     const transfer = {
-      denom: ibcToken,
+      denom: existingDenom,
       amount: '0',
     };
 
     const previousUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
     const previousUser3Balance = await user3Wallet.getBalance(
       user3Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
 
     const broadcastTx = () =>
@@ -155,11 +156,11 @@ describe('Transfers - IBC tokens', () => {
 
     const nextUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
     const nextUser3Balance = await user1Wallet.getBalance(
       user3Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
 
     expect(BigInt(nextUser2Balance.amount)).toBe(
@@ -170,12 +171,12 @@ describe('Transfers - IBC tokens', () => {
     );
   });
 
-  test('user should not be able to send ibc tokens to an incompatible nolus wallet address', async () => {
+  test('user should not be able to send current tokens to an incompatible nolus wallet address', async () => {
     const WRONG_WALLET_ADDRESS = 'wasm1gzkmn2lfm56m0q0l4rmjamq7rlwpfjrp7k78xw'; // wasm1 -> nolus1
 
     const previousUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
 
     const broadcastTx = () =>
@@ -189,7 +190,7 @@ describe('Transfers - IBC tokens', () => {
 
     const nextUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      ibcToken,
+      existingDenom,
     );
 
     expect(BigInt(nextUser2Balance.amount)).toBe(
