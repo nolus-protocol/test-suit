@@ -3,7 +3,7 @@ set -euxo pipefail
 
 NOLUS_LOCAL_NET="http://localhost:26612"
 STABLE_DENOM="uusdc"
-IBC_TOKEN="ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2"
+WASM_ADMIN_KEY="wasm_admin"
 NOLUS_HOME_DIR="$HOME/.nolus"
 CONTRACTS_INFO_PATH=""
 
@@ -17,7 +17,7 @@ while [[ $# -gt 0 ]]; do
     "Usage: %s
     [--nolus-local-network <nolus-local-net-url>]
     [--contracts-result-file-path <path_to_contracts_info>]
-    [--ibc-token <ibc-denom>]
+    [--wasm-admin-key <existing_key>]
     [--stable-denom <string>]
     [--home-dir <nolus_accounts_dir>]" \
      "$0"
@@ -36,8 +36,8 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  --ibc-denom)
-    IBC_TOKEN="$2"
+  --wasm-admin-key)
+    WASM_ADMIN_KEY="$2"
     shift
     shift
     ;;
@@ -70,4 +70,4 @@ source "$SCRIPT_DIR"/verify.sh
 
 verify_mandatory "$CONTRACTS_INFO_PATH" "contracts info file path"
 
-prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$IBC_TOKEN" "$NOLUS_LOCAL_NET" "$NOLUS_HOME_DIR"
+prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "reserve" "$WASM_ADMIN_KEY"

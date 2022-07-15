@@ -14,7 +14,9 @@ env-prep:
     - apk --no-cache add curl
     - apk --no-cache add jq
   script:
-    - yarn prepare-env-dev
+    - yarn prepare-env-dev --mnemonic-faucet "$FAUCET_MNEMONIC_DEV"
+        --mnemonic-wasm-admin "$SMART_CONTRACTS_ADMIN_MNEMONIC"
+        --token-type "JOB-TOKEN" --token-value "$CI_JOB_TOKEN" --tag "$COSMZONE_PREFERRED_TAG"
   artifacts:
     paths:
     - .env

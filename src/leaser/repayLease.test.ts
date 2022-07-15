@@ -83,8 +83,6 @@ describe('Leaser contract tests - Repay lease', () => {
       borrowerWallet.address as string,
     );
 
-    console.log(lppDenom);
-
     const result = await leaseInstance.openLease(
       leaserContractAddress,
       borrowerWallet,
@@ -102,7 +100,6 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     const cInteresRate = currentLeaseState.opened?.interest_rate;
-    console.log(cInteresRate);
 
     if (!cInteresRate) {
       undefinedHandler();
@@ -167,7 +164,6 @@ describe('Leaser contract tests - Repay lease', () => {
 
     // send some tokens to the borrower
     // for the payment and fees
-    console.log(firstPayment);
     await user1Wallet.transferAmount(
       borrowerWallet.address as string,
       [firstPayment],
@@ -560,8 +556,6 @@ describe('Leaser contract tests - Repay lease', () => {
       return;
     }
 
-    console.log(cPrincipalBeforeRepay);
-
     // send some tokens to the borrower
     // for the payment and fees
     const repayAll = {
@@ -591,7 +585,6 @@ describe('Leaser contract tests - Repay lease', () => {
     const leaseStateBeforeRepay1 = await leaseInstance.getLeaseStatus(
       mainLeaseAddress,
     );
-    console.log(leaseStateBeforeRepay1.opened);
 
     // close
     await leaseInstance.closeLease(

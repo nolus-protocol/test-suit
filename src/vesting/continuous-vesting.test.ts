@@ -37,7 +37,6 @@ describe('Continuous vesting tests', () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     vestingWallet = await createWallet();
-    console.log(vestingWallet.address);
 
     createVestingAccountMsg.fromAddress = user1Wallet.address as string;
     createVestingAccountMsg.toAddress = vestingWallet.address as string;
@@ -65,7 +64,6 @@ describe('Continuous vesting tests', () => {
       vestingWallet.address as string,
       NATIVE_TOKEN_DENOM,
     );
-    console.log(vestingAccountBalance);
 
     expect(+vestingAccountBalance.amount).toBe(0);
   });
@@ -181,7 +179,6 @@ describe('Continuous vesting tests', () => {
       vestingWallet.address as string,
       NATIVE_TOKEN_DENOM,
     );
-    console.log(vestingAccountBalanceAfter);
 
     expect(+vestingAccountBalanceAfter.amount).toBe(
       +vestingAccountBalanceBefore.amount -

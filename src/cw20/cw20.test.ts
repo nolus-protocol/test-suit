@@ -49,7 +49,6 @@ describe('CW20 transfer', () => {
       customFees.upload,
     );
     const codeId = uploadReceipt.codeId;
-    console.log('UploadReceipt:', uploadReceipt);
 
     // instantiate the contract
     const instatiateMsg = {
@@ -71,7 +70,6 @@ describe('CW20 transfer', () => {
       customFees.init,
     );
     contractAddress = contract.contractAddress;
-    console.log('Contract address:', contractAddress);
   });
 
   test('contract should be deployed', async () => {
@@ -88,7 +86,6 @@ describe('CW20 transfer', () => {
       contractAddress,
       tokenInfoMsg,
     );
-    console.log('token_info: ', tokenInfoResponse);
 
     expect(tokenInfoResponse.name).toBe(tokenName);
     expect(tokenInfoResponse.symbol).toBe(tokenSymbol);
@@ -99,7 +96,6 @@ describe('CW20 transfer', () => {
       contractAddress,
       balanceMsg,
     );
-    console.log('User1 balance:', user1BalanceMsgResponse);
 
     expect(user1BalanceMsgResponse.balance).toBe(totalSupply);
   });
@@ -121,7 +117,6 @@ describe('CW20 transfer', () => {
     const user2BalanceBefore = (
       await user2Wallet.queryContractSmart(contractAddress, balanceMsgUser2)
     ).balance;
-    console.log('User2 before balance:', user2BalanceBefore);
     await user1Wallet.executeContract(
       contractAddress,
       transferMsg,
@@ -130,7 +125,6 @@ describe('CW20 transfer', () => {
     const user2BalanceAfter = (
       await user2Wallet.queryContractSmart(contractAddress, balanceMsgUser2)
     ).balance;
-    console.log('User2 after balance:', user2BalanceAfter);
 
     expect(BigInt(user2BalanceAfter)).toBe(
       BigInt(user2BalanceBefore) + BigInt(amountToTransfer),
@@ -172,11 +166,9 @@ describe('CW20 transfer', () => {
     const user2AllowanceBefore = (
       await user2Wallet.queryContractSmart(contractAddress, allowanceMsg)
     ).allowance;
-    console.log('User before allowance:', user2AllowanceBefore);
     const user2BalanceBefore = (
       await user2Wallet.queryContractSmart(contractAddress, balanceMsg)
     ).balance;
-    console.log('User before balance:', user2BalanceBefore);
 
     // send some native tokens to the user, so that they can call TransferFrom
     await user1Wallet.transferAmount(
@@ -193,7 +185,6 @@ describe('CW20 transfer', () => {
     const user2AllowanceAfter = (
       await user2Wallet.queryContractSmart(contractAddress, allowanceMsg)
     ).allowance;
-    console.log('User after allowance:', user2AllowanceAfter);
 
     expect(BigInt(user2AllowanceAfter)).toBe(
       BigInt(user2AllowanceBefore) + BigInt(amountToTransfer),
@@ -207,7 +198,6 @@ describe('CW20 transfer', () => {
     const user2BalanceAfter = (
       await user2Wallet.queryContractSmart(contractAddress, balanceMsg)
     ).balance;
-    console.log('User after balance:', user2BalanceAfter);
     console.log(
       'User after transfer allowance:',
       (await user2Wallet.queryContractSmart(contractAddress, allowanceMsg))

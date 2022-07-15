@@ -77,7 +77,6 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
       user2Wallet.address as string,
       NATIVE_TOKEN_DENOM,
     );
-    console.log(user2Balance); //should be 112 --> 100 from vesting + 12 from user1
 
     // try to delegate
     const delegateMsg = {

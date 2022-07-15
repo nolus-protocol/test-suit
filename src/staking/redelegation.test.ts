@@ -56,8 +56,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     user1Wallet = await getUser1Wallet();
     delegatorWallet = await createWallet();
 
-    console.log(delegatorWallet.address);
-
     srcValidatorAddress = getValidator1Address();
     dstValidatorAddress = getValidator2Address();
 

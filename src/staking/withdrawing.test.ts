@@ -30,7 +30,6 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     delegatorWallet = await createWallet();
-    console.log(delegatorWallet.address);
     validatorAddress = getValidator1Address();
 
     // send some tokens
@@ -41,8 +40,6 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
         +customFees.configs.amount[0].amount * 2
       ).toString(),
     };
-
-    console.log(initTransfer.amount);
 
     const broadcastTx = await user1Wallet.transferAmount(
       delegatorWallet.address as string,

@@ -116,7 +116,6 @@ describe('Leaser contract tests - Open a lease', () => {
     let leaserConfig = await leaseInstance.getLeaserConfig(
       leaserContractAddress,
     );
-    console.log(leaserConfig);
 
     expect(
       calcQuoteAnnualInterestRate(

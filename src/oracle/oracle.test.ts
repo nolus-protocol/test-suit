@@ -80,7 +80,6 @@ describe('Oracle contract tests', () => {
   // TO DO: Alarm ?
 
   test('feed price should works as expected', async () => {
-    console.log(PRICE_FEED_PERIOD);
     // change percentage needed to 1%
     await oracleInstance.changeConfig(
       contractAddress,
@@ -117,7 +116,7 @@ describe('Oracle contract tests', () => {
         prices: [
           {
             base: testPairMember,
-            values: [{ symbol: BASE_ASSET, amount: '1.3' }],
+            values: [{ denom: BASE_ASSET, amount: '1.3' }],
           },
         ],
       };
@@ -159,7 +158,7 @@ describe('Oracle contract tests', () => {
       prices: [
         {
           base: testPairMember,
-          values: [{ symbol: BASE_ASSET, amount: EXPECTED_PRICE }],
+          values: [{ denom: BASE_ASSET, amount: EXPECTED_PRICE }],
         },
       ],
     };
@@ -177,7 +176,7 @@ describe('Oracle contract tests', () => {
 
     // already enough votes - the price must be last added value
     expect(afterResult.prices[0].price.amount).toBe(EXPECTED_PRICE);
-    expect(afterResult.prices[0].price.symbol).toBe(BASE_ASSET);
+    expect(afterResult.prices[0].price.denom).toBe(BASE_ASSET);
 
     // the price feed period has expired + block creation time
     await sleep(BLOCK_CREATION_TIME_DEV + PRICE_FEED_PERIOD * 1000);

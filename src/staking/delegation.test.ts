@@ -42,8 +42,6 @@ describe('Staking Nolus tokens - Delegation', () => {
     user1Wallet = await getUser1Wallet();
     stakeholderWallet = await createWallet();
 
-    console.log(stakeholderWallet.address);
-
     validatorAddress = getValidator1Address();
 
     delegateMsg.value.delegatorAddress = stakeholderWallet.address as string;
