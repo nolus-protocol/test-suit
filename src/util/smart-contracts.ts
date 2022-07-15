@@ -19,11 +19,13 @@ export function calcQuoteAnnualInterestRate( // permille
   utilizationOptimal: number,
   baseInterestRate: number,
   addonOptimalInterestRate: number,
+  leaseInterestRateMargin: number,
 ): number {
   return Math.floor(
     (baseInterestRate +
       ((utilization - utilizationOptimal) / 100) * addonOptimalInterestRate) *
-      10,
+      10 +
+      leaseInterestRateMargin,
   );
 }
 

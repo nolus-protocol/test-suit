@@ -19,7 +19,9 @@ import { customFees, undefinedHandler } from '../util/utils';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
-describe('Staking Nolus tokens - Redelegation', () => {
+const maybe = process.env.NODE_ENV === 'local' ? describe : describe.skip;
+
+maybe('Staking Nolus tokens - Redelegation', () => {
   const NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
   let user1Wallet: NolusWallet;
   let delegatorWallet: NolusWallet;

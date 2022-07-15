@@ -1,5 +1,8 @@
 import { customFees, BLOCK_CREATION_TIME_DEV, sleep } from '../util/utils';
-import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
+import NODE_ENDPOINT, {
+  createWallet,
+  getWasmAdminWallet,
+} from '../util/clients';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 
@@ -16,7 +19,7 @@ describe('Oracle contract tests', () => {
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    user1Wallet = await getUser1Wallet();
+    user1Wallet = await getWasmAdminWallet();
     feederWallet = await createWallet();
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
@@ -25,7 +28,7 @@ describe('Oracle contract tests', () => {
     const config = await oracleInstance.getConfig(contractAddress);
 
     BASE_ASSET = config.base_asset;
-    PRICE_FEED_PERIOD = config.price_feed_period;
+    PRICE_FEED_PERIOD = config.price_feed_period_secs;
     PERCENTAGE_NEEDED = config.feeders_percentage_needed;
 
     // send some tokens to the feeder
@@ -77,6 +80,7 @@ describe('Oracle contract tests', () => {
   // TO DO: Alarm ?
 
   test('feed price should works as expected', async () => {
+    console.log(PRICE_FEED_PERIOD);
     // change percentage needed to 1%
     await oracleInstance.changeConfig(
       contractAddress,
@@ -113,7 +117,7 @@ describe('Oracle contract tests', () => {
         prices: [
           {
             base: testPairMember,
-            values: [{ denom: BASE_ASSET, amount: '1.3' }],
+            values: [{ symbol: BASE_ASSET, amount: '1.3' }],
           },
         ],
       };
@@ -155,7 +159,7 @@ describe('Oracle contract tests', () => {
       prices: [
         {
           base: testPairMember,
-          values: [{ denom: BASE_ASSET, amount: EXPECTED_PRICE }],
+          values: [{ symbol: BASE_ASSET, amount: EXPECTED_PRICE }],
         },
       ],
     };
@@ -173,7 +177,7 @@ describe('Oracle contract tests', () => {
 
     // already enough votes - the price must be last added value
     expect(afterResult.prices[0].price.amount).toBe(EXPECTED_PRICE);
-    expect(afterResult.prices[0].price.denom).toBe(BASE_ASSET);
+    expect(afterResult.prices[0].price.symbol).toBe(BASE_ASSET);
 
     // the price feed period has expired + block creation time
     await sleep(BLOCK_CREATION_TIME_DEV + PRICE_FEED_PERIOD * 1000);

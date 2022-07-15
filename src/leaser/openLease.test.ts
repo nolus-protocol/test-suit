@@ -1,5 +1,5 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { customFees } from '../util/utils';
+import { customFees, undefinedHandler } from '../util/utils';
 import {
   ChainConstants,
   NolusClient,
@@ -19,10 +19,9 @@ describe('Leaser contract tests - Open a lease', () => {
   let lppDenom: string;
   let leaseInstance: NolusContracts.Lease;
 
-  // TO DO: message about that soon
-  const baseInterestRate = 7; //%
-  const utilizationOptimal = 70; //%
-  const addonOptimalInterestRate = 2; //%
+  let baseInterestRate: number;
+  let utilizationOptimal: number;
+  let addonOptimalInterestRate: number;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -38,8 +37,12 @@ describe('Leaser contract tests - Open a lease', () => {
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
     leaseInstance = new NolusContracts.Lease(cosm);
 
-    // TO DO: We will have a message about that soon
-    lppDenom = process.env.STABLE_DENOM as string;
+    const lppConfig = await leaseInstance.getLppConfig(lppContractAddress);
+    baseInterestRate = lppConfig.base_interest_rate / 10; //%
+    utilizationOptimal = lppConfig.utilization_optimal / 10; //%
+    addonOptimalInterestRate = lppConfig.addon_optimal_interest_rate / 10; //%
+
+    lppDenom = lppConfig.lpn_symbol;
 
     // send init tokens to lpp address to provide liquidity
     await user1Wallet.transferAmount(
@@ -110,12 +113,18 @@ describe('Leaser contract tests - Open a lease', () => {
       +lppLiquidity.amount,
     );
 
+    let leaserConfig = await leaseInstance.getLeaserConfig(
+      leaserContractAddress,
+    );
+    console.log(leaserConfig);
+
     expect(
       calcQuoteAnnualInterestRate(
         utilization,
         utilizationOptimal,
         baseInterestRate,
         addonOptimalInterestRate,
+        leaserConfig.config.lease_interest_rate_margin,
       ),
     ).toBe(quote.annual_interest_rate);
 
@@ -137,9 +146,7 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     //get config before open a lease
-    const leaserConfig = await leaseInstance.getLeaserConfig(
-      leaserContractAddress,
-    );
+    leaserConfig = await leaseInstance.getLeaserConfig(leaserContractAddress);
 
     await leaseInstance.openLease(
       leaserContractAddress,
@@ -160,11 +167,16 @@ describe('Leaser contract tests - Open a lease', () => {
     const currentLeaseState = await leaseInstance.getLeaseStatus(
       leasesAfter[leasesAfter.length - 1],
     );
+    const cAmount = currentLeaseState.opened?.amount.amount;
+
+    if (!cAmount) {
+      undefinedHandler();
+      return;
+    }
 
     //check if this borrow<=init%*LeaseTotal(borrow+downpayment);
-    expect(+currentLeaseState.amount.amount - +downpayment).toBeLessThanOrEqual(
-      (leaserConfig.config.liability.initial / 100) *
-        +currentLeaseState.amount.amount,
+    expect(+cAmount - +downpayment).toBeLessThanOrEqual(
+      (leaserConfig.config.liability.init_percent / 100) * +cAmount,
     );
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
@@ -184,7 +196,7 @@ describe('Leaser contract tests - Open a lease', () => {
 
     expect(BigInt(lppLiquidityAfter.amount)).toBe(
       BigInt(lppLiquidityBefore.amount) -
-        (BigInt(currentLeaseState.amount.amount) - BigInt(downpayment)),
+        (BigInt(cAmount) - BigInt(downpayment)),
     );
   });
 
@@ -236,12 +248,17 @@ describe('Leaser contract tests - Open a lease', () => {
       +lppLiquidity.amount,
     );
 
+    const leaserConfig = await leaseInstance.getLeaserConfig(
+      leaserContractAddress,
+    );
+
     expect(
       calcQuoteAnnualInterestRate(
         utilization,
         utilizationOptimal,
         baseInterestRate,
         addonOptimalInterestRate,
+        leaserConfig.config.lease_interest_rate_margin,
       ),
     ).toBe(quote.annual_interest_rate);
 
@@ -311,6 +328,14 @@ describe('Leaser contract tests - Open a lease', () => {
       leasesAfter[leasesAfter.length - 1],
     );
 
+    const cAmountFirstLease = secondLeaseState.opened?.amount.amount;
+    const cAmountSecondLease = secondLeaseState.opened?.amount.amount;
+
+    if (!cAmountFirstLease || !cAmountSecondLease) {
+      undefinedHandler();
+      return;
+    }
+
     const borrowerBalanceAfter = await borrower2wallet.getBalance(
       borrower2wallet.address as string,
       lppDenom,
@@ -328,10 +353,8 @@ describe('Leaser contract tests - Open a lease', () => {
 
     expect(BigInt(lppLiquidityAfter.amount)).toBe(
       BigInt(lppLiquidityBefore.amount) -
-        (BigInt(firstLeaseState.amount.amount) -
-          BigInt(downpayment) / BigInt(2)) -
-        (BigInt(secondLeaseState.amount.amount) -
-          BigInt(downpayment) / BigInt(2)),
+        (BigInt(cAmountFirstLease) - BigInt(downpayment) / BigInt(2)) -
+        (BigInt(cAmountSecondLease) - BigInt(downpayment) / BigInt(2)),
     );
   });
 

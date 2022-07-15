@@ -14,8 +14,8 @@ export const customFees = {
     gas: '500000',
   },
   exec: {
-    amount: [{ amount: '3000', denom: NATIVE_MINIMAL_DENOM }],
-    gas: '500000',
+    amount: [{ amount: '5000', denom: NATIVE_MINIMAL_DENOM }],
+    gas: '600000',
   },
   transfer: {
     amount: [{ denom: NATIVE_MINIMAL_DENOM, amount: '700' }],

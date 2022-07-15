@@ -1,6 +1,6 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { Coin } from '@cosmjs/amino';
-import { customFees } from '../util/utils';
+import { customFees, undefinedHandler } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 
@@ -26,8 +26,8 @@ describe('Leaser contract tests - Close lease', () => {
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
     leaseInstance = new NolusContracts.Lease(cosm);
 
-    // TO DO: We will have a message about that soon
-    lppDenom = process.env.STABLE_DENOM as string;
+    const lppConfig = await leaseInstance.getLppConfig(lppContractAddress);
+    lppDenom = lppConfig.lpn_symbol;
 
     // send init tokens to lpp address to provide liquidity
     await user1Wallet.transferAmount(
@@ -101,16 +101,20 @@ describe('Leaser contract tests - Close lease', () => {
       mainLeaseAddress,
     );
 
-    const loanAmount = leaseStateBeforeRepay.amount.amount;
+    const loanAmount = leaseStateBeforeRepay.opened?.amount.amount;
+    const cInterest = leaseStateBeforeRepay.opened?.interest_due.amount;
+    const cPrincipal = leaseStateBeforeRepay.opened?.principal_due.amount;
+
+    if (!cInterest || !cPrincipal || !loanAmount) {
+      undefinedHandler();
+      return;
+    }
 
     // send some tokens to the borrower
     // for the payment and fees
     const repayAll = {
       denom: lppDenom,
-      amount: Math.floor(
-        +leaseStateBeforeRepay.interest_due.amount +
-          +leaseStateBeforeRepay.principal_due.amount,
-      ).toString(),
+      amount: Math.floor(+cInterest + +cPrincipal).toString(),
     };
 
     await user1Wallet.transferAmount(
@@ -134,7 +138,7 @@ describe('Leaser contract tests - Close lease', () => {
       mainLeaseAddress,
     );
 
-    expect(leaseStateAfterRepay).toBe(null); // TO DO: maybe this will return 'Closed'
+    expect(leaseStateAfterRepay.paid).toBeDefined();
 
     const leasesAfterRepay = await leaseInstance.getCurrentOpenLeases(
       leaserContractAddress,
@@ -159,6 +163,12 @@ describe('Leaser contract tests - Close lease', () => {
 
     expect(leasesAfterClose.length).toEqual(leasesAfterRepay.length);
 
+    const leaseStateAfterClose = await leaseInstance.getLeaseStatus(
+      mainLeaseAddress,
+    );
+
+    expect(leaseStateAfterClose.closed).toBeDefined();
+
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
       borrowerWallet.address as string,
       lppDenom,
@@ -182,7 +192,7 @@ describe('Leaser contract tests - Close lease', () => {
         customFees.exec,
       );
 
-    await expect(result).rejects.toThrow(/^.*to do.*/); // to do
+    await expect(result).rejects.toThrow(/^.*The underlying loan is closed.*/);
   });
 
   test('the borrower tries to close a brand new lease - should produce an error', async () => {
@@ -234,12 +244,17 @@ describe('Leaser contract tests - Close lease', () => {
       secondLeaseAddress,
     );
 
+    const cInterest = leaseStateBeforeRepay.opened?.interest_due.amount;
+    const cPrincipal = leaseStateBeforeRepay.opened?.principal_due.amount;
+
+    if (!cInterest || !cPrincipal) {
+      undefinedHandler();
+      return;
+    }
+
     const repayAll = {
       denom: lppDenom,
-      amount: Math.floor(
-        +leaseStateBeforeRepay.interest_due.amount +
-          +leaseStateBeforeRepay.principal_due.amount,
-      ).toString(),
+      amount: Math.floor(+cInterest + +cPrincipal).toString(),
     };
 
     // send some tokens to the borrower
@@ -262,7 +277,7 @@ describe('Leaser contract tests - Close lease', () => {
       secondLeaseAddress,
     );
 
-    expect(leaseStateAfterRepay).toBe(null); // TO DO: maybe this will return 'Closed'
+    expect(leaseStateAfterRepay.paid).toBeDefined(); // TO DO: maybe this will return 'Closed'
 
     await sendInitExecuteFeeTokens(user1Wallet, userWallet.address as string);
     const result = () =>
