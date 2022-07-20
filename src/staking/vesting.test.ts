@@ -10,13 +10,12 @@ import {
 } from '../util/codec/cosmos/vesting/v1beta1/tx';
 import Long from 'long';
 import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
-import { customFees, sleep, undefinedHandler } from '../util/utils';
+import { customFees, undefinedHandler } from '../util/utils';
 import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
 import {
   getDelegatorValidatorPairAmount,
   stakingModule,
 } from '../util/staking';
-import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Staking of unvested tokens', () => {
@@ -29,17 +28,15 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
   let user1Wallet: NolusWallet;
   let user2Wallet: NolusWallet;
   let validatorAddress: string;
-  let NATIVE_TOKEN_DENOM: string;
 
   beforeAll(async () => {
-    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     user2Wallet = await createWallet();
     validatorAddress = getValidator1Address();
   });
 
-  test('the stakeholder should not be able to delegate unvested tokens', async () => {
+  test('the stakeholder should be able to delegate unvested tokens', async () => {
     const createVestingAccountMsg: MsgCreateVestingAccount = {
       fromAddress: user1Wallet.address as string,
       toAddress: user2Wallet.address as string,
@@ -72,12 +69,6 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
 
     expect(assertIsDeliverTxSuccess(sendInitTokensResult)).toBeUndefined();
 
-    // get balance
-    const user2Balance = await user2Wallet.getBalance(
-      user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
-    );
-
     // try to delegate
     const delegateMsg = {
       typeUrl: `${stakingModule}.MsgDelegate`,
@@ -88,56 +79,23 @@ describe('Staking Nolus tokens - Staking of unvested tokens', () => {
       },
     };
 
-    const broadcastFailTx = await user2Wallet.signAndBroadcast(
+    await user2Wallet.signAndBroadcast(
       user2Wallet.address as string,
       [delegateMsg],
       customFees.configs,
     );
 
-    // TO DO: should produce an error due to insufficient amount
-    expect(broadcastFailTx.rawLog).toEqual(
-      'failed to execute message; message index: 0: invalid shares amount: invalid request',
-    );
-
-    // see the stakeholder staked tokens to the current validator - before delegation
-    const stakeholderDelegationsToValBefore =
-      await getDelegatorValidatorPairAmount(
-        user2Wallet.address as string,
-        validatorAddress,
-      );
-
-    if (!stakeholderDelegationsToValBefore) {
-      undefinedHandler();
-      return;
-    }
-
-    expect(stakeholderDelegationsToValBefore).toBe('0');
-
-    // wait for tokens to be vested and try to delegate again
-    await sleep((ENDTIME_SECONDS / 2) * 1000);
-
-    const broadcastSuccTx = await user2Wallet.signAndBroadcast(
+    // see the stakeholder staked tokens to the current validator
+    const stakeholderDelegationsToVal = await getDelegatorValidatorPairAmount(
       user2Wallet.address as string,
-      [delegateMsg],
-      customFees.configs,
+      validatorAddress,
     );
 
-    expect(assertIsDeliverTxSuccess(broadcastSuccTx)).toBeUndefined();
-
-    // see the stakeholder staked tokens to the current validator - after delegation
-    const stakeholderDelegationsToValAfter =
-      await getDelegatorValidatorPairAmount(
-        user2Wallet.address as string,
-        validatorAddress,
-      );
-
-    if (!stakeholderDelegationsToValAfter) {
+    if (!stakeholderDelegationsToVal) {
       undefinedHandler();
       return;
     }
 
-    expect(+stakeholderDelegationsToValAfter).toBe(
-      +stakeholderDelegationsToValBefore + +HALF_AMOUNT.amount,
-    );
+    expect(stakeholderDelegationsToVal).toBe(HALF_AMOUNT.amount);
   });
 });
