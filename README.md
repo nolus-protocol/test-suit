@@ -54,11 +54,11 @@ Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://
 1. On dev-net:
 
     ```sh
-    yarn prepare-env-dev <your_gitlab_access_token>
+    yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --mnemonic-wasm-admin <mnemonic_phrase> --token-type "PRIVATE-TOKEN" --token-value <your_gitlab_access_token>
     ```
 
     ```sh
-    yarn test-dev
+    yarn test
     ```
 
 2. On local-net:
@@ -73,17 +73,15 @@ Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://
 
     * **--nolus-local-network <nolus-local-net-url>**, by default this is: http://localhost:26612
 
-    * **--ibc-token <ibc-denom>**, by default this is: ibc/8A34AF0C1943FD0DFCDE9ADBF0B2C9959C45E87E6088EA2FC6ADACD59261B8A2
-
     * **--lpp-native <stable-denom>**, by default this is: uusdc
 
     * **--home-dir <nolus-accounts-dir>**, by default this is: home/.nolus
 
-    You can get selected IBC and lpp-native in reserve account through: **/cosmzone/scripts/init-local-network.sh**.
+    You can get selected lpp-native in reserve account through: **/cosmzone/scripts/init-local-network.sh**.
     Example:
 
     ``./scripts/init-local-network.sh --wasm-code-path <path_to_contracts_wasm_files> --wasm-script-path <path_to_"smart-contracts/scripts/deploy-contracts-genesis.sh"> --reserve-tokens 1000000000uusdc,100000000unolus``
 
     ```sh
-    yarn test-local
+    yarn test
     ```
