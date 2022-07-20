@@ -25,7 +25,7 @@ describe('Leaser contract tests - Repay lease', () => {
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
 
-  const downpayment = '10000000000';
+  const downpayment = '1000000000';
   const outstandingBySec = 15;
 
   beforeAll(async () => {
@@ -151,8 +151,6 @@ describe('Leaser contract tests - Repay lease', () => {
       ),
     );
 
-    //TO DO: verify margin interest, waiting for lease.state query update
-
     // get the annual_interest before all payments
     const leaseAnnualInterestBeforeAll =
       currentLeaseState.opened?.interest_rate;
@@ -217,7 +215,7 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     //TO DO: to be!
-    expect(+cInterestFirstRepay).toBeLessThanOrEqual(
+    expect(+cInterestFirstRepay).toBeGreaterThanOrEqual(
       +currentLeaseInterest -
         +firstPayment.amount +
         interestImmediatelyBeforeFirstCheck,
@@ -257,7 +255,7 @@ describe('Leaser contract tests - Repay lease', () => {
     await sleep(outstandingBySec * 1000);
 
     // get the new lease state
-    let timeOfLeaseStateCheck = (new Date().getTime() * 1000000).toString();
+    const timeOfLeaseStateCheck = (new Date().getTime() * 1000000).toString();
     currentLeaseState = await leaseInstance.getLeaseStatus(mainLeaseAddress);
     currentLeaseInterest = currentLeaseState.opened?.interest_due.amount;
     currentLeasePrincipal = currentLeaseState.opened?.principal_due.amount;
@@ -328,7 +326,7 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     // TO DO: to be!
-    expect(+cInterestAfterSecondRepay).toBeLessThanOrEqual(
+    expect(+cInterestAfterSecondRepay).toBeGreaterThanOrEqual(
       interestImmediatelyBeforeCheck,
     );
 
@@ -536,11 +534,6 @@ describe('Leaser contract tests - Repay lease', () => {
   });
 
   test('the borrower tries to repay the lease at once', async () => {
-    const borrowerBalanceBefore = await borrowerWallet.getBalance(
-      borrowerWallet.address as string,
-      lppDenom,
-    );
-
     const leaseStateBeforeRepay = await leaseInstance.getLeaseStatus(
       mainLeaseAddress,
     );
@@ -548,7 +541,6 @@ describe('Leaser contract tests - Repay lease', () => {
       leaseStateBeforeRepay.opened?.interest_due.amount;
     const cPrincipalBeforeRepay =
       leaseStateBeforeRepay.opened?.principal_due.amount;
-
     const loanAmount = leaseStateBeforeRepay.opened?.amount.amount;
 
     if (!cPrincipalBeforeRepay || !cInterestBeforeRepay || !loanAmount) {
@@ -560,9 +552,7 @@ describe('Leaser contract tests - Repay lease', () => {
     // for the payment and fees
     const repayAll = {
       denom: lppDenom,
-      amount: Math.floor(
-        +cInterestBeforeRepay + +cPrincipalBeforeRepay,
-      ).toString(),
+      amount: (+cInterestBeforeRepay + +cPrincipalBeforeRepay).toString(),
     };
 
     await user1Wallet.transferAmount(
@@ -581,9 +571,18 @@ describe('Leaser contract tests - Repay lease', () => {
       customFees.exec,
       [repayAll],
     );
-
-    const leaseStateBeforeRepay1 = await leaseInstance.getLeaseStatus(
+    const leaseStateAfterRepay = await leaseInstance.getLeaseStatus(
       mainLeaseAddress,
+    );
+
+    await sendInitExecuteFeeTokens(
+      user1Wallet,
+      borrowerWallet.address as string,
+    );
+
+    const borrowerBalanceBeforeClose = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
+      lppDenom,
     );
 
     // close
@@ -599,7 +598,7 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     expect(+borrowerBalanceAfter.amount).toBe(
-      +borrowerBalanceBefore.amount + +loanAmount,
+      +borrowerBalanceBeforeClose.amount + +loanAmount,
     );
 
     //return amount to the main address
