@@ -3,6 +3,7 @@ import { InstantiateResult } from '@cosmjs/cosmwasm-stargate';
 import NODE_ENDPOINT, { getUser2Wallet, getUser1Wallet } from '../util/clients';
 import { ChainConstants } from '@nolus/nolusjs';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
+import { customFees, gasPrice } from '../util/utils';
 
 describe('CW20 transfer', () => {
   const NATIVE_TOKEN = ChainConstants.COIN_MINIMAL_DENOM;
@@ -13,26 +14,29 @@ describe('CW20 transfer', () => {
   const tokenSymbol = 'TST';
   const tokenDecimals = 18;
   const totalSupply = '1000000000000000000';
-  const customFees = {
-    upload: {
-      amount: [{ amount: '2000000', denom: NATIVE_TOKEN }],
-      gas: '20000000',
-    },
-    init: {
-      amount: [{ amount: '500000', denom: NATIVE_TOKEN }],
-      gas: '500000',
-    },
-    exec: {
-      amount: [{ amount: '500000', denom: NATIVE_TOKEN }],
-      gas: '500000',
-    },
-    transfer: {
-      amount: [{ denom: NATIVE_TOKEN, amount: '1000' }],
-      gas: '200000',
-    },
-  };
+  let NATIVE_TOKEN_DENOM: string;
+  const treasuryAddress = process.env.TREASURY_ADDRESS as string;
+  // const customFees = {
+  //   upload: {
+  //     amount: [{ amount: '2000000', denom: NATIVE_TOKEN }],
+  //     gas: '20000000',
+  //   },
+  //   init: {
+  //     amount: [{ amount: '500000', denom: NATIVE_TOKEN }],
+  //     gas: '500000',
+  //   },
+  //   exec: {
+  //     amount: [{ amount: '500000', denom: NATIVE_TOKEN }],
+  //     gas: '500000',
+  //   },
+  //   transfer: {
+  //     amount: [{ denom: NATIVE_TOKEN, amount: '1000' }],
+  //     gas: '200000',
+  //   },
+  // };
 
   beforeAll(async () => {
+    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     user2Wallet = await getUser2Wallet();
@@ -42,11 +46,27 @@ describe('CW20 transfer', () => {
       './wasm-contracts/cw20_base.wasm',
     );
 
+    const treasuryBalanceBefore = await user1Wallet.getBalance(
+      treasuryAddress,
+      NATIVE_TOKEN_DENOM,
+    );
+
     // upload wasm binary
     const uploadReceipt = await user1Wallet.upload(
       user1Wallet.address as string,
       wasmBinary,
       customFees.upload,
+    );
+
+    const treasuryBalanceAfter = await user1Wallet.getBalance(
+      treasuryAddress,
+      NATIVE_TOKEN_DENOM,
+    );
+
+    expect(+treasuryBalanceAfter.amount).toBe(
+      +treasuryBalanceBefore.amount +
+        +customFees.upload.amount[0].amount -
+        Math.floor(+customFees.upload.gas * gasPrice),
     );
     const codeId = uploadReceipt.codeId;
 
@@ -62,6 +82,7 @@ describe('CW20 transfer', () => {
         },
       ],
     };
+
     const contract: InstantiateResult = await user1Wallet.instantiate(
       user1Wallet.address as string,
       codeId,
@@ -69,6 +90,18 @@ describe('CW20 transfer', () => {
       'Sample CW20',
       customFees.init,
     );
+
+    const treasuryBalanceAfterInit = await user1Wallet.getBalance(
+      treasuryAddress,
+      NATIVE_TOKEN_DENOM,
+    );
+
+    expect(+treasuryBalanceAfterInit.amount).toBe(
+      +treasuryBalanceAfter.amount +
+        +customFees.init.amount[0].amount -
+        Math.floor(+customFees.init.gas * gasPrice),
+    );
+
     contractAddress = contract.contractAddress;
   });
 
@@ -177,11 +210,29 @@ describe('CW20 transfer', () => {
       customFees.transfer,
       '',
     );
+
+    const treasuryBalanceBeforeExec = await user1Wallet.getBalance(
+      treasuryAddress,
+      NATIVE_TOKEN_DENOM,
+    );
+
     await user1Wallet.executeContract(
       contractAddress,
       increaseAllowanceMsg,
       customFees.exec,
     );
+
+    const treasuryBalanceAfterExec = await user1Wallet.getBalance(
+      treasuryAddress,
+      NATIVE_TOKEN_DENOM,
+    );
+
+    expect(+treasuryBalanceAfterExec.amount).toBe(
+      +treasuryBalanceBeforeExec.amount +
+        +customFees.exec.amount[0].amount -
+        Math.floor(+customFees.exec.gas * gasPrice),
+    );
+
     const user2AllowanceAfter = (
       await user2Wallet.queryContractSmart(contractAddress, allowanceMsg)
     ).allowance;

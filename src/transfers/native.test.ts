@@ -9,7 +9,7 @@ import NODE_ENDPOINT, {
   getUser2Wallet,
   getUser3Wallet,
 } from '../util/clients';
-import { customFees } from '../util/utils';
+import { customFees, gasPrice } from '../util/utils';
 import { ChainConstants } from '@nolus/nolusjs';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 import { sendInitTransferFeeTokens } from '../util/transfer';
@@ -23,6 +23,7 @@ describe('Transfers - Native transfer', () => {
   let transfer3: Coin;
   const transferAmount = 10;
   let NATIVE_TOKEN_DENOM: string;
+  const treasuryAddress = process.env.TREASURY_ADDRESS as string;
 
   beforeAll(async () => {
     NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
@@ -60,6 +61,10 @@ describe('Transfers - Native transfer', () => {
   });
 
   test('users should be able to transfer and receive native tokens', async () => {
+    const treasuryBalanceBefore = await user1Wallet.getBalance(
+      treasuryAddress,
+      NATIVE_TOKEN_DENOM,
+    );
     // user1 -> user2
     const previousUser1Balance = await user1Wallet.getBalance(
       user1Wallet.address as string,
@@ -76,6 +81,18 @@ describe('Transfers - Native transfer', () => {
         customFees.transfer,
         '',
       );
+
+    const treasuryBalanceAfter = await user1Wallet.getBalance(
+      treasuryAddress,
+      NATIVE_TOKEN_DENOM,
+    );
+
+    // 40% fees should be paid to treasury
+    expect(+treasuryBalanceAfter.amount).toBe(
+      +treasuryBalanceBefore.amount +
+        +customFees.transfer.amount[0].amount -
+        Math.floor(+customFees.transfer.gas * gasPrice),
+    );
 
     assertIsDeliverTxSuccess(broadcastTxResponse1);
 

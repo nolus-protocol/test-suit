@@ -4,26 +4,54 @@ export const BLOCK_CREATION_TIME_DEV = 5000;
 
 const NATIVE_MINIMAL_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
 
+export const gasPrice = 0.0025;
+export const validatorPart = 0.6; // 60%
+
 export const customFees = {
   upload: {
-    amount: [{ amount: '3000', denom: NATIVE_MINIMAL_DENOM }],
-    gas: '500000',
+    gas: '20000000',
+    amount: [
+      {
+        amount: Math.floor((20000000 * gasPrice) / validatorPart).toString(),
+        denom: NATIVE_MINIMAL_DENOM,
+      },
+    ],
   },
   init: {
-    amount: [{ amount: '3000', denom: NATIVE_MINIMAL_DENOM }],
     gas: '500000',
+    amount: [
+      {
+        amount: Math.floor((500000 * gasPrice) / validatorPart).toString(),
+        denom: NATIVE_MINIMAL_DENOM,
+      },
+    ],
   },
   exec: {
-    amount: [{ amount: '5000', denom: NATIVE_MINIMAL_DENOM }],
     gas: '600000',
+    amount: [
+      {
+        amount: Math.floor((600000 * gasPrice) / validatorPart).toString(),
+        denom: NATIVE_MINIMAL_DENOM,
+      },
+    ],
   },
   transfer: {
-    amount: [{ denom: NATIVE_MINIMAL_DENOM, amount: '700' }],
-    gas: '150000',
+    gas: '200000',
+    amount: [
+      {
+        amount: Math.floor((200000 * gasPrice) / validatorPart).toString(),
+        denom: NATIVE_MINIMAL_DENOM,
+      },
+    ],
   },
   configs: {
-    amount: [{ denom: NATIVE_MINIMAL_DENOM, amount: '1500' }],
     gas: '300000',
+    amount: [
+      {
+        amount: Math.floor((300000 * gasPrice) / validatorPart).toString(),
+        denom: NATIVE_MINIMAL_DENOM,
+      },
+    ],
   },
 };
 export async function sleep(ms: number): Promise<void> {

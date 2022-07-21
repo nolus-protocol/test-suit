@@ -17,11 +17,12 @@ import {
   getParamsInformation,
   stakingModule,
 } from '../util/staking';
-import { customFees, undefinedHandler } from '../util/utils';
+import { customFees, gasPrice, undefinedHandler } from '../util/utils';
 import { ChainConstants, NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Delegation', () => {
   const NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
+  const treasuryAddress = process.env.TREASURY_ADDRESS as string;
   let user1Wallet: NolusWallet;
   let stakeholderWallet: NolusWallet;
   let validatorAddress: string;
@@ -111,6 +112,11 @@ describe('Staking Nolus tokens - Delegation', () => {
       return;
     }
 
+    const treasuryBalanceBefore = await user1Wallet.getBalance(
+      treasuryAddress,
+      NATIVE_TOKEN_DENOM,
+    );
+
     // delegate tokens
     delegateMsg.value.amount.amount = delegatedAmount;
 
@@ -120,6 +126,17 @@ describe('Staking Nolus tokens - Delegation', () => {
       customFees.configs,
     );
     expect(assertIsDeliverTxSuccess(result)).toBeUndefined();
+
+    const treasuryBalanceAfter = await user1Wallet.getBalance(
+      treasuryAddress,
+      NATIVE_TOKEN_DENOM,
+    );
+
+    expect(+treasuryBalanceAfter.amount).toBe(
+      +treasuryBalanceBefore.amount +
+        +customFees.configs.amount[0].amount -
+        Math.floor(+customFees.configs.gas * gasPrice),
+    );
 
     // see the stakeholder staked tokens to the current validator - after delegation
     const stakeholderDelegationsToValAfter =
