@@ -1,9 +1,15 @@
 import NODE_ENDPOINT, {
   createWallet,
+  getUser1Wallet,
   getWasmAdminWallet,
 } from '../util/clients';
 import { customFees } from '../util/utils';
-import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
+import {
+  NolusClient,
+  NolusWallet,
+  NolusContracts,
+  ChainConstants,
+} from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
 
@@ -11,6 +17,7 @@ describe('Leaser contract tests - Config', () => {
   let user1Wallet: NolusWallet;
   let wallet: NolusWallet;
   let leaseInstance: NolusContracts.Lease;
+  let configBefore: NolusContracts.LeaserConfig;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
 
@@ -33,13 +40,27 @@ describe('Leaser contract tests - Config', () => {
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getWasmAdminWallet();
+    const userWithBalance = await getUser1Wallet();
     wallet = await createWallet();
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
     leaseInstance = new NolusContracts.Lease(cosm);
+
+    configBefore = await leaseInstance.getLeaserConfig(leaserContractAddress);
+
+    const adminBalance = {
+      amount: '10000000',
+      denom: ChainConstants.COIN_MINIMAL_DENOM,
+    };
+
+    await userWithBalance.transferAmount(
+      user1Wallet.address as string,
+      [adminBalance],
+      customFees.transfer,
+    );
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     leaserConfigMsg = {
       config: {
         lease_interest_rate_margin: 50,
@@ -55,6 +76,11 @@ describe('Leaser contract tests - Config', () => {
         },
       },
     };
+
+    const configAfter = await leaseInstance.getLeaserConfig(
+      leaserContractAddress,
+    );
+    expect(configAfter).toStrictEqual(configBefore);
   });
 
   test('an unauthorized user tries to change the configuration - should produce an error', async () => {
