@@ -16,24 +16,6 @@ describe('CW20 transfer', () => {
   const totalSupply = '1000000000000000000';
   let NATIVE_TOKEN_DENOM: string;
   const treasuryAddress = process.env.TREASURY_ADDRESS as string;
-  // const customFees = {
-  //   upload: {
-  //     amount: [{ amount: '2000000', denom: NATIVE_TOKEN }],
-  //     gas: '20000000',
-  //   },
-  //   init: {
-  //     amount: [{ amount: '500000', denom: NATIVE_TOKEN }],
-  //     gas: '500000',
-  //   },
-  //   exec: {
-  //     amount: [{ amount: '500000', denom: NATIVE_TOKEN }],
-  //     gas: '500000',
-  //   },
-  //   transfer: {
-  //     amount: [{ denom: NATIVE_TOKEN, amount: '1000' }],
-  //     gas: '200000',
-  //   },
-  // };
 
   beforeAll(async () => {
     NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
