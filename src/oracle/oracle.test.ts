@@ -1,10 +1,17 @@
 import { customFees, BLOCK_CREATION_TIME_DEV, sleep } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,
+  getUser1Wallet,
   getWasmAdminWallet,
 } from '../util/clients';
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import {
+  ChainConstants,
+  NolusClient,
+  NolusContracts,
+  NolusWallet,
+} from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
+import { Coin } from '@cosmjs/proto-signing';
 
 describe('Oracle contract tests', () => {
   let user1Wallet: NolusWallet;
@@ -20,6 +27,7 @@ describe('Oracle contract tests', () => {
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getWasmAdminWallet();
+    const userWithBalance = await getUser1Wallet();
     feederWallet = await createWallet();
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
@@ -31,11 +39,28 @@ describe('Oracle contract tests', () => {
     PRICE_FEED_PERIOD = config.price_feed_period_secs;
     PERCENTAGE_NEEDED = config.feeders_percentage_needed;
 
+    const adminBalance = {
+      amount: '10000000',
+      denom: ChainConstants.COIN_MINIMAL_DENOM,
+    };
+
+    await userWithBalance.transferAmount(
+      user1Wallet.address as string,
+      [adminBalance],
+      customFees.transfer,
+    );
+
     // send some tokens to the feeder
     await sendInitExecuteFeeTokens(user1Wallet, feederWallet.address as string);
 
     // this period must expires
     await sleep(PRICE_FEED_PERIOD * 1000);
+
+    const isFeeder = await oracleInstance.isFeeder(
+      contractAddress,
+      feederWallet.address as string,
+    );
+    expect(isFeeder).toBe(false);
 
     await oracleInstance.addFeeder(
       contractAddress,
