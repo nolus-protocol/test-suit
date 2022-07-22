@@ -20,19 +20,16 @@ import {
 } from 'cosmjs-types/cosmwasm/wasm/v1/proposal';
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 import { UpgradeProposal, ClientUpdateProposal } from '../util/proposals';
-import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
-import { customFees } from '../util/utils';
+import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 
 describe('Proposal submission tests', () => {
   let wallet: NolusWallet;
   let msg: any;
   let fee = customFees.transfer;
   let moduleName: string;
-  let NATIVE_TOKEN_DENOM: string;
 
   beforeAll(async () => {
-    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     NolusClient.setInstance(NODE_ENDPOINT);
     wallet = await getUser1Wallet();
 
@@ -42,7 +39,7 @@ describe('Proposal submission tests', () => {
       value: {
         content: {},
         proposer: wallet.address as string,
-        initialDeposit: [{ denom: NATIVE_TOKEN_DENOM, amount: '12' }],
+        initialDeposit: [{ denom: NATIVE_MINIMAL_DENOM, amount: '12' }],
       },
     };
   });
@@ -79,7 +76,7 @@ describe('Proposal submission tests', () => {
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
         recipient: wallet.address as string,
-        amount: [{ denom: NATIVE_TOKEN_DENOM, amount: '1000000' }],
+        amount: [{ denom: NATIVE_MINIMAL_DENOM, amount: '1000000' }],
       }).finish(),
     };
     moduleName = 'distribution';
@@ -200,7 +197,7 @@ describe('Proposal submission tests', () => {
         codeId: Long.fromInt(1),
         label: 'contractlabel',
         msg: toUtf8('{}'),
-        funds: [{ denom: NATIVE_TOKEN_DENOM, amount: '12' }],
+        funds: [{ denom: NATIVE_MINIMAL_DENOM, amount: '12' }],
       }).finish(),
     };
     moduleName = 'wasm';

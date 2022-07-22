@@ -10,23 +10,20 @@ import {
   getDelegatorRewardsFromValidator,
   getDelegatorWithdrawAddress,
 } from '../util/distribution';
-import { customFees, sleep } from '../util/utils';
+import { customFees, NATIVE_MINIMAL_DENOM, sleep } from '../util/utils';
 import { stakingModule } from '../util/staking';
-import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Withdraw reward', () => {
   let user1Wallet: NolusWallet;
   let delegatorWallet: NolusWallet;
   let validatorAddress: string;
-  let NATIVE_TOKEN_DENOM: string;
 
   const delegatedAmount = '3500';
   const initTokens = '3501';
   const percision = 18;
 
   beforeAll(async () => {
-    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     delegatorWallet = await createWallet();
@@ -34,7 +31,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
 
     // send some tokens
     const initTransfer = {
-      denom: NATIVE_TOKEN_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
       amount: (
         +initTokens +
         +customFees.configs.amount[0].amount * 2
@@ -55,7 +52,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
       value: {
         delegatorAddress: delegatorWallet.address as string,
         validatorAddress: validatorAddress,
-        amount: { denom: NATIVE_TOKEN_DENOM, amount: delegatedAmount },
+        amount: { denom: NATIVE_MINIMAL_DENOM, amount: delegatedAmount },
       },
     };
 
@@ -81,7 +78,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     // get delegator balance before
     const delegatorBalanceBefore = await delegatorWallet.getBalance(
       delegatorWallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     let rewardResult: QueryDelegationRewardsResponse;
@@ -89,7 +86,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     do {
       await sleep(50000);
 
-      console.log('Waiting for the reward to become 1unolus.');
+      console.log('Waiting for the reward to become 1unls.');
       rewardResult = await getDelegatorRewardsFromValidator(
         delegatorWallet.address as string,
         validatorAddress,
@@ -122,7 +119,7 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
     // get delegator balance after
     const delegatorBalanceAfter = await delegatorWallet.getBalance(
       delegatorWallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(BigInt(+delegatorBalanceAfter.amount)).toBeGreaterThan(

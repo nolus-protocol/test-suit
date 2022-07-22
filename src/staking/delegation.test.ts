@@ -17,11 +17,15 @@ import {
   getParamsInformation,
   stakingModule,
 } from '../util/staking';
-import { customFees, gasPrice, undefinedHandler } from '../util/utils';
-import { ChainConstants, NolusClient, NolusWallet } from '@nolus/nolusjs';
+import {
+  customFees,
+  gasPrice,
+  NATIVE_MINIMAL_DENOM,
+  undefinedHandler,
+} from '../util/utils';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Delegation', () => {
-  const NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
   const treasuryAddress = process.env.TREASURY_ADDRESS as string;
   let user1Wallet: NolusWallet;
   let stakeholderWallet: NolusWallet;
@@ -34,7 +38,7 @@ describe('Staking Nolus tokens - Delegation', () => {
     value: {
       delegatorAddress: '',
       validatorAddress: '',
-      amount: { denom: NATIVE_TOKEN_DENOM, amount: '' },
+      amount: { denom: NATIVE_MINIMAL_DENOM, amount: '' },
     },
   };
 
@@ -50,7 +54,7 @@ describe('Staking Nolus tokens - Delegation', () => {
 
     // send some tokens
     const initTransfer: Coin = {
-      denom: NATIVE_TOKEN_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
       amount: delegatedAmount + customFees.transfer.amount[0].amount,
     };
 
@@ -66,7 +70,7 @@ describe('Staking Nolus tokens - Delegation', () => {
   afterEach(() => {
     delegateMsg.value.delegatorAddress = stakeholderWallet.address as string;
     delegateMsg.value.validatorAddress = validatorAddress;
-    delegateMsg.value.amount.denom = NATIVE_TOKEN_DENOM;
+    delegateMsg.value.amount.denom = NATIVE_MINIMAL_DENOM;
   });
 
   test('the validator should exist and should be bonded', async () => {
@@ -114,7 +118,7 @@ describe('Staking Nolus tokens - Delegation', () => {
 
     const treasuryBalanceBefore = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     // delegate tokens
@@ -129,7 +133,7 @@ describe('Staking Nolus tokens - Delegation', () => {
 
     const treasuryBalanceAfter = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(+treasuryBalanceAfter.amount).toBe(

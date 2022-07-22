@@ -1,17 +1,16 @@
-import { customFees, BLOCK_CREATION_TIME_DEV, sleep } from '../util/utils';
+import {
+  customFees,
+  BLOCK_CREATION_TIME_DEV,
+  sleep,
+  NATIVE_MINIMAL_DENOM,
+} from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
   getWasmAdminWallet,
 } from '../util/clients';
-import {
-  ChainConstants,
-  NolusClient,
-  NolusContracts,
-  NolusWallet,
-} from '@nolus/nolusjs';
+import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
-import { Coin } from '@cosmjs/proto-signing';
 
 describe('Oracle contract tests', () => {
   let user1Wallet: NolusWallet;
@@ -41,7 +40,7 @@ describe('Oracle contract tests', () => {
 
     const adminBalance = {
       amount: '10000000',
-      denom: ChainConstants.COIN_MINIMAL_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
     };
 
     await userWithBalance.transferAmount(

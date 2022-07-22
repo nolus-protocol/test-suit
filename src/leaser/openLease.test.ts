@@ -1,11 +1,10 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { customFees, undefinedHandler } from '../util/utils';
 import {
-  ChainConstants,
-  NolusClient,
-  NolusContracts,
-  NolusWallet,
-} from '@nolus/nolusjs';
+  customFees,
+  NATIVE_MINIMAL_DENOM,
+  undefinedHandler,
+} from '../util/utils';
+import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   calcQuoteAnnualInterestRate,
@@ -13,7 +12,6 @@ import {
 } from '../util/smart-contracts';
 
 describe('Leaser contract tests - Open a lease', () => {
-  let NATIVE_TOKEN_DENOM: string;
   let user1Wallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppDenom: string;
@@ -29,7 +27,6 @@ describe('Leaser contract tests - Open a lease', () => {
   const downpayment = '100';
 
   beforeAll(async () => {
-    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     borrowerWallet = await createWallet();
@@ -214,7 +211,7 @@ describe('Leaser contract tests - Open a lease', () => {
       borrower2wallet.address as string,
       [
         {
-          denom: NATIVE_TOKEN_DENOM,
+          denom: NATIVE_MINIMAL_DENOM,
           amount: (+customFees.exec.amount[0].amount * 2).toString(),
         },
       ],

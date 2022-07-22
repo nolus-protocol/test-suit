@@ -3,14 +3,14 @@ import {
   Coin,
   DeliverTxResponse,
 } from '@cosmjs/stargate';
-import { ChainConstants, NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import { sendInitTransferFeeTokens } from '../util/transfer';
 import NODE_ENDPOINT, {
   getUser1Wallet,
   getUser2Wallet,
   getUser3Wallet,
 } from '../util/clients';
-import { customFees, gasPrice } from '../util/utils';
+import { customFees, gasPrice, NATIVE_MINIMAL_DENOM } from '../util/utils';
 
 describe('Transfers - tokens other than native', () => {
   const existingDenom = process.env.STABLE_DENOM as string;
@@ -19,11 +19,9 @@ describe('Transfers - tokens other than native', () => {
   let user3Wallet: NolusWallet;
   let transfer: Coin;
   const transferAmount = '10';
-  let NATIVE_TOKEN_DENOM: string;
   const treasuryAddress = process.env.TREASURY_ADDRESS as string;
 
   beforeAll(async () => {
-    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     user2Wallet = await getUser2Wallet();
@@ -78,7 +76,7 @@ describe('Transfers - tokens other than native', () => {
 
     const treasuryBalanceBefore = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     const sendTokensResponse1: DeliverTxResponse =
@@ -92,7 +90,7 @@ describe('Transfers - tokens other than native', () => {
 
     const treasuryBalanceAfter = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(+treasuryBalanceAfter.amount).toBe(

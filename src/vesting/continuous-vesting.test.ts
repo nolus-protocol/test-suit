@@ -4,7 +4,7 @@ import {
 } from '../util/codec/cosmos/vesting/v1beta1/tx';
 import Long from 'long';
 import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
-import { customFees, sleep } from '../util/utils';
+import { customFees, sleep, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
 import { ChainConstants } from '@nolus/nolusjs/build/constants';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
@@ -13,8 +13,8 @@ import { sendInitTransferFeeTokens } from '../util/transfer';
 import { EncodeObject } from '@cosmjs/proto-signing';
 
 describe('Continuous vesting tests', () => {
-  const FULL_AMOUNT: Coin = { denom: 'unolus', amount: '10000' };
-  const HALF_AMOUNT: Coin = { denom: 'unolus', amount: '5000' };
+  const FULL_AMOUNT: Coin = { denom: NATIVE_MINIMAL_DENOM, amount: '10000' };
+  const HALF_AMOUNT: Coin = { denom: NATIVE_MINIMAL_DENOM, amount: '5000' };
   const ENDTIME_SECONDS = 50;
   let NATIVE_TOKEN_DENOM: string;
   let user1Wallet: NolusWallet;
@@ -49,7 +49,9 @@ describe('Continuous vesting tests', () => {
 
   test('creation a continuous vesting account with 0 amount - should produce an error', async () => {
     // try to create vesting account
-    createVestingAccountMsg.amount = [{ denom: 'unolus', amount: '0' }];
+    createVestingAccountMsg.amount = [
+      { denom: NATIVE_MINIMAL_DENOM, amount: '0' },
+    ];
     const broadcastTx = () =>
       user1Wallet.signAndBroadcast(
         user1Wallet.address as string,
@@ -57,7 +59,7 @@ describe('Continuous vesting tests', () => {
         customFees.configs,
       );
 
-    await expect(broadcastTx).rejects.toThrow(/^.*0unolus: invalid coins.*/);
+    await expect(broadcastTx).rejects.toThrow(/^.*0unls: invalid coins.*/);
 
     // get balance
     const vestingAccountBalance = await vestingWallet.getBalance(
@@ -149,7 +151,7 @@ describe('Continuous vesting tests', () => {
     );
     expect(isDeliverTxFailure(sendFailTx)).toBeTruthy();
     expect(sendFailTx.rawLog).toMatch(
-      /^.*smaller than 5000unolus: insufficient funds.*/,
+      /^.*smaller than 5000unls: insufficient funds.*/,
     );
     await sleep((ENDTIME_SECONDS / 2) * 1000 + 1000);
 
@@ -163,7 +165,7 @@ describe('Continuous vesting tests', () => {
 
     expect(isDeliverTxFailure(sendFailTx)).toBeTruthy();
     expect(sendFailTx.rawLog).toMatch(
-      /^.*smaller than 10000unolus: insufficient funds.*/,
+      /^.*smaller than 10000unls: insufficient funds.*/,
     );
 
     assertIsDeliverTxSuccess(

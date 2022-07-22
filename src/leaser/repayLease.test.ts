@@ -390,7 +390,7 @@ describe('Leaser contract tests - Repay lease', () => {
       );
 
     await expect(result).rejects.toThrow(
-      /^.*Found currency unolus expecting uusdc.*/,
+      /^.*Found currency unls expecting uusdc.*/,
     );
   });
 

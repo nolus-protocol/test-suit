@@ -15,14 +15,16 @@ import {
   getDelegatorValidatorsRedelegationsInformation,
   stakingModule,
 } from '../util/staking';
-import { customFees, undefinedHandler } from '../util/utils';
-import { ChainConstants } from '@nolus/nolusjs/build/constants';
+import {
+  customFees,
+  NATIVE_MINIMAL_DENOM,
+  undefinedHandler,
+} from '../util/utils';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 const maybe = process.env.NODE_ENV === 'local' ? describe : describe.skip;
 
 maybe('Staking Nolus tokens - Redelegation', () => {
-  const NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
   let user1Wallet: NolusWallet;
   let delegatorWallet: NolusWallet;
   let srcValidatorAddress: string;
@@ -37,7 +39,7 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     value: {
       delegatorAddress: '',
       validatorAddress: '',
-      amount: { denom: NATIVE_TOKEN_DENOM, amount: delegatedAmount },
+      amount: { denom: NATIVE_MINIMAL_DENOM, amount: delegatedAmount },
     },
   };
 
@@ -47,7 +49,7 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       delegatorAddress: '',
       validatorSrcAddress: '',
       validatorDstAddress: '',
-      amount: { denom: NATIVE_TOKEN_DENOM, amount: delegatedAmount },
+      amount: { denom: NATIVE_MINIMAL_DENOM, amount: delegatedAmount },
     },
   };
 
@@ -67,7 +69,7 @@ maybe('Staking Nolus tokens - Redelegation', () => {
 
     // send some tokens
     const initTransfer: Coin = {
-      denom: NATIVE_TOKEN_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
       amount: delegatedAmount + customFees.transfer.amount[0].amount,
     };
 
@@ -84,7 +86,7 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     redelegateMsg.value.delegatorAddress = delegatorWallet.address as string;
     redelegateMsg.value.validatorDstAddress = dstValidatorAddress;
     redelegateMsg.value.amount.amount = redelegatedAmount;
-    redelegateMsg.value.amount.denom = NATIVE_TOKEN_DENOM;
+    redelegateMsg.value.amount.denom = NATIVE_MINIMAL_DENOM;
   });
 
   test('the delegator tries to redelegate tokens from a non-existent delegate-validator pair - should produce an error', async () => {

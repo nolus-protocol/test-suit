@@ -14,12 +14,14 @@ import {
   getDelegatorValidatorPairAmount,
   stakingModule,
 } from '../util/staking';
-import { customFees, undefinedHandler } from '../util/utils';
-import { ChainConstants } from '@nolus/nolusjs/build/constants';
+import {
+  customFees,
+  NATIVE_MINIMAL_DENOM,
+  undefinedHandler,
+} from '../util/utils';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Undelegation', () => {
-  const NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
   let user1Wallet: NolusWallet;
   let delegatorWallet: NolusWallet;
   let validatorAddress: string;
@@ -33,7 +35,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
     value: {
       delegatorAddress: '',
       validatorAddress: '',
-      amount: { denom: NATIVE_TOKEN_DENOM, amount: '' },
+      amount: { denom: NATIVE_MINIMAL_DENOM, amount: '' },
     },
   };
 
@@ -46,7 +48,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
 
     // send some tokens
     const initTransfer: Coin = {
-      denom: NATIVE_TOKEN_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
       amount: delegatedAmount + customFees.transfer.amount[0].amount,
     };
 
@@ -65,7 +67,7 @@ describe('Staking Nolus tokens - Undelegation', () => {
   afterEach(() => {
     generalMsg.value.delegatorAddress = delegatorWallet.address as string;
     generalMsg.value.validatorAddress = validatorAddress;
-    generalMsg.value.amount.denom = NATIVE_TOKEN_DENOM;
+    generalMsg.value.amount.denom = NATIVE_MINIMAL_DENOM;
   });
 
   test('the delegator tries to undelegate tokens from a non-existent delegate-validator pair - should produce an error', async () => {

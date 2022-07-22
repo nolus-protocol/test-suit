@@ -3,13 +3,8 @@ import NODE_ENDPOINT, {
   getUser1Wallet,
   getWasmAdminWallet,
 } from '../util/clients';
-import { customFees } from '../util/utils';
-import {
-  NolusClient,
-  NolusWallet,
-  NolusContracts,
-  ChainConstants,
-} from '@nolus/nolusjs';
+import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
 
@@ -50,7 +45,7 @@ describe('Leaser contract tests - Config', () => {
 
     const adminBalance = {
       amount: '10000000',
-      denom: ChainConstants.COIN_MINIMAL_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
     };
 
     await userWithBalance.transferAmount(

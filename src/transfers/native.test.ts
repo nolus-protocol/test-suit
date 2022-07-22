@@ -9,8 +9,7 @@ import NODE_ENDPOINT, {
   getUser2Wallet,
   getUser3Wallet,
 } from '../util/clients';
-import { customFees, gasPrice } from '../util/utils';
-import { ChainConstants } from '@nolus/nolusjs';
+import { customFees, gasPrice, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 import { sendInitTransferFeeTokens } from '../util/transfer';
 
@@ -22,31 +21,29 @@ describe('Transfers - Native transfer', () => {
   let transfer2: Coin;
   let transfer3: Coin;
   const transferAmount = 10;
-  let NATIVE_TOKEN_DENOM: string;
   const treasuryAddress = process.env.TREASURY_ADDRESS as string;
 
   beforeAll(async () => {
-    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     user2Wallet = await getUser2Wallet();
     user3Wallet = await getUser3Wallet();
 
     transfer1 = {
-      denom: NATIVE_TOKEN_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
       amount: (
         transferAmount +
         +customFees.transfer.amount[0].amount * 2
       ).toString(),
     };
     transfer2 = {
-      denom: NATIVE_TOKEN_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
       amount: (
         transferAmount + +customFees.transfer.amount[0].amount
       ).toString(),
     };
     transfer3 = {
-      denom: NATIVE_TOKEN_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
       amount: transferAmount.toString(),
     };
   });
@@ -54,7 +51,7 @@ describe('Transfers - Native transfer', () => {
   test('account should have some balance', async () => {
     const balance = await user1Wallet.getBalance(
       user1Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(BigInt(balance.amount) > 0).toBeTruthy();
@@ -63,16 +60,16 @@ describe('Transfers - Native transfer', () => {
   test('users should be able to transfer and receive native tokens', async () => {
     const treasuryBalanceBefore = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     // user1 -> user2
     const previousUser1Balance = await user1Wallet.getBalance(
       user1Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     let previousUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     const broadcastTxResponse1: DeliverTxResponse =
       await user1Wallet.transferAmount(
@@ -84,7 +81,7 @@ describe('Transfers - Native transfer', () => {
 
     const treasuryBalanceAfter = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     // 40% fees should be paid to treasury
@@ -98,11 +95,11 @@ describe('Transfers - Native transfer', () => {
 
     const nextUser1Balance = await user1Wallet.getBalance(
       user1Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     let nextUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(BigInt(nextUser1Balance.amount)).toBe(
@@ -117,11 +114,11 @@ describe('Transfers - Native transfer', () => {
     // user2 -> user3
     previousUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     const previousUser3Balance = await user3Wallet.getBalance(
       user3Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     const broadcastTxResponse2: DeliverTxResponse =
@@ -134,11 +131,11 @@ describe('Transfers - Native transfer', () => {
     assertIsDeliverTxSuccess(broadcastTxResponse2);
     nextUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     const nextUser3Balance = await user3Wallet.getBalance(
       user3Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(BigInt(nextUser2Balance.amount)).toBe(
@@ -163,11 +160,11 @@ describe('Transfers - Native transfer', () => {
 
     const user1Balance = await user1Wallet.getBalance(
       user1Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     const user3Balance = await user3Wallet.getBalance(
       user3Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(BigInt(user1Balance.amount)).toBe(
@@ -181,16 +178,16 @@ describe('Transfers - Native transfer', () => {
 
   test('user tries to send 0 tokens - should produce an error', async () => {
     const transfer = {
-      denom: NATIVE_TOKEN_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
       amount: '0',
     };
     const previousUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     const previousUser3Balance = await user1Wallet.getBalance(
       user3Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     const broadcastTx = () =>
@@ -201,15 +198,15 @@ describe('Transfers - Native transfer', () => {
         '',
       );
 
-    await expect(broadcastTx).rejects.toThrow(/^.*0unolus: invalid coins.*/);
+    await expect(broadcastTx).rejects.toThrow(/^.*0unls: invalid coins.*/);
 
     const nextUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     const nextUser3Balance = await user3Wallet.getBalance(
       user3Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(BigInt(nextUser2Balance.amount)).toBe(
@@ -225,15 +222,15 @@ describe('Transfers - Native transfer', () => {
 
     const previousUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     const transfer = {
-      denom: NATIVE_TOKEN_DENOM,
+      denom: NATIVE_MINIMAL_DENOM,
       amount: previousUser2Balance.amount,
     };
     const previousUser3Balance = await user3Wallet.getBalance(
       user3Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     const broadcastTxResponse: DeliverTxResponse =
@@ -249,11 +246,11 @@ describe('Transfers - Native transfer', () => {
 
     const nextUser3Balance = await user3Wallet.getBalance(
       user3Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
     const nextUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(BigInt(nextUser2Balance.amount)).toBe(
@@ -270,7 +267,7 @@ describe('Transfers - Native transfer', () => {
 
     const previousUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     const broadcastTx = () =>
@@ -284,7 +281,7 @@ describe('Transfers - Native transfer', () => {
 
     const nextUser2Balance = await user2Wallet.getBalance(
       user2Wallet.address as string,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(BigInt(nextUser2Balance.amount)).toBe(

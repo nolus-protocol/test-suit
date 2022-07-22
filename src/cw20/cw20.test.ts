@@ -1,12 +1,10 @@
 import * as fs from 'fs';
 import { InstantiateResult } from '@cosmjs/cosmwasm-stargate';
 import NODE_ENDPOINT, { getUser2Wallet, getUser1Wallet } from '../util/clients';
-import { ChainConstants } from '@nolus/nolusjs';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
-import { customFees, gasPrice } from '../util/utils';
+import { customFees, gasPrice, NATIVE_MINIMAL_DENOM } from '../util/utils';
 
 describe('CW20 transfer', () => {
-  const NATIVE_TOKEN = ChainConstants.COIN_MINIMAL_DENOM;
   let user1Wallet: NolusWallet;
   let user2Wallet: NolusWallet;
   let contractAddress: string;
@@ -14,11 +12,9 @@ describe('CW20 transfer', () => {
   const tokenSymbol = 'TST';
   const tokenDecimals = 18;
   const totalSupply = '1000000000000000000';
-  let NATIVE_TOKEN_DENOM: string;
   const treasuryAddress = process.env.TREASURY_ADDRESS as string;
 
   beforeAll(async () => {
-    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     user2Wallet = await getUser2Wallet();
@@ -30,7 +26,7 @@ describe('CW20 transfer', () => {
 
     const treasuryBalanceBefore = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     // upload wasm binary
@@ -42,7 +38,7 @@ describe('CW20 transfer', () => {
 
     const treasuryBalanceAfter = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(+treasuryBalanceAfter.amount).toBe(
@@ -75,7 +71,7 @@ describe('CW20 transfer', () => {
 
     const treasuryBalanceAfterInit = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(+treasuryBalanceAfterInit.amount).toBe(
@@ -162,7 +158,7 @@ describe('CW20 transfer', () => {
       },
     };
     const nativeTokenTransfer = {
-      denom: NATIVE_TOKEN,
+      denom: NATIVE_MINIMAL_DENOM,
       amount: '2000000',
     };
 
@@ -195,7 +191,7 @@ describe('CW20 transfer', () => {
 
     const treasuryBalanceBeforeExec = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     await user1Wallet.executeContract(
@@ -206,7 +202,7 @@ describe('CW20 transfer', () => {
 
     const treasuryBalanceAfterExec = await user1Wallet.getBalance(
       treasuryAddress,
-      NATIVE_TOKEN_DENOM,
+      NATIVE_MINIMAL_DENOM,
     );
 
     expect(+treasuryBalanceAfterExec.amount).toBe(

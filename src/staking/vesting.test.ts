@@ -10,7 +10,11 @@ import {
 } from '../util/codec/cosmos/vesting/v1beta1/tx';
 import Long from 'long';
 import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
-import { customFees, undefinedHandler } from '../util/utils';
+import {
+  customFees,
+  NATIVE_MINIMAL_DENOM,
+  undefinedHandler,
+} from '../util/utils';
 import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
 import {
   getDelegatorValidatorPairAmount,
@@ -19,9 +23,9 @@ import {
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
 describe('Staking Nolus tokens - Staking of unvested tokens', () => {
-  const FULL_AMOUNT: Coin = { denom: 'unolus', amount: '100' };
+  const FULL_AMOUNT: Coin = { denom: NATIVE_MINIMAL_DENOM, amount: '100' };
   const HALF_AMOUNT: Coin = {
-    denom: 'unolus',
+    denom: NATIVE_MINIMAL_DENOM,
     amount: (+FULL_AMOUNT.amount / 2).toString(),
   };
   const ENDTIME_SECONDS = 30;
