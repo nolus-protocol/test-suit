@@ -369,7 +369,7 @@ describe('Leaser contract tests - Open a lease', () => {
       leaseInstance.openLease(
         leaserContractAddress,
         borrowerWallet,
-        'not-existend',
+        'unsuported',
         customFees.exec,
         [{ denom: lppDenom, amount: '1' }],
       );
