@@ -1,16 +1,23 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import {
+  customFees,
+  NATIVE_MINIMAL_DENOM,
+  sleep,
+  undefinedHandler,
+} from '../util/utils';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 
-describe('Lender tests - Provide liquidity', () => {
+describe('Lender tests - Make deposit', () => {
   let user1Wallet: NolusWallet;
   let lenderWallet: NolusWallet;
   let lppDenom: string;
   let leaseInstance: NolusContracts.Lease;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
+  const leaserContractAddress = process.env.LEASER_ADDRESS as string;
 
-  const deposit = '10000';
+  const deposit = '100000';
+  const downpayment = '10000000000';
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
@@ -25,30 +32,45 @@ describe('Lender tests - Provide liquidity', () => {
   });
 
   test('the successful provide liquidity scenario - should work as expected', async () => {
+    const priceMsg = { price: [] };
+
     const lppLiquidityBefore = await lenderWallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
 
-    const priceMsg = { price: [] };
+    const lppBalanceBeginning = await leaseInstance.getLppBalance(
+      lppContractAddress,
+    );
+
     const price = await lenderWallet.queryContractSmart(
       lppContractAddress,
       priceMsg,
     );
-    console.log(price);
 
-    console.log(await leaseInstance.getLppBalance(lppContractAddress));
+    if (+lppLiquidityBefore.amount === 0) {
+      expect(price.amount.amount).toBe('1');
+      expect(price.amount_quote.amount).toBe('1');
+    } else {
+      // a/b === c/d if a*d == b*c
+      expect(
+        +price.amount_quote.amount * +lppBalanceBeginning.balance_nlpn.amount,
+      ).toBe(
+        (+lppBalanceBeginning.balance.amount +
+          +lppBalanceBeginning.total_principal_due.amount +
+          +lppBalanceBeginning.total_interest_due.amount) *
+          price.amount.amount,
+      );
+    }
 
     const lenderDepositBefore = await leaseInstance.getLenderDeposit(
       lppContractAddress,
       lenderWallet.address as string,
     );
 
-    //  send some tokens to the lender
-    // for the deposit and fees
     await user1Wallet.transferAmount(
       lenderWallet.address as string,
-      [{ denom: lppDenom, amount: deposit }],
+      [{ denom: lppDenom, amount: (+downpayment * 2).toString() }],
       customFees.transfer,
     );
 
@@ -59,12 +81,11 @@ describe('Lender tests - Provide liquidity', () => {
 
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
 
-    console.log(deposit);
     await leaseInstance.lenderDeposit(
       lppContractAddress,
       lenderWallet,
       customFees.exec,
-      [{ denom: lppDenom, amount: deposit }],
+      [{ denom: lppDenom, amount: (+downpayment * 2).toString() }],
     );
 
     const lppLiquidityAfter = await lenderWallet.getBalance(
@@ -75,6 +96,7 @@ describe('Lender tests - Provide liquidity', () => {
     const lppBalanceResponse = await leaseInstance.getLppBalance(
       lppContractAddress,
     );
+
     const lenderBalanceAfter = await lenderWallet.getBalance(
       lenderWallet.address as string,
       lppDenom,
@@ -84,80 +106,108 @@ describe('Lender tests - Provide liquidity', () => {
       lppContractAddress,
       lenderWallet.address as string,
     );
-    console.log(lenderDepositAfter);
-    console.log(lenderDepositBefore);
 
     expect(+lppLiquidityAfter.amount).toBe(
-      +lppLiquidityBefore.amount + +deposit,
+      +lppLiquidityBefore.amount + +downpayment * 2,
     );
 
     expect(+lppLiquidityAfter.amount).toBe(+lppBalanceResponse.balance.amount);
 
     expect(+lenderBalanceAfter.amount).toBe(
-      +lenderBalanceBefore.amount - +deposit,
+      +lenderBalanceBefore.amount - +downpayment * 2,
     );
 
     expect(+lenderDepositAfter.balance).toBe(
       +lenderDepositBefore.balance +
-        Math.floor(
-          (+deposit * +price.amount.amount) / +price.amount_quote.amount,
+        Math.trunc(
+          +downpayment *
+            2 *
+            (+price.amount.amount / +price.amount_quote.amount),
         ),
     );
-  });
 
-  test('the lender should be able to deposit more than once', async () => {
-    const lppLiquidityBefore = await lenderWallet.getBalance(
-      lppContractAddress,
+    const result = await leaseInstance.openLease(
+      leaserContractAddress,
+      user1Wallet,
       lppDenom,
+      customFees.exec,
+      [{ denom: lppDenom, amount: downpayment }],
     );
 
-    //  send some tokens to the lender
-    // for the deposit and fees
+    const leaseAddr = result.logs[0].events[7].attributes[3].value;
+    expect(leaseAddr).not.toBe('');
+
+    // wait for interest
+    await sleep(10000);
+
+    const currentLeaseState = await leaseInstance.getLeaseStatus(leaseAddr);
+
     await user1Wallet.transferAmount(
       lenderWallet.address as string,
       [{ denom: lppDenom, amount: deposit }],
       customFees.transfer,
     );
+    await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
 
-    const lenderBalanceBefore = await lenderWallet.getBalance(
-      lenderWallet.address as string,
-      lppDenom,
+    const lppBalanceAfterLeaseOpen = await leaseInstance.getLppBalance(
+      lppContractAddress,
     );
 
-    await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
+    const priceImediatAfterLeaseOpening = await lenderWallet.queryContractSmart(
+      lppContractAddress,
+      priceMsg,
+    );
+
+    // a/b === c/d if a*d == b*c
+    expect(
+      +priceImediatAfterLeaseOpening.amount_quote.amount *
+        +lppBalanceAfterLeaseOpen.balance_nlpn.amount,
+    ).toBe(
+      (+lppBalanceAfterLeaseOpen.balance.amount +
+        +lppBalanceAfterLeaseOpen.total_principal_due.amount +
+        +lppBalanceAfterLeaseOpen.total_interest_due.amount) *
+        priceImediatAfterLeaseOpening.amount.amount,
+    );
 
     await leaseInstance.lenderDeposit(
       lppContractAddress,
       lenderWallet,
       customFees.exec,
-      [{ denom: lppDenom, amount: Math.floor(+deposit / 2).toString() }],
+      [{ denom: lppDenom, amount: deposit }],
     );
 
-    await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
-
-    await leaseInstance.lenderDeposit(
+    const priceAfterLeaseOpening = await lenderWallet.queryContractSmart(
       lppContractAddress,
-      lenderWallet,
-      customFees.exec,
-      [{ denom: lppDenom, amount: Math.floor(+deposit / 2).toString() }],
+      priceMsg,
     );
 
-    const lppLiquidityAfter = await lenderWallet.getBalance(
+    const lppLiquidityAfterLeaseOpening = await lenderWallet.getBalance(
       lppContractAddress,
       lppDenom,
     );
 
-    const lenderBalanceAfter = await lenderWallet.getBalance(
+    const lenderDepositAfterLeaseOpening = await leaseInstance.getLenderDeposit(
+      lppContractAddress,
       lenderWallet.address as string,
-      lppDenom,
     );
 
-    expect(+lppLiquidityAfter.amount).toBe(
-      +lppLiquidityBefore.amount + Math.floor(+deposit / 2) * 2,
-    );
+    const borrowAmount = currentLeaseState.opened?.amount.amount;
 
-    expect(+lenderBalanceAfter.amount).toBe(
-      +lenderBalanceBefore.amount - Math.floor(+deposit / 2) * 2,
+    if (!borrowAmount) {
+      undefinedHandler();
+      return;
+    }
+
+    expect(+lppLiquidityAfterLeaseOpening.amount).toBe(
+      +lppLiquidityAfter.amount - +borrowAmount + +downpayment + +deposit,
+    );
+    expect(+lenderDepositAfterLeaseOpening.balance).toBe(
+      +lenderDepositAfter.balance +
+        Math.trunc(
+          +deposit *
+            (+priceAfterLeaseOpening.amount.amount /
+              +priceAfterLeaseOpening.amount_quote.amount),
+        ),
     );
   });
 
@@ -258,6 +308,32 @@ describe('Lender tests - Provide liquidity', () => {
         [{ denom: lppDenom, amount: '0' }],
       );
     await expect(depositResult).rejects.toThrow(/^.*invalid coins.*/);
+
+    const lppLiquidityAfter = await lenderWallet.getBalance(
+      lppContractAddress,
+      lppDenom,
+    );
+
+    expect(+lppLiquidityAfter.amount).toBe(+lppLiquidityBefore.amount);
+  });
+
+  test('the lender tries not to send funds when calling "deposit" - should produce an error', async () => {
+    const lppLiquidityBefore = await lenderWallet.getBalance(
+      lppContractAddress,
+      lppDenom,
+    );
+
+    await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
+
+    const depositResult = () =>
+      leaseInstance.lenderDeposit(
+        lppContractAddress,
+        lenderWallet,
+        customFees.exec,
+      );
+    await expect(depositResult).rejects.toThrow(
+      /^.* Expecting funds of uusdc but found none.*/,
+    );
 
     const lppLiquidityAfter = await lenderWallet.getBalance(
       lppContractAddress,

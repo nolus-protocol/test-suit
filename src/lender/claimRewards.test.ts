@@ -93,10 +93,10 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+user1BalanceAfter.amount).toBe(
-      +user1BalanceBefore.amount -
-        +rewards.amount -
-        +customFees.exec.amount[0].amount,
+    expect(BigInt(user1BalanceAfter.amount)).toBe(
+      BigInt(user1BalanceBefore.amount) -
+        BigInt(rewards.amount) -
+        BigInt(customFees.exec.amount[0].amount),
     );
 
     const lenderRewards = await leaseInstance.getLenderRewards(
