@@ -27,7 +27,11 @@ if [[ $TEST_ORACLE == "true" ]] ; then
     yarn test src/oracle
 fi
 
-if [[ $TEST_LEASER == "true" ]] ; then
-    yarn test src/leaser
+if [[ $TEST_BORROWER == "true" ]] ; then
+    yarn test src/borrower
+fi
+
+if [[ $TEST_LENDER == "true" ]] ; then
+    yarn test src/lender
 fi
 
