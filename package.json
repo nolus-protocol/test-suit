@@ -9,7 +9,7 @@
     "prepare-env-dev": "/bin/bash ./scripts/prepare-env-dev.sh",
     "prepare-env-local": "/bin/bash ./scripts/prepare-env-local.sh",
     "run-tests-pipeline": "/bin/bash ./scripts/run-tests-pipeline.sh",
-    "test": "jest --runInBand",
+    "test": "jest --runInBand lender",
     "lint": "eslint 'src/**/*.{js,ts,tsx}' --quiet --fix"
   },
   "keywords": [],
@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@cosmjs/launchpad": "^0.27.1",
-    "@nolus/nolusjs": "^0.0.36",
+    "@nolus/nolusjs": "^0.0.37",
     "axios": "^0.26.1",
     "bip32": "^2.0.6",
     "bip39": "^3.0.4",

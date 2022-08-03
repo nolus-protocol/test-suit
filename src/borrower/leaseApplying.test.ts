@@ -81,7 +81,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
     const quoteQueryResult = () =>
       leaseInstance.makeLeaseApply(leaserContractAddress, '0', lppDenom);
     await expect(quoteQueryResult).rejects.toThrow(
-      /^.*cannot open lease with zero downpayment.*/,
+      /^.*Cannot open lease with zero downpayment.*/,
     );
   });
 
