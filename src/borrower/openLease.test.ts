@@ -41,13 +41,12 @@ describe('Leaser contract tests - Open a lease', () => {
 
     lppDenom = lppConfig.lpn_symbol;
 
-    // send init tokens to lpp address to provide liquidity
-    await user1Wallet.transferAmount(
+    await leaseInstance.lenderDeposit(
       lppContractAddress,
+      user1Wallet,
+      customFees.exec,
       [{ denom: lppDenom, amount: '100000000' }],
-      customFees.transfer,
     );
-
     const lppLiquidity = await borrowerWallet.getBalance(
       lppContractAddress,
       lppDenom,

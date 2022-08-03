@@ -25,13 +25,15 @@ describe('Leaser contract tests - Apply for a lease', () => {
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
     leaseInstance = new NolusContracts.Lease(cosm);
 
-    // TO DO: We will have a message about that soon
-    lppDenom = process.env.STABLE_DENOM as string;
+    const lppConfig = await leaseInstance.getLppConfig(lppContractAddress);
+    lppDenom = lppConfig.lpn_symbol;
+
     // send init tokens to lpp address to provide liquidity, otherwise cant send query
-    await user1Wallet.transferAmount(
+    await leaseInstance.lenderDeposit(
       lppContractAddress,
+      user1Wallet,
+      customFees.exec,
       [{ denom: lppDenom, amount: '10000' }],
-      customFees.transfer,
     );
 
     // get the liquidity
