@@ -10,7 +10,6 @@ describe('Lender tests - Claim rewards', () => {
   let lppDenom: string;
   let leaseInstance: NolusContracts.Lease;
   let rewards: Coin;
-  let distributeRewardsMsg: any;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const deposit = '1000000000';
 
@@ -25,7 +24,6 @@ describe('Lender tests - Claim rewards', () => {
     lppDenom = lppConfig.lpn_symbol;
 
     rewards = { amount: '20000000000', denom: NATIVE_MINIMAL_DENOM };
-    distributeRewardsMsg = { distribute_rewards: [] };
   });
 
   test('the successful claim rewards scenario - should work as expected', async () => {
@@ -78,13 +76,10 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    // Send Rewards
-    await user1Wallet.execute(
-      user1Wallet.address as string,
+    await leaseInstance.distributeRewards(
       lppContractAddress,
-      distributeRewardsMsg,
+      user1Wallet,
       customFees.exec,
-      undefined,
       [rewards],
     );
 
@@ -135,12 +130,10 @@ describe('Lender tests - Claim rewards', () => {
       lenderWallet.address as string,
     );
 
-    await user1Wallet.execute(
-      user1Wallet.address as string,
+    await leaseInstance.distributeRewards(
       lppContractAddress,
-      distributeRewardsMsg,
+      user1Wallet,
       customFees.exec,
-      undefined,
       [rewards],
     );
 
@@ -194,16 +187,13 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    const distributeRewardsMsg = { distribute_rewards: [] };
     const rewards = { amount: '0', denom: NATIVE_MINIMAL_DENOM };
 
     const broadcastTx = () =>
-      user1Wallet.execute(
-        user1Wallet.address as string,
+      leaseInstance.distributeRewards(
         lppContractAddress,
-        distributeRewardsMsg,
+        user1Wallet,
         customFees.exec,
-        undefined,
         [rewards],
       );
 
@@ -224,12 +214,10 @@ describe('Lender tests - Claim rewards', () => {
     );
 
     const broadcastTx = () =>
-      user1Wallet.execute(
-        user1Wallet.address as string,
+      leaseInstance.distributeRewards(
         lppContractAddress,
-        distributeRewardsMsg,
+        user1Wallet,
         customFees.exec,
-        undefined,
       );
 
     await expect(broadcastTx).rejects.toThrow(
@@ -250,16 +238,13 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    const distributeRewardsMsg = { distribute_rewards: [] };
     const rewards = { amount: '10', denom: lppDenom };
 
     const broadcastTx = () =>
-      user1Wallet.execute(
-        user1Wallet.address as string,
+      leaseInstance.distributeRewards(
         lppContractAddress,
-        distributeRewardsMsg,
+        user1Wallet,
         customFees.exec,
-        undefined,
         [rewards],
       );
 

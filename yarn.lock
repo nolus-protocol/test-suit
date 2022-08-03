@@ -1161,15 +1161,17 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@nolus/nolusjs@^0.0.33":
-  version "0.0.33"
-  resolved "https://registry.yarnpkg.com/@nolus/nolusjs/-/nolusjs-0.0.33.tgz#e9f61945fbf0b432ca4206b8277ee8a07fa1fd50"
-  integrity sha512-gvJV1sdeD1TKKl4wukF8Z77es0xZ0q3uZPxMHKNVeNQXZtWuGuFCQ8LQUHT8SAoj2TSQ4sBgcgH9aCqNhdz57g==
+"@nolus/nolusjs@^0.0.36":
+  version "0.0.36"
+  resolved "https://registry.yarnpkg.com/@nolus/nolusjs/-/nolusjs-0.0.36.tgz#90b330619088fced3ffa26c9b8c5a9c2dc9fbffa"
+  integrity sha512-2JuWZ5R5nn7bPhVQOf+6T5K5WtRmjG9DaWktvEButSJx2VKHWAaDygqHHLZnWEbiz8lc+qwmNSKMgW9PzciXhw==
   dependencies:
     "@cosmjs/cosmwasm-stargate" "0.28.4"
     "@cosmjs/crypto" "0.28.4"
+    "@cosmjs/encoding" "0.28.4"
     "@cosmjs/ledger-amino" "0.28.4"
     "@cosmjs/proto-signing" "0.28.4"
+    "@cosmjs/stargate" "0.28.4"
     "@cosmjs/tendermint-rpc" "0.28.4"
     "@keplr-wallet/crypto" "^0.10.5"
     "@keplr-wallet/unit" "^0.10.5"

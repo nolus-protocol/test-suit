@@ -32,8 +32,6 @@ describe('Lender tests - Make deposit', () => {
   });
 
   test('the successful provide liquidity scenario - should work as expected', async () => {
-    const priceMsg = { price: [] };
-
     const lppLiquidityBefore = await lenderWallet.getBalance(
       lppContractAddress,
       lppDenom,
@@ -43,10 +41,7 @@ describe('Lender tests - Make deposit', () => {
       lppContractAddress,
     );
 
-    const price = await lenderWallet.queryContractSmart(
-      lppContractAddress,
-      priceMsg,
-    );
+    const price = await leaseInstance.getPrice(lppContractAddress);
 
     if (+lppLiquidityBefore.amount === 0) {
       expect(price.amount.amount).toBe('1');
@@ -59,7 +54,7 @@ describe('Lender tests - Make deposit', () => {
         (+lppBalanceBeginning.balance.amount +
           +lppBalanceBeginning.total_principal_due.amount +
           +lppBalanceBeginning.total_interest_due.amount) *
-          price.amount.amount,
+          +price.amount.amount,
       );
     }
 
@@ -153,9 +148,8 @@ describe('Lender tests - Make deposit', () => {
       lppContractAddress,
     );
 
-    const priceImediatAfterLeaseOpening = await lenderWallet.queryContractSmart(
+    const priceImediatAfterLeaseOpening = await leaseInstance.getPrice(
       lppContractAddress,
-      priceMsg,
     );
 
     // a/b === c/d if a*d == b*c
@@ -166,7 +160,7 @@ describe('Lender tests - Make deposit', () => {
       (+lppBalanceAfterLeaseOpen.balance.amount +
         +lppBalanceAfterLeaseOpen.total_principal_due.amount +
         +lppBalanceAfterLeaseOpen.total_interest_due.amount) *
-        priceImediatAfterLeaseOpening.amount.amount,
+        +priceImediatAfterLeaseOpening.amount.amount,
     );
 
     await leaseInstance.lenderDeposit(
@@ -176,9 +170,8 @@ describe('Lender tests - Make deposit', () => {
       [{ denom: lppDenom, amount: deposit }],
     );
 
-    const priceAfterLeaseOpening = await lenderWallet.queryContractSmart(
+    const priceAfterLeaseOpening = await leaseInstance.getPrice(
       lppContractAddress,
-      priceMsg,
     );
 
     const lppLiquidityAfterLeaseOpening = await lenderWallet.getBalance(
