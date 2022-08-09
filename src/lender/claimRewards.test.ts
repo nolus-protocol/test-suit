@@ -99,8 +99,19 @@ describe('Lender tests - Claim rewards', () => {
       lenderWallet.address as string,
     );
 
-    console.log(lenderRewards);
-    // TO DO: calc lender rewards
+    const calcLenderRewards = Math.trunc(
+      (+rewards.amount / +lppBalanceAfter.balance_nlpn.amount) *
+        +lenderDepositAfter.balance,
+    );
+
+    // TO DO: error
+    // const errorEstimation =
+    //   (((+rewards.amount / +lppBalanceAfter.balance_nlpn.amount) *
+    //     +lenderDepositAfter.balance) %
+    //     1.0) *
+    //   (+price.amount.amount / +price.amount_quote.amount);
+
+    expect(+lenderRewards.rewards.amount).toBe(calcLenderRewards);
 
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
 
