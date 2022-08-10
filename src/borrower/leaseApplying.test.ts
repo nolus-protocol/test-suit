@@ -16,8 +16,6 @@ describe('Leaser contract tests - Apply for a lease', () => {
   const downpayment = '100';
 
   beforeAll(async () => {
-    // if the openLease tests start first, the current tests will fail due to a problem with the qoute request, so sleep()
-    await sleep(60000);
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     borrowerWallet = await createWallet();

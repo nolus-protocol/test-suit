@@ -373,9 +373,7 @@ describe('Leaser contract tests - Open a lease', () => {
         [{ denom: lppDenom, amount: '1' }],
       );
 
-    await expect(openLease).rejects.toThrow(
-      /^.*Aborted: panicked at 'assertion failed.*/,
-    );
+    await expect(openLease).rejects.toThrow(/^.*TO DO:.*/);
 
     // get borrower balance
     const borrowerBalanceAfter = await borrowerWallet.getBalance(

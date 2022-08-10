@@ -102,6 +102,8 @@ describe('Lender tests - Burn deposit', () => {
       customFees.exec,
     );
 
+    // TO DO: claim should be exec bacause Deposited_nLPN == WithdrawAmount_nLPN
+
     const lenderDepositAfterSecondBurn = await leaseInstance.getLenderDeposit(
       lppContractAddress,
       lenderWallet.address as string,
@@ -140,7 +142,9 @@ describe('Lender tests - Burn deposit', () => {
         customFees.exec,
       );
 
-    await expect(broadcastTx).rejects.toThrow(/^.*invalid coins.*/);
+    await expect(broadcastTx).rejects.toThrow(
+      /^.*The deposit does not exist.*/,
+    );
   });
 
   test('the lender tries to burn more deposit than he owns - should produce an error', async () => {
