@@ -26,15 +26,6 @@ describe('Treasury tests - Request rewards', () => {
     leaseInstance = new NolusContracts.Lease(cosm);
 
     rewards = { symbol: NATIVE_MINIMAL_DENOM, amount: '100000' };
-
-    // //treasury configure_reward_transfer msg
-    // configRewardsTransferMsg = {
-    //   configure_reward_transfer: {
-    //     rewards_dispatcher: newDispatcherWallet.address,
-    //   },
-    // };
-
-    // sendRewardsMsg = { send_rewards: { amount: rewards } };
   });
 
   test('the configured dispatcher account tries to request rewards from the treasury - should work as expected', async () => {
@@ -47,13 +38,6 @@ describe('Treasury tests - Request rewards', () => {
       user1Wallet,
       wasmAdminWallet.address as string,
     );
-
-    // await wasmAdminWallet.execute(
-    //   wasmAdminWallet.address as string,
-    //   treasuryContractAddress,
-    //   configRewardsTransferMsg,
-    //   customFees.exec,
-    // );
 
     await leaseInstance.configRewardsTransfer(
       treasuryContractAddress,
@@ -71,14 +55,6 @@ describe('Treasury tests - Request rewards', () => {
       treasuryContractAddress,
       NATIVE_MINIMAL_DENOM,
     );
-
-    // send rewards initialized by dispatcher
-    // await newDispatcherWallet.execute(
-    //   newDispatcherWallet.address as string,
-    //   treasuryContractAddress,
-    //   sendRewardsMsg,
-    //   customFees.exec,
-    // );
 
     await leaseInstance.sendRewardsMsg(
       treasuryContractAddress,
@@ -115,13 +91,6 @@ describe('Treasury tests - Request rewards', () => {
       newDispatcherWallet.address as string,
     );
 
-    // await newDispatcherWallet.execute(
-    //   newDispatcherWallet.address as string,
-    //   treasuryContractAddress,
-    //   sendRewardsMsg,
-    //   customFees.exec,
-    // );
-
     await leaseInstance.sendRewardsMsg(
       treasuryContractAddress,
       newDispatcherWallet,
@@ -140,15 +109,6 @@ describe('Treasury tests - Request rewards', () => {
   });
 
   test('an unauthorized user tries to request rewards from the treasury - should produce an error', async () => {
-    //address different from the configured dispatcher address
-    // const broadcastTx = () =>
-    //   user1Wallet.execute(
-    //     user1Wallet.address as string,
-    //     treasuryContractAddress,
-    //     sendRewardsMsg,
-    //     customFees.exec,
-    //   );
-
     const broadcastTx = () =>
       leaseInstance.sendRewardsMsg(
         treasuryContractAddress,
@@ -161,18 +121,6 @@ describe('Treasury tests - Request rewards', () => {
   });
 
   test('an unauthorized user tries to change dispatcher address - should produce an error', async () => {
-    //only contract's admin can configures rewards dispatcher address
-    // configRewardsTransferMsg.configure_reward_transfer.rewards_dispatcher =
-    //   user1Wallet.address as string;
-
-    // const broadcastTx = () =>
-    //   user1Wallet.execute(
-    //     user1Wallet.address as string,
-    //     treasuryContractAddress,
-    //     configRewardsTransferMsg,
-    //     customFees.exec,
-    //   );
-
     const broadcastTx = () =>
       leaseInstance.configRewardsTransfer(
         treasuryContractAddress,
@@ -191,14 +139,6 @@ describe('Treasury tests - Request rewards', () => {
     );
 
     rewards.amount = '0';
-
-    // const broadcastTx = () =>
-    //   newDispatcherWallet.execute(
-    //     newDispatcherWallet.address as string,
-    //     treasuryContractAddress,
-    //     sendRewardsMsg,
-    //     customFees.exec,
-    //   );
 
     const broadcastTx = () =>
       leaseInstance.sendRewardsMsg(
@@ -228,14 +168,6 @@ describe('Treasury tests - Request rewards', () => {
       (+customFees.exec.amount[0].amount -
         Math.floor(+customFees.exec.gas * gasPrice))
     ).toString();
-
-    // const broadcastTx = () =>
-    //   newDispatcherWallet.execute(
-    //     newDispatcherWallet.address as string,
-    //     treasuryContractAddress,
-    //     sendRewardsMsg,
-    //     customFees.exec,
-    //   );
 
     const broadcastTx = () =>
       leaseInstance.sendRewardsMsg(
