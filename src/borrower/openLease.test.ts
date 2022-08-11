@@ -437,4 +437,20 @@ describe('Leaser contract tests - Open a lease', () => {
     );
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });
+
+  test('the lpp "open loan" functionality should be used only by the lease contract', async () => {
+    const lppOpenLoanMsg = {
+      open_loan: { amount: { amount: '10', symbol: lppDenom } },
+    };
+
+    const openLoan = () =>
+      user1Wallet.execute(
+        user1Wallet.address as string,
+        lppContractAddress,
+        lppOpenLoanMsg,
+        customFees.exec,
+      );
+
+    await expect(openLoan).rejects.toThrow(/^.*No such contract.*/);
+  });
 });

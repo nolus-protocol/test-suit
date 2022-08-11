@@ -1,6 +1,6 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { Coin } from '@cosmjs/amino';
-import { customFees, sleep } from '../util/utils';
+import { customFees } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 
 describe('Leaser contract tests - Apply for a lease', () => {

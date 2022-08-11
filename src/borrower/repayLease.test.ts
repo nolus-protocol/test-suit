@@ -571,9 +571,6 @@ describe('Leaser contract tests - Repay lease', () => {
       customFees.exec,
       [repayAll],
     );
-    const leaseStateAfterRepay = await leaseInstance.getLeaseStatus(
-      mainLeaseAddress,
-    );
 
     await sendInitExecuteFeeTokens(
       user1Wallet,
@@ -585,12 +582,30 @@ describe('Leaser contract tests - Repay lease', () => {
       lppDenom,
     );
 
+    // try lpp.outstanding_interest
+    let getOutstandingInterest = await leaseInstance.getOutstandingInterest(
+      lppContractAddress,
+      mainLeaseAddress,
+      (new Date().getTime() * 1000000).toString(),
+    );
+
+    expect(getOutstandingInterest).toBe(null);
+
     // close
     await leaseInstance.closeLease(
       mainLeaseAddress,
       borrowerWallet,
       customFees.exec,
     );
+
+    // try lpp.outstanding_interest
+    getOutstandingInterest = await leaseInstance.getOutstandingInterest(
+      lppContractAddress,
+      mainLeaseAddress,
+      (new Date().getTime() * 1000000).toString(),
+    );
+
+    expect(getOutstandingInterest).toBe(null);
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
       borrowerWallet.address as string,
@@ -611,6 +626,152 @@ describe('Leaser contract tests - Repay lease', () => {
       [borrowerBalanceAfter],
       customFees.transfer,
     );
+  });
+
+  test('the borrower tries to repay an already closed lease - should produce an error', async () => {
+    const repay = {
+      denom: lppDenom,
+      amount: '10',
+    };
+
+    await user1Wallet.transferAmount(
+      borrowerWallet.address as string,
+      [repay],
+      customFees.transfer,
+    );
+    await sendInitExecuteFeeTokens(
+      user1Wallet,
+      borrowerWallet.address as string,
+    );
+
+    const result = () =>
+      leaseInstance.repayLease(
+        mainLeaseAddress,
+        borrowerWallet,
+        customFees.exec,
+        [repay],
+      );
+
+    await expect(result).rejects.toThrow(/^.*The underlying loan is closed.*/);
+  });
+
+  test('the borrower sends excess amount - should work as expected', async () => {
+    const borrowerWallet = await createWallet();
+
+    await user1Wallet.transferAmount(
+      borrowerWallet.address as string,
+      [{ denom: lppDenom, amount: downpayment }],
+      customFees.transfer,
+    );
+    await sendInitExecuteFeeTokens(
+      user1Wallet,
+      borrowerWallet.address as string,
+    );
+
+    const result = await leaseInstance.openLease(
+      leaserContractAddress,
+      borrowerWallet,
+      lppDenom,
+      customFees.exec,
+      [{ denom: lppDenom, amount: downpayment }],
+    );
+
+    const leaseAddress = result.logs[0].events[7].attributes[3].value;
+
+    expect(leaseAddress).not.toBe('');
+
+    const currentLeaseState = await leaseInstance.getLeaseStatus(leaseAddress);
+
+    const currentLeaseInterest = currentLeaseState.opened?.interest_due.amount;
+    const currentLeasePrincipal =
+      currentLeaseState.opened?.principal_due.amount;
+    const currentLeaseAmount = currentLeaseState.opened?.amount.amount;
+
+    if (
+      !currentLeaseInterest ||
+      !currentLeasePrincipal ||
+      !currentLeaseAmount
+    ) {
+      undefinedHandler();
+      return;
+    }
+
+    const overage = 100000;
+    const payment = {
+      denom: lppDenom,
+      amount: (
+        +currentLeaseInterest +
+        +currentLeasePrincipal +
+        overage
+      ).toString(),
+    };
+
+    await user1Wallet.transferAmount(
+      borrowerWallet.address as string,
+      [payment],
+      customFees.transfer,
+    );
+    await sendInitExecuteFeeTokens(
+      user1Wallet,
+      borrowerWallet.address as string,
+    );
+
+    const borrowerBalanceBefore = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
+      lppDenom,
+    );
+
+    await leaseInstance.repayLease(
+      leaseAddress,
+      borrowerWallet,
+      customFees.exec,
+      [payment],
+    );
+
+    const leaseStateAfterRepay = await leaseInstance.getLeaseStatus(
+      leaseAddress,
+    );
+
+    const currentLeaseAmountAfter = leaseStateAfterRepay.paid?.amount;
+
+    if (!currentLeaseAmountAfter) {
+      undefinedHandler();
+      return;
+    }
+
+    const borrowerBalanceAfter = await borrowerWallet.getBalance(
+      borrowerWallet.address as string,
+      lppDenom,
+    );
+
+    expect(+borrowerBalanceAfter.amount).toBe(
+      +borrowerBalanceBefore.amount - +payment.amount,
+    );
+
+    expect(+currentLeaseAmountAfter).toBe(+currentLeaseAmount + overage);
+
+    // try to pay paid loan
+    await user1Wallet.transferAmount(
+      borrowerWallet.address as string,
+      [payment],
+      customFees.transfer,
+    );
+    await sendInitExecuteFeeTokens(
+      user1Wallet,
+      borrowerWallet.address as string,
+    );
+
+    const result2 = () =>
+      leaseInstance.repayLease(leaseAddress, borrowerWallet, customFees.exec, [
+        payment,
+      ]);
+
+    // the lpp loan instance must be closed
+    await expect(result2).rejects.toThrow(/^.*The underlying loan is closed.*/);
+
+    expect(
+      (await leaseInstance.getLeaseStatus(leaseAddress)).paid,
+    ).toBeDefined();
   });
 
   // TO DO: partial liquidation , complete liquidation; Liability max% - in a new file
