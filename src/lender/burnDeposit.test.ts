@@ -1,5 +1,5 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { customFees } from '../util/utils';
+import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 
@@ -45,12 +45,33 @@ describe('Lender tests - Burn deposit', () => {
       lppDenom,
     );
 
+    const lenderNativeBalanceBefore = await lenderWallet.getBalance(
+      lenderWallet.address as string,
+      NATIVE_MINIMAL_DENOM,
+    );
+
     const lenderDepositBeforeBurn = await leaseInstance.getLenderDeposit(
       lppContractAddress,
       lenderWallet.address as string,
     );
 
     // burn part of the deposit amount
+    const rewards = { amount: '20000000000', denom: NATIVE_MINIMAL_DENOM };
+
+    await leaseInstance.distributeRewards(
+      lppContractAddress,
+      user1Wallet,
+      customFees.exec,
+      [rewards],
+    );
+
+    const lenderRewardsBeforeFirstBurn = await leaseInstance.getLenderRewards(
+      lppContractAddress,
+      lenderWallet.address as string,
+    );
+
+    expect(lenderRewardsBeforeFirstBurn.rewards.amount).not.toBe('0');
+
     const burnAmount = Math.trunc(
       +lenderDepositBeforeBurn.balance / 2,
     ).toString();
@@ -76,6 +97,16 @@ describe('Lender tests - Burn deposit', () => {
       lppDenom,
     );
 
+    const lenderNativeBalanceAfterBurn = await lenderWallet.getBalance(
+      lenderWallet.address as string,
+      NATIVE_MINIMAL_DENOM,
+    );
+
+    const lenderRewardsAfterFirstBurn = await leaseInstance.getLenderRewards(
+      lppContractAddress,
+      lenderWallet.address as string,
+    );
+
     expect(+lenderDepositAfterBurn.balance).toBe(
       +lenderDepositBeforeBurn.balance - +burnAmount,
     );
@@ -87,6 +118,14 @@ describe('Lender tests - Burn deposit', () => {
             (+priceBeforeBurn.amount.amount /
               +priceBeforeBurn.amount_quote.amount),
         ),
+    );
+
+    expect(lenderNativeBalanceAfterBurn.amount).toBe(
+      lenderNativeBalanceBefore.amount,
+    );
+
+    expect(lenderRewardsBeforeFirstBurn.rewards.amount).toBe(
+      lenderRewardsAfterFirstBurn.rewards.amount,
     );
 
     // burn all deposit
@@ -102,8 +141,6 @@ describe('Lender tests - Burn deposit', () => {
       customFees.exec,
     );
 
-    // TO DO: claim should be exec bacause Deposited_nLPN == WithdrawAmount_nLPN
-
     const lenderDepositAfterSecondBurn = await leaseInstance.getLenderDeposit(
       lppContractAddress,
       lenderWallet.address as string,
@@ -113,6 +150,18 @@ describe('Lender tests - Burn deposit', () => {
       lenderWallet.address as string,
       lppDenom,
     );
+
+    const lenderNativeBalanceAfterSecondBurn = await lenderWallet.getBalance(
+      lenderWallet.address as string,
+      NATIVE_MINIMAL_DENOM,
+    );
+
+    const lenderRewardsAfterSecondBurn = await leaseInstance.getLenderRewards(
+      lppContractAddress,
+      lenderWallet.address as string,
+    );
+
+    expect(lenderRewardsAfterSecondBurn.rewards.amount).toBe('0');
 
     expect(lenderDepositAfterSecondBurn.balance).toBe('0');
 
@@ -124,10 +173,55 @@ describe('Lender tests - Burn deposit', () => {
               +priceBeforeSecondBurn.amount_quote.amount),
         ),
     );
+
+    // claim should be exec bacause Deposited_nLPN == WithdrawAmount_nLPN
+    expect(+lenderNativeBalanceAfterSecondBurn.amount).toBe(
+      +lenderNativeBalanceAfterBurn.amount +
+        +lenderRewardsAfterFirstBurn.rewards.amount,
+    );
   });
 
-  test('the lender tries to burn 0 amount deposit - should produce an error', async () => {
+  test('the non-lender user tries to burn deposit - should produce an error', async () => {
     const newLenderWallet = await createWallet();
+
+    await sendInitExecuteFeeTokens(
+      user1Wallet,
+      newLenderWallet.address as string,
+    );
+
+    const broadcastTx = () =>
+      leaseInstance.burnDeposit(
+        lppContractAddress,
+        newLenderWallet,
+        '10',
+        customFees.exec,
+      );
+
+    await expect(broadcastTx).rejects.toThrow(
+      /^.*The deposit does not exist.*/,
+    );
+  });
+
+  test('the lender user tries to burn 0 deposit - should produce an error', async () => {
+    const newLenderWallet = await createWallet();
+
+    await user1Wallet.transferAmount(
+      newLenderWallet.address as string,
+      [{ denom: lppDenom, amount: deposit }],
+      customFees.transfer,
+    );
+
+    await sendInitExecuteFeeTokens(
+      user1Wallet,
+      newLenderWallet.address as string,
+    );
+
+    await leaseInstance.lenderDeposit(
+      lppContractAddress,
+      newLenderWallet,
+      customFees.exec,
+      [{ denom: lppDenom, amount: deposit }],
+    );
 
     await sendInitExecuteFeeTokens(
       user1Wallet,

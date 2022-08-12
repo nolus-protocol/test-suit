@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@cosmjs/launchpad": "^0.27.1",
-    "@nolus/nolusjs": "^0.0.39",
+    "@nolus/nolusjs": "^0.0.40",
     "axios": "^0.26.1",
     "bip32": "^2.0.6",
     "bip39": "^3.0.4",
