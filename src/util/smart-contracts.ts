@@ -24,8 +24,7 @@ export function calcQuoteAnnualInterestRate( // permille
   return Math.floor(
     (baseInterestRate +
       ((utilization - utilizationOptimal) / 100) * addonOptimalInterestRate) *
-      10 +
-      leaseInterestRateMargin,
+      10,
   );
 }
 

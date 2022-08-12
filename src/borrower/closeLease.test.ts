@@ -101,11 +101,23 @@ describe('Leaser contract tests - Close lease', () => {
       mainLeaseAddress,
     );
 
+    const currentPID =
+      leaseStateBeforeRepay.opened?.previous_interest_due.amount;
+    const currentPMD = leaseStateBeforeRepay.opened?.previous_margin_due.amount;
+    const currentCID =
+      leaseStateBeforeRepay.opened?.current_interest_due.amount;
+    const currentCMD = leaseStateBeforeRepay.opened?.current_margin_due.amount;
+
+    if (!currentPID || !currentPMD || !currentCID || !currentCMD) {
+      undefinedHandler();
+      return;
+    }
+
     const loanAmount = leaseStateBeforeRepay.opened?.amount.amount;
-    const cInterest = leaseStateBeforeRepay.opened?.interest_due.amount;
+    const cInterest = +currentPID + +currentPMD + +currentCID + +currentCMD;
     const cPrincipal = leaseStateBeforeRepay.opened?.principal_due.amount;
 
-    if (!cInterest || !cPrincipal || !loanAmount) {
+    if (!cPrincipal || !loanAmount) {
       undefinedHandler();
       return;
     }
@@ -244,10 +256,22 @@ describe('Leaser contract tests - Close lease', () => {
       secondLeaseAddress,
     );
 
-    const cInterest = leaseStateBeforeRepay.opened?.interest_due.amount;
+    const currentPID =
+      leaseStateBeforeRepay.opened?.previous_interest_due.amount;
+    const currentPMD = leaseStateBeforeRepay.opened?.previous_margin_due.amount;
+    const currentCID =
+      leaseStateBeforeRepay.opened?.current_interest_due.amount;
+    const currentCMD = leaseStateBeforeRepay.opened?.current_margin_due.amount;
+
+    if (!currentPID || !currentPMD || !currentCID || !currentCMD) {
+      undefinedHandler();
+      return;
+    }
+
+    const cInterest = +currentPID + +currentPMD + +currentCID + +currentCMD;
     const cPrincipal = leaseStateBeforeRepay.opened?.principal_due.amount;
 
-    if (!cInterest || !cPrincipal) {
+    if (!cPrincipal) {
       undefinedHandler();
       return;
     }

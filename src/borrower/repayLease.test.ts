@@ -20,7 +20,6 @@ describe('Leaser contract tests - Repay lease', () => {
   let lppDenom: string;
   let leaseInstance: NolusContracts.Lease;
   let mainLeaseAddress: string;
-  let annualInterest: number;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -99,19 +98,19 @@ describe('Leaser contract tests - Repay lease', () => {
       mainLeaseAddress,
     );
 
-    const cInteresRate = currentLeaseState.opened?.interest_rate;
+    const annualInterest = currentLeaseState.opened?.interest_rate;
 
-    if (!cInteresRate) {
+    if (!annualInterest) {
       undefinedHandler();
       return;
     }
 
-    // get annual_interest for loan
-    const leaserConfig = await leaseInstance.getLeaserConfig(
-      leaserContractAddress,
-    );
-    annualInterest =
-      +cInteresRate - +leaserConfig.config.lease_interest_rate_margin;
+    // // get annual_interest for loan
+    // const leaserConfig = await leaseInstance.getLeaserConfig(
+    //   leaserContractAddress,
+    // );
+    // annualInterest =
+    //   +cInteresRate - +leaserConfig.config.lease_interest_rate_margin;
 
     //wait for >0 interest
     await sleep(outstandingBySec * 1000);
@@ -132,11 +131,21 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     currentLeaseState = await leaseInstance.getLeaseStatus(mainLeaseAddress);
+    let currentPID = currentLeaseState.opened?.previous_interest_due.amount;
+    let currentPMD = currentLeaseState.opened?.previous_margin_due.amount;
+    let currentCID = currentLeaseState.opened?.current_interest_due.amount;
+    let currentCMD = currentLeaseState.opened?.current_margin_due.amount;
 
-    let currentLeaseInterest = currentLeaseState.opened?.interest_due.amount;
+    if (!currentPID || !currentPMD || !currentCID || !currentCMD) {
+      undefinedHandler();
+      return;
+    }
+
+    let currentLeaseInterest =
+      +currentPID + +currentPMD + +currentCID + +currentCMD;
     let currentLeasePrincipal = currentLeaseState.opened?.principal_due.amount;
 
-    if (!currentLeaseInterest || !currentLeasePrincipal) {
+    if (!currentLeasePrincipal) {
       undefinedHandler();
       return;
     }
@@ -157,7 +166,7 @@ describe('Leaser contract tests - Repay lease', () => {
 
     const firstPayment = {
       denom: lppDenom,
-      amount: currentLeaseInterest,
+      amount: currentLeaseInterest.toString(),
     };
 
     // send some tokens to the borrower
@@ -196,12 +205,22 @@ describe('Leaser contract tests - Repay lease', () => {
       mainLeaseAddress,
     );
 
+    currentPID = leaseStateAfterFirstRepay.opened?.previous_interest_due.amount;
+    currentPMD = leaseStateAfterFirstRepay.opened?.previous_margin_due.amount;
+    currentCID = leaseStateAfterFirstRepay.opened?.current_interest_due.amount;
+    currentCMD = leaseStateAfterFirstRepay.opened?.current_margin_due.amount;
+
+    if (!currentPID || !currentPMD || !currentCID || !currentCMD) {
+      undefinedHandler();
+      return;
+    }
+
     const cPrincipalFirstRepay =
       leaseStateAfterFirstRepay.opened?.principal_due.amount;
     const cInterestFirstRepay =
-      leaseStateAfterFirstRepay.opened?.interest_due.amount;
+      +currentPID + +currentPMD + +currentCID + +currentCMD;
 
-    if (!cPrincipalFirstRepay || !cInterestFirstRepay) {
+    if (!cPrincipalFirstRepay) {
       undefinedHandler();
       return;
     }
@@ -257,10 +276,22 @@ describe('Leaser contract tests - Repay lease', () => {
     // get the new lease state
     const timeOfLeaseStateCheck = (new Date().getTime() * 1000000).toString();
     currentLeaseState = await leaseInstance.getLeaseStatus(mainLeaseAddress);
-    currentLeaseInterest = currentLeaseState.opened?.interest_due.amount;
+
+    currentPID = currentLeaseState.opened?.previous_interest_due.amount;
+    currentPMD = currentLeaseState.opened?.previous_margin_due.amount;
+    currentCID = currentLeaseState.opened?.current_interest_due.amount;
+    currentCMD = currentLeaseState.opened?.current_margin_due.amount;
+
+    if (!currentPID || !currentPMD || !currentCID || !currentCMD) {
+      undefinedHandler();
+      return;
+    }
+
+    currentLeaseInterest =
+      +currentPID + +currentPMD + +currentCID + +currentCMD;
     currentLeasePrincipal = currentLeaseState.opened?.principal_due.amount;
 
-    if (!currentLeaseInterest || !currentLeasePrincipal) {
+    if (!currentLeasePrincipal) {
       undefinedHandler();
       return;
     }
@@ -302,11 +333,24 @@ describe('Leaser contract tests - Repay lease', () => {
     const leaseStateAfterSecondRepay = await leaseInstance.getLeaseStatus(
       mainLeaseAddress,
     );
+
+    currentPID =
+      leaseStateAfterSecondRepay.opened?.previous_interest_due.amount;
+    currentPMD = leaseStateAfterSecondRepay.opened?.previous_margin_due.amount;
+    currentCID = leaseStateAfterSecondRepay.opened?.current_interest_due.amount;
+    currentCMD = leaseStateAfterSecondRepay.opened?.current_margin_due.amount;
+
+    if (!currentPID || !currentPMD || !currentCID || !currentCMD) {
+      undefinedHandler();
+      return;
+    }
+
+    const cInterestAfterSecondRepay =
+      +currentPID + +currentPMD + +currentCID + +currentCMD;
     const cPrincipalAfterSecondRepay =
       leaseStateAfterSecondRepay.opened?.principal_due.amount;
-    const cInterestAfterSecondRepay =
-      leaseStateAfterSecondRepay.opened?.interest_due.amount;
-    if (!cInterestAfterSecondRepay || !cPrincipalAfterSecondRepay) {
+
+    if (!cPrincipalAfterSecondRepay) {
       undefinedHandler();
       return;
     }
@@ -467,12 +511,22 @@ describe('Leaser contract tests - Repay lease', () => {
       mainLeaseAddress,
     );
 
+    let currentPID = leaseStateBeforeRepay.opened?.previous_interest_due.amount;
+    let currentPMD = leaseStateBeforeRepay.opened?.previous_margin_due.amount;
+    let currentCID = leaseStateBeforeRepay.opened?.current_interest_due.amount;
+    let currentCMD = leaseStateBeforeRepay.opened?.current_margin_due.amount;
+
+    if (!currentPID || !currentPMD || !currentCID || !currentCMD) {
+      undefinedHandler();
+      return;
+    }
+
     const cPrincipalBeforeRepay =
       leaseStateBeforeRepay.opened?.principal_due.amount;
     const cInterestBeforeRepay =
-      leaseStateBeforeRepay.opened?.interest_due.amount;
+      +currentPID + +currentPMD + +currentCID + +currentCMD;
 
-    if (!cPrincipalBeforeRepay || !cInterestBeforeRepay) {
+    if (!cPrincipalBeforeRepay) {
       undefinedHandler();
       return;
     }
@@ -506,13 +560,22 @@ describe('Leaser contract tests - Repay lease', () => {
     const leaseStateAfterRepay = await leaseInstance.getLeaseStatus(
       mainLeaseAddress,
     );
+    currentPID = leaseStateAfterRepay.opened?.previous_interest_due.amount;
+    currentPMD = leaseStateAfterRepay.opened?.previous_margin_due.amount;
+    currentCID = leaseStateAfterRepay.opened?.current_interest_due.amount;
+    currentCMD = leaseStateAfterRepay.opened?.current_margin_due.amount;
+
+    if (!currentPID || !currentPMD || !currentCID || !currentCMD) {
+      undefinedHandler();
+      return;
+    }
 
     const cPrincipalAfterRepay =
       leaseStateAfterRepay.opened?.principal_due.amount;
     const cInterestAfterRepay =
-      leaseStateAfterRepay.opened?.interest_due.amount;
+      +currentPID + +currentPMD + +currentCID + +currentCMD;
 
-    if (!cPrincipalAfterRepay || !cInterestAfterRepay) {
+    if (!cPrincipalAfterRepay) {
       undefinedHandler();
       return;
     }
@@ -537,13 +600,26 @@ describe('Leaser contract tests - Repay lease', () => {
     const leaseStateBeforeRepay = await leaseInstance.getLeaseStatus(
       mainLeaseAddress,
     );
+
+    const currentPID =
+      leaseStateBeforeRepay.opened?.previous_interest_due.amount;
+    const currentPMD = leaseStateBeforeRepay.opened?.previous_margin_due.amount;
+    const currentCID =
+      leaseStateBeforeRepay.opened?.current_interest_due.amount;
+    const currentCMD = leaseStateBeforeRepay.opened?.current_margin_due.amount;
+
+    if (!currentPID || !currentPMD || !currentCID || !currentCMD) {
+      undefinedHandler();
+      return;
+    }
+
     const cInterestBeforeRepay =
-      leaseStateBeforeRepay.opened?.interest_due.amount;
+      +currentPID + +currentPMD + +currentCID + +currentCMD;
     const cPrincipalBeforeRepay =
       leaseStateBeforeRepay.opened?.principal_due.amount;
     const loanAmount = leaseStateBeforeRepay.opened?.amount.amount;
 
-    if (!cPrincipalBeforeRepay || !cInterestBeforeRepay || !loanAmount) {
+    if (!cPrincipalBeforeRepay || !loanAmount) {
       undefinedHandler();
       return;
     }
@@ -682,16 +758,23 @@ describe('Leaser contract tests - Repay lease', () => {
 
     const currentLeaseState = await leaseInstance.getLeaseStatus(leaseAddress);
 
-    const currentLeaseInterest = currentLeaseState.opened?.interest_due.amount;
+    const currentPID = currentLeaseState.opened?.previous_interest_due.amount;
+    const currentPMD = currentLeaseState.opened?.previous_margin_due.amount;
+    const currentCID = currentLeaseState.opened?.current_interest_due.amount;
+    const currentCMD = currentLeaseState.opened?.current_margin_due.amount;
+
+    if (!currentPID || !currentPMD || !currentCID || !currentCMD) {
+      undefinedHandler();
+      return;
+    }
+
+    const currentLeaseInterest =
+      +currentPID + +currentPMD + +currentCID + +currentCMD;
     const currentLeasePrincipal =
       currentLeaseState.opened?.principal_due.amount;
     const currentLeaseAmount = currentLeaseState.opened?.amount.amount;
 
-    if (
-      !currentLeaseInterest ||
-      !currentLeasePrincipal ||
-      !currentLeaseAmount
-    ) {
+    if (!currentLeasePrincipal || !currentLeaseAmount) {
       undefinedHandler();
       return;
     }

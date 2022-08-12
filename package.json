@@ -9,7 +9,7 @@
     "prepare-env-dev": "/bin/bash ./scripts/prepare-env-dev.sh",
     "prepare-env-local": "/bin/bash ./scripts/prepare-env-local.sh",
     "run-tests-pipeline": "/bin/bash ./scripts/run-tests-pipeline.sh",
-    "test": "jest --runInBand",
+    "test": "jest --runInBand borrower",
     "lint": "eslint 'src/**/*.{js,ts,tsx}' --quiet --fix"
   },
   "keywords": [],
