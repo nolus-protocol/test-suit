@@ -27,6 +27,12 @@ sudo apt-get install jq
 
 * the project's dependencies:
 
+First config your npm token. This is required to install Nolusjs:
+
+```sh
+npm config set //registry.npmjs.org/:_authToken <YOUR_NPM_ACCESS_TOKEN>
+```
+
 ```sh
 yarn
 ```
