@@ -273,11 +273,14 @@ describe('Lender tests - Claim rewards', () => {
 
   test('the lender tries to claim 0 amount rewards - should produce an error', async () => {
     const newLenderWallet = await createWallet();
-    const lenderRewards = await leaseInstance.getLenderRewards(
-      lppContractAddress,
-      newLenderWallet.address as string,
+    const lenderRewardsTx = () =>
+      leaseInstance.getLenderRewards(
+        lppContractAddress,
+        newLenderWallet.address as string,
+      );
+    await expect(lenderRewardsTx).rejects.toThrow(
+      /^.*The deposit does not exist.*/,
     );
-    expect(lenderRewards.rewards.amount).toBe('0');
 
     await sendInitExecuteFeeTokens(
       user1Wallet,
@@ -297,7 +300,9 @@ describe('Lender tests - Claim rewards', () => {
         customFees.exec,
       );
 
-    await expect(broadcastTx).rejects.toThrow(/^.*TO DO.*/);
+    await expect(broadcastTx).rejects.toThrow(
+      /^.*The deposit does not exist.*/,
+    );
 
     const lenderBalanceAfter = await newLenderWallet.getBalance(
       newLenderWallet.address as string,

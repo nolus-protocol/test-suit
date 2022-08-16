@@ -156,12 +156,14 @@ describe('Lender tests - Burn deposit', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    const lenderRewardsAfterSecondBurn = await leaseInstance.getLenderRewards(
-      lppContractAddress,
-      lenderWallet.address as string,
+    const lenderRewardsAfterSecondBurnTx = () =>
+      leaseInstance.getLenderRewards(
+        lppContractAddress,
+        lenderWallet.address as string,
+      );
+    await expect(lenderRewardsAfterSecondBurnTx).rejects.toThrow(
+      /^.*The deposit does not exist.*/,
     );
-
-    expect(lenderRewardsAfterSecondBurn.rewards.amount).toBe('0');
 
     expect(lenderDepositAfterSecondBurn.balance).toBe('0');
 
@@ -236,9 +238,7 @@ describe('Lender tests - Burn deposit', () => {
         customFees.exec,
       );
 
-    await expect(broadcastTx).rejects.toThrow(
-      /^.*The deposit does not exist.*/,
-    );
+    await expect(broadcastTx).rejects.toThrow(/^.*0uusdc: invalid coins.*/);
   });
 
   test('the lender tries to burn more deposit than he owns - should produce an error', async () => {

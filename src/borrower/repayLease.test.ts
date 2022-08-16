@@ -105,13 +105,6 @@ describe('Leaser contract tests - Repay lease', () => {
       return;
     }
 
-    // // get annual_interest for loan
-    // const leaserConfig = await leaseInstance.getLeaserConfig(
-    //   leaserContractAddress,
-    // );
-    // annualInterest =
-    //   +cInteresRate - +leaserConfig.config.lease_interest_rate_margin;
-
     //wait for >0 interest
     await sleep(outstandingBySec * 1000);
 
