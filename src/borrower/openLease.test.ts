@@ -10,6 +10,7 @@ import {
   calcQuoteAnnualInterestRate,
   calcUtilization,
 } from '../util/smart-contracts';
+import { InstantiateOptions } from '@cosmjs/cosmwasm-stargate';
 
 describe('Leaser contract tests - Open a lease', () => {
   let user1Wallet: NolusWallet;
@@ -451,6 +452,43 @@ describe('Leaser contract tests - Open a lease', () => {
         customFees.exec,
       );
 
-    await expect(openLoan).rejects.toThrow(/^.*No such contract.*/);
+    await expect(openLoan).rejects.toThrow(/^.*Unauthorized contract Id.*/);
+  });
+
+  test('the lease instance can be created only by the leaser contract', async () => {
+    const leaseInitMsg = {
+      currency: 'uusdc',
+      customer: user1Wallet.address as string,
+      liability: {
+        healthy_percent: 40,
+        init_percent: 30,
+        max_percent: 80,
+        recalc_secs: 720000,
+      },
+      loan: {
+        annual_margin_interest: 30,
+        grace_period_secs: 1230,
+        interest_due_period_secs: 10000,
+        lpp: 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5',
+      },
+    };
+
+    const options: InstantiateOptions = {
+      funds: [{ amount: '200000', denom: 'uusdc' }],
+    };
+
+    const init = () =>
+      user1Wallet.instantiate(
+        user1Wallet.address as string,
+        2,
+        leaseInitMsg,
+        'lease_uat',
+        customFees.init,
+        options,
+      );
+
+    await expect(init).rejects.toThrow(
+      /^.*can not instantiate: unauthorized.*/,
+    );
   });
 });
