@@ -12,7 +12,7 @@ import NODE_ENDPOINT, {
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 
-describe('Oracle contract tests', () => {
+describe.skip('Oracle contract tests', () => {
   let user1Wallet: NolusWallet;
   let feederWallet: NolusWallet;
   let oracleInstance: NolusContracts.Oracle;

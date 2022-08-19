@@ -25,6 +25,8 @@ describe('Lender tests - Burn deposit', () => {
   });
 
   test('the successful burn rewards scenario - should work as expected', async () => {
+    const rewards = { amount: '20000000000', denom: NATIVE_MINIMAL_DENOM };
+
     await user1Wallet.transferAmount(
       lenderWallet.address as string,
       [{ denom: lppDenom, amount: deposit }],
@@ -32,6 +34,24 @@ describe('Lender tests - Burn deposit', () => {
     );
 
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
+
+    const lppBalance = await leaseInstance.getLppBalance(lppContractAddress);
+
+    // if the total depositors balance_nlpn==0 lpp returns err, because otherwise funds are frozen in the contract
+    if (+lppBalance.balance_nlpn.amount === 0) {
+      console.log('No deposits.');
+      const broadcastTx = () =>
+        leaseInstance.distributeRewards(
+          lppContractAddress,
+          user1Wallet,
+          customFees.exec,
+          [rewards],
+        );
+
+      await expect(broadcastTx).rejects.toThrow(
+        /^.*Distribute rewards with zero balance nlpn.*/,
+      );
+    }
 
     await leaseInstance.lenderDeposit(
       lppContractAddress,
@@ -56,8 +76,6 @@ describe('Lender tests - Burn deposit', () => {
     );
 
     // burn part of the deposit amount
-    const rewards = { amount: '20000000000', denom: NATIVE_MINIMAL_DENOM };
-
     await leaseInstance.distributeRewards(
       lppContractAddress,
       user1Wallet,
@@ -184,6 +202,14 @@ describe('Lender tests - Burn deposit', () => {
   });
 
   test('the non-lender user tries to burn deposit - should produce an error', async () => {
+    // providy liquidity
+    await leaseInstance.lenderDeposit(
+      lppContractAddress,
+      user1Wallet,
+      customFees.exec,
+      [{ denom: lppDenom, amount: deposit }],
+    );
+
     const newLenderWallet = await createWallet();
 
     await sendInitExecuteFeeTokens(
@@ -238,7 +264,7 @@ describe('Lender tests - Burn deposit', () => {
         customFees.exec,
       );
 
-    await expect(broadcastTx).rejects.toThrow(/^.*0uusdc: invalid coins.*/);
+    await expect(broadcastTx).rejects.toThrow(/^.*Zero withdraw amount.*/);
   });
 
   test('the lender tries to burn more deposit than he owns - should produce an error', async () => {

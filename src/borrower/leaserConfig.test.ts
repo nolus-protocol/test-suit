@@ -142,4 +142,21 @@ describe('Leaser contract tests - Config', () => {
       /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
     );
   });
+
+  test('the business tries to set grace period > interest period - should produce an error', async () => {
+    leaserConfigMsg.config.repayment.grace_period_sec =
+      leaserConfigMsg.config.repayment.period_sec + 1;
+
+    const result = () =>
+      leaseInstance.setLeaserConfig(
+        leaserContractAddress,
+        user1Wallet,
+        leaserConfigMsg,
+        customFees.exec,
+      );
+
+    await expect(result).rejects.toThrow(
+      /^.*Period length should be greater than grace period.*/,
+    );
+  });
 });

@@ -112,6 +112,14 @@ describe('Lender tests - Make deposit', () => {
       +lenderBalanceBefore.amount - +downpayment * 2,
     );
 
+    console.log(
+      lenderDepositBefore.balance,
+      downpayment,
+      price.amount.amount,
+      price.amount_quote.amount,
+      price,
+    );
+
     expect(+lenderDepositAfter.balance).toBe(
       +lenderDepositBefore.balance +
         Math.trunc(

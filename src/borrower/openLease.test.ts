@@ -120,7 +120,6 @@ describe('Leaser contract tests - Open a lease', () => {
         utilizationOptimal,
         baseInterestRate,
         addonOptimalInterestRate,
-        leaserConfig.config.lease_interest_rate_margin,
       ),
     ).toBe(quote.annual_interest_rate);
 
@@ -254,7 +253,6 @@ describe('Leaser contract tests - Open a lease', () => {
         utilizationOptimal,
         baseInterestRate,
         addonOptimalInterestRate,
-        leaserConfig.config.lease_interest_rate_margin,
       ),
     ).toBe(quote.annual_interest_rate);
 
@@ -354,7 +352,7 @@ describe('Leaser contract tests - Open a lease', () => {
     );
   });
 
-  test('the borrower tries to open lease with unsuported lpp currency - should produce an error', async () => {
+  test('the borrower tries to open lease with unsupported lpp currency - should produce an error', async () => {
     // get borrower balance
     const borrowerBalanceBefore = await borrowerWallet.getBalance(
       borrowerWallet.address as string,
@@ -369,7 +367,7 @@ describe('Leaser contract tests - Open a lease', () => {
       leaseInstance.openLease(
         leaserContractAddress,
         borrowerWallet,
-        'unsuported',
+        'unsupported',
         customFees.exec,
         [{ denom: lppDenom, amount: '1' }],
       );

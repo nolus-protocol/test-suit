@@ -23,7 +23,7 @@ import { UpgradeProposal, ClientUpdateProposal } from '../util/proposals';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 
-describe('Proposal submission tests', () => {
+describe.skip('Proposal submission tests', () => {
   let wallet: NolusWallet;
   let msg: any;
   let fee = customFees.transfer;
