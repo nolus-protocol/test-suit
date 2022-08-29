@@ -92,7 +92,6 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     mainLeaseAddress = result.logs[0].events[7].attributes[3].value;
-    console.log(result);
 
     expect(mainLeaseAddress).not.toBe('');
 
@@ -102,6 +101,7 @@ describe('Leaser contract tests - Repay lease', () => {
     const timeImmediatlyBeforeStateQuery = (
       new Date().getTime() * 1000000
     ).toString();
+
     let loan = await leaseInstance.getLoanInformation(
       lppContractAddress,
       mainLeaseAddress,
@@ -161,7 +161,7 @@ describe('Leaser contract tests - Repay lease', () => {
 
     console.log(outstandingInterest);
 
-    // expect(+currentCID).toBe(calcLoanInterestDue);
+    expect(+currentCID).toBe(calcLoanInterestDue);
 
     const calcLoanInterestOverdue = calcInterestRate(
       +currentLeasePrincipal,
