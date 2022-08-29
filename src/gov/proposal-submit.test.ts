@@ -1,4 +1,5 @@
 import Long from 'long';
+import * as fs from 'fs';
 import { isDeliverTxFailure } from '@cosmjs/stargate';
 import { toUtf8 } from '@cosmjs/encoding';
 import { TextProposal } from 'cosmjs-types/cosmos/gov/v1beta1/gov';
@@ -21,12 +22,19 @@ import {
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 import { UpgradeProposal, ClientUpdateProposal } from '../util/proposals';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
-import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import {
+  customFees,
+  gasPrice,
+  NATIVE_MINIMAL_DENOM,
+  undefinedHandler,
+  validatorPart,
+} from '../util/utils';
+import { getProposal } from '../util/gov';
 
-describe.skip('Proposal submission tests', () => {
+describe('Proposal submission tests', () => {
   let wallet: NolusWallet;
   let msg: any;
-  let fee = customFees.transfer;
+  let fee = customFees.exec;
   let moduleName: string;
 
   beforeAll(async () => {
@@ -50,13 +58,22 @@ describe.skip('Proposal submission tests', () => {
       [msg],
       fee,
     );
-    expect(isDeliverTxFailure(result)).toBeTruthy();
-    expect(result.rawLog).toEqual(
-      `failed to execute message; message index: 0: ${moduleName}: no handler exists for proposal type`,
-    );
+    expect(isDeliverTxFailure(result)).toBeFalsy();
+    const log = result.rawLog;
+
+    if (!log) {
+      undefinedHandler();
+      return;
+    }
+
+    const proposalId = JSON.parse(log)[0].events[4].attributes[0].value;
+
+    // check if proposal is added
+    const proposalInfo = await getProposal(proposalId);
+    expect(proposalInfo.proposal).toBeDefined();
   });
 
-  test('validator should not be able to submit a Text proposal', async () => {
+  test('validator should be able to submit a Text proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmos.gov.v1beta1.TextProposal',
       value: TextProposal.encode({
@@ -66,9 +83,11 @@ describe.skip('Proposal submission tests', () => {
       }).finish(),
     };
     moduleName = 'gov';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit a CommunityPoolSpend proposal', async () => {
+  test('validator should be able to submit a CommunityPoolSpend proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmos.distribution.v1beta1.CommunityPoolSpendProposal',
       value: CommunityPoolSpendProposal.encode({
@@ -80,9 +99,11 @@ describe.skip('Proposal submission tests', () => {
       }).finish(),
     };
     moduleName = 'distribution';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit a ParameterChange proposal', async () => {
+  test('validator should be able to submit a ParameterChange proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmos.params.v1beta1.ParameterChangeProposal',
       value: ParameterChangeProposal.encode({
@@ -91,17 +112,19 @@ describe.skip('Proposal submission tests', () => {
         title: 'Test Proposal',
         changes: [
           {
-            subspace: 'subspace',
-            key: 'key',
-            value: 'value',
+            subspace: 'wasm',
+            key: 'uploadAccess',
+            value: '{ "permission": "Nobody" }',
           },
         ],
       }).finish(),
     };
     moduleName = 'params';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit a SoftwareUpgrade proposal', async () => {
+  test('validator should be able to submit a SoftwareUpgrade proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmos.upgrade.v1beta1.SoftwareUpgradeProposal',
       value: SoftwareUpgradeProposal.encode({
@@ -116,9 +139,11 @@ describe.skip('Proposal submission tests', () => {
       }).finish(),
     };
     moduleName = 'upgrade';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit a CancelSoftwareUpgrade proposal', async () => {
+  test('validator should be able to submit a CancelSoftwareUpgrade proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmos.upgrade.v1beta1.CancelSoftwareUpgradeProposal',
       value: CancelSoftwareUpgradeProposal.encode({
@@ -128,9 +153,11 @@ describe.skip('Proposal submission tests', () => {
       }).finish(),
     };
     moduleName = 'upgrade';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit an IBC Upgrade proposal', async () => {
+  test('validator should be able to submit an IBC Upgrade proposal', async () => {
     msg.value.content = {
       typeUrl: '/ibc.core.client.v1.UpgradeProposal',
       value: UpgradeProposal.encode({
@@ -155,23 +182,31 @@ describe.skip('Proposal submission tests', () => {
       }).finish(),
     };
     moduleName = 'client';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit a ClientUpgrade proposal', async () => {
+  test('validator should be able to submit a ClientUpgrade proposal', async () => {
     msg.value.content = {
       typeUrl: '/ibc.core.client.v1.ClientUpdateProposal',
       value: ClientUpdateProposal.encode({
         description:
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
-        subjectClientId: 'tendermint-07',
-        substituteClientId: 'tendermint-08',
+        subjectClientId: 'tendermint-1',
+        substituteClientId: 'tendermint-07',
       }).finish(),
     };
     moduleName = 'client';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit a StoreCode proposal', async () => {
+  test('validator should be able to submit a StoreCode proposal', async () => {
+    const wasmBinary: Buffer = fs.readFileSync(
+      './wasm-contracts/cw20_base.wasm',
+    );
+
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.StoreCodeProposal',
       value: StoreCodeProposal.encode({
@@ -179,13 +214,25 @@ describe.skip('Proposal submission tests', () => {
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
         runAs: wallet.address as string,
-        wasmByteCode: new Uint8Array(2),
+        wasmByteCode: wasmBinary,
       }).finish(),
     };
     moduleName = 'wasm';
+
+    fee = {
+      gas: '20000000000',
+      amount: [
+        {
+          amount: Math.floor(
+            (20000000000 * gasPrice) / validatorPart,
+          ).toString(),
+          denom: NATIVE_MINIMAL_DENOM,
+        },
+      ],
+    };
   });
 
-  test('validator should not be able to submit a InstantiateContract proposal', async () => {
+  test('validator should be able to submit a InstantiateContract proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.InstantiateContractProposal',
       value: InstantiateContractProposal.encode({
@@ -204,7 +251,7 @@ describe.skip('Proposal submission tests', () => {
   });
 
   // Remark: RunAs was removed around wasmd 0.23 making this test fail as cosmjs still hasn't updated it's MigrateConctractProposal definition
-  xtest('validator should not be able to submit a MigrateContract proposal', async () => {
+  xtest('validator should be able to submit a MigrateContract proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.MigrateContractProposal',
       value: MigrateContractProposal.encode({
@@ -218,9 +265,11 @@ describe.skip('Proposal submission tests', () => {
       }).finish(),
     };
     moduleName = 'wasm';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit a UpdateAdmin proposal', async () => {
+  test('validator should be able to submit a UpdateAdmin proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.UpdateAdminProposal',
       value: UpdateAdminProposal.encode({
@@ -228,26 +277,30 @@ describe.skip('Proposal submission tests', () => {
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
         newAdmin: wallet.address as string,
-        contract: wallet.address as string,
+        contract: process.env.LEASER_ADDRESS as string,
       }).finish(),
     };
     moduleName = 'wasm';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit a ClearAdmin proposal', async () => {
+  test('validator should be able to submit a ClearAdmin proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.ClearAdminProposal',
       value: ClearAdminProposal.encode({
         description:
           'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
-        contract: wallet.address as string,
+        contract: process.env.LEASER_ADDRESS as string,
       }).finish(),
     };
     moduleName = 'wasm';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit a PinCodes proposal', async () => {
+  test('validator should be able to submit a PinCodes proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.PinCodesProposal',
       value: PinCodesProposal.encode({
@@ -258,9 +311,11 @@ describe.skip('Proposal submission tests', () => {
       }).finish(),
     };
     moduleName = 'wasm';
+
+    fee = customFees.configs;
   });
 
-  test('validator should not be able to submit a UnpinCodes proposal', async () => {
+  test('validator should be able to submit a UnpinCodes proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.UnpinCodesProposal',
       value: UnpinCodesProposal.encode({
@@ -271,5 +326,7 @@ describe.skip('Proposal submission tests', () => {
       }).finish(),
     };
     moduleName = 'wasm';
+
+    fee = customFees.configs;
   });
 });
