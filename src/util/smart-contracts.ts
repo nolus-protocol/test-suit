@@ -27,28 +27,11 @@ export function calcQuoteAnnualInterestRate( // permille
   );
 }
 
-// export function calcInterestRate(
-//   principalDue: number,
-//   interestRatePercentage: number,
-//   outstandingByNanoSec: number, //now (in nanosec)
-//   interestPaidByNanoSec: number, //until when (date) the interest is paid (in nanosec)
-// ): number {
-//   if (outstandingByNanoSec === interestPaidByNanoSec) return 0;
-
-//   return Math.floor(
-//     principalDue *
-//       (interestRatePercentage / 100) *
-//       ((Math.max(outstandingByNanoSec, interestPaidByNanoSec) -
-//         interestPaidByNanoSec) /
-//         NANOSEC_YEAR),
-//   );
-// }
-
 export function calcInterestRate(
   principalDue: number,
   interestRatePercentage: number,
-  outstandingByNanoSec: number, //now (in nanosec)
-  interestPaidByNanoSec: number, //until when (date) the interest is paid (in nanosec)
+  outstandingByNanoSec: number, //now (nanosec)
+  interestPaidByNanoSec: number, //until when (date) the interest is paid (nanosec)
 ): number {
   if (outstandingByNanoSec === interestPaidByNanoSec) return 0;
 

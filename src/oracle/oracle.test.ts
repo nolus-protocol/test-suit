@@ -12,7 +12,7 @@ import NODE_ENDPOINT, {
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 
-describe.skip('Oracle contract tests', () => {
+describe('Oracle contract tests', () => {
   let user1Wallet: NolusWallet;
   let feederWallet: NolusWallet;
   let oracleInstance: NolusContracts.Oracle;
@@ -35,6 +35,7 @@ describe.skip('Oracle contract tests', () => {
     const config = await oracleInstance.getConfig(contractAddress);
 
     BASE_ASSET = config.base_asset;
+
     PRICE_FEED_PERIOD = config.price_feed_period_secs;
     PERCENTAGE_NEEDED = config.feeders_percentage_needed;
 
@@ -116,10 +117,11 @@ describe.skip('Oracle contract tests', () => {
     const listFeeders = await oracleInstance.getFeeders(contractAddress);
 
     // calc needed votes
-    const onePercentNeeded = Math.ceil(listFeeders.length / 100); // 1%
+    let onePercentNeeded = Math.trunc(listFeeders.length / 100) + 1; // 1%
 
     // create the required number of feeders - 1
     for (let i = 1; i < onePercentNeeded; i++) {
+      console.log('waiting for 1% feeders ...');
       const newFeederWallet = await createWallet();
 
       await oracleInstance.addFeeder(
@@ -132,15 +134,15 @@ describe.skip('Oracle contract tests', () => {
       // send tokens to the new feeder
       await sendInitExecuteFeeTokens(
         user1Wallet,
-        feederWallet.address as string,
+        newFeederWallet.address as string,
       );
 
-      // add feed price
+      // feed price
       const feedPrices = {
         prices: [
           {
-            base: testPairMember,
-            values: [{ denom: BASE_ASSET, amount: '1.3' }],
+            base: { amount: '11', symbol: testPairMember },
+            quote: { amount: '1', symbol: BASE_ASSET },
           },
         ],
       };
@@ -156,7 +158,7 @@ describe.skip('Oracle contract tests', () => {
     const price = () =>
       oracleInstance.getPrices(contractAddress, [testPairMember]);
 
-    // there are still not enough votes
+    // not enough votes yet
     await expect(price).rejects.toThrow(/^.*No price for pair.*/);
 
     // create the last required feeder
@@ -169,20 +171,19 @@ describe.skip('Oracle contract tests', () => {
       customFees.exec,
     );
 
-    // send tokens
     await user1Wallet.transferAmount(
       lastFeederWallet.address as string,
       customFees.exec.amount,
       customFees.transfer,
     );
 
-    const EXPECTED_PRICE = '3.3';
+    const EXPECTED_PRICE = '3';
 
     const feedPrices = {
       prices: [
         {
-          base: testPairMember,
-          values: [{ denom: BASE_ASSET, amount: EXPECTED_PRICE }],
+          base: { amount: '10', symbol: testPairMember },
+          quote: { amount: EXPECTED_PRICE, symbol: BASE_ASSET },
         },
       ],
     };
@@ -198,9 +199,9 @@ describe.skip('Oracle contract tests', () => {
       testPairMember,
     ]);
 
-    // already enough votes - the price must be last added value
-    expect(afterResult.prices[0].price.amount).toBe(EXPECTED_PRICE);
-    expect(afterResult.prices[0].price.denom).toBe(BASE_ASSET);
+    // already enough votes - the price should be the last added value
+    expect(afterResult.prices[0].quote.amount).toBe(EXPECTED_PRICE);
+    expect(afterResult.prices[0].quote.symbol).toBe(BASE_ASSET);
 
     // the price feed period has expired + block creation time
     await sleep(BLOCK_CREATION_TIME_DEV + PRICE_FEED_PERIOD * 1000);
