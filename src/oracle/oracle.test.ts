@@ -117,7 +117,7 @@ describe('Oracle contract tests', () => {
     const listFeeders = await oracleInstance.getFeeders(contractAddress);
 
     // calc needed votes
-    let onePercentNeeded = Math.trunc(listFeeders.length / 100) + 1; // 1%
+    const onePercentNeeded = Math.trunc(listFeeders.length / 100) + 1; // 1%
 
     // create the required number of feeders - 1
     for (let i = 1; i < onePercentNeeded; i++) {

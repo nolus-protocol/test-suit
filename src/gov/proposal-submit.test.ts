@@ -186,6 +186,7 @@ describe('Proposal submission tests', () => {
     fee = customFees.configs;
   });
 
+  // TO DO
   test('validator should be able to submit a ClientUpgrade proposal', async () => {
     msg.value.content = {
       typeUrl: '/ibc.core.client.v1.ClientUpdateProposal',
@@ -250,6 +251,7 @@ describe('Proposal submission tests', () => {
     moduleName = 'wasm';
   });
 
+  //TO DO
   // Remark: RunAs was removed around wasmd 0.23 making this test fail as cosmjs still hasn't updated it's MigrateConctractProposal definition
   xtest('validator should be able to submit a MigrateContract proposal', async () => {
     msg.value.content = {

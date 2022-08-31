@@ -17,6 +17,8 @@ describe('Leaser contract tests - Open a lease', () => {
   let borrowerWallet: NolusWallet;
   let lppDenom: string;
   let leaseInstance: NolusContracts.Lease;
+  let lppInstance: NolusContracts.Lpp;
+  let leaserInstance: NolusContracts.Leaser;
 
   let baseInterestRate: number;
   let utilizationOptimal: number;
@@ -34,15 +36,17 @@ describe('Leaser contract tests - Open a lease', () => {
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
     leaseInstance = new NolusContracts.Lease(cosm);
+    leaserInstance = new NolusContracts.Leaser(cosm);
+    lppInstance = new NolusContracts.Lpp(cosm);
 
-    const lppConfig = await leaseInstance.getLppConfig(lppContractAddress);
+    const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
     baseInterestRate = lppConfig.base_interest_rate / 10; //%
     utilizationOptimal = lppConfig.utilization_optimal / 10; //%
     addonOptimalInterestRate = lppConfig.addon_optimal_interest_rate / 10; //%
 
     lppDenom = lppConfig.lpn_symbol;
 
-    await leaseInstance.lenderDeposit(
+    await lppInstance.lenderDeposit(
       lppContractAddress,
       user1Wallet,
       customFees.exec,
@@ -85,7 +89,7 @@ describe('Leaser contract tests - Open a lease', () => {
       customFees.transfer,
     );
 
-    const quote = await leaseInstance.makeLeaseApply(
+    const quote = await leaserInstance.makeLeaseApply(
       leaserContractAddress,
       downpayment,
       lppDenom,
@@ -93,9 +97,7 @@ describe('Leaser contract tests - Open a lease', () => {
 
     expect(quote.borrow).toBeDefined();
 
-    const lppInformation = await leaseInstance.getLppBalance(
-      lppContractAddress,
-    );
+    const lppInformation = await lppInstance.getLppBalance(lppContractAddress);
 
     const totalPrincipalDueByNow = lppInformation.total_principal_due;
     const totalInterestDueByNow = lppInformation.total_interest_due;
@@ -110,7 +112,7 @@ describe('Leaser contract tests - Open a lease', () => {
       +lppLiquidity.amount,
     );
 
-    let leaserConfig = await leaseInstance.getLeaserConfig(
+    let leaserConfig = await leaserInstance.getLeaserConfig(
       leaserContractAddress,
     );
 
@@ -135,15 +137,15 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
 
-    const leasesBefore = await leaseInstance.getCurrentOpenLeases(
+    const leasesBefore = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrowerWallet.address as string,
     );
 
     //get config before open a lease
-    leaserConfig = await leaseInstance.getLeaserConfig(leaserContractAddress);
+    leaserConfig = await leaserInstance.getLeaserConfig(leaserContractAddress);
 
-    await leaseInstance.openLease(
+    await leaserInstance.openLease(
       leaserContractAddress,
       borrowerWallet,
       lppDenom,
@@ -151,7 +153,7 @@ describe('Leaser contract tests - Open a lease', () => {
       [{ denom: lppDenom, amount: downpayment }],
     );
 
-    const leasesAfter = await leaseInstance.getCurrentOpenLeases(
+    const leasesAfter = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrowerWallet.address as string,
     );
@@ -217,7 +219,7 @@ describe('Leaser contract tests - Open a lease', () => {
       customFees.transfer,
     );
 
-    const quote = await leaseInstance.makeLeaseApply(
+    const quote = await leaserInstance.makeLeaseApply(
       leaserContractAddress,
       (+downpayment / 2).toString(),
       lppDenom,
@@ -227,9 +229,7 @@ describe('Leaser contract tests - Open a lease', () => {
 
     // test quote annual_interest_rate calculation
 
-    const lppInformation = await leaseInstance.getLppBalance(
-      lppContractAddress,
-    );
+    const lppInformation = await lppInstance.getLppBalance(lppContractAddress);
     const totalPrincipalDueByNow = lppInformation.total_principal_due;
     const totalInterestDueByNow = lppInformation.total_interest_due;
     const lppLiquidity = lppInformation.balance;
@@ -243,7 +243,7 @@ describe('Leaser contract tests - Open a lease', () => {
       +lppLiquidity.amount,
     );
 
-    const leaserConfig = await leaseInstance.getLeaserConfig(
+    const leaserConfig = await leaserInstance.getLeaserConfig(
       leaserContractAddress,
     );
 
@@ -268,12 +268,12 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
 
-    const leasesBefore = await leaseInstance.getCurrentOpenLeases(
+    const leasesBefore = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrower2wallet.address as string,
     );
 
-    await leaseInstance.openLease(
+    await leaserInstance.openLease(
       leaserContractAddress,
       borrower2wallet,
       lppDenom,
@@ -284,14 +284,14 @@ describe('Leaser contract tests - Open a lease', () => {
 
     //test if can query a quote after open a lease
 
-    const quote2 = await leaseInstance.makeLeaseApply(
+    const quote2 = await leaserInstance.makeLeaseApply(
       leaserContractAddress,
       (+downpayment / 2).toString(),
       lppDenom,
     );
     expect(quote2.borrow).toBeDefined();
 
-    const leasesAfter = await leaseInstance.getCurrentOpenLeases(
+    const leasesAfter = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrower2wallet.address as string,
     );
@@ -302,7 +302,7 @@ describe('Leaser contract tests - Open a lease', () => {
       leasesAfter[leasesAfter.length - 1],
     );
 
-    await leaseInstance.openLease(
+    await leaserInstance.openLease(
       leaserContractAddress,
       borrower2wallet,
       lppDenom,
@@ -311,7 +311,7 @@ describe('Leaser contract tests - Open a lease', () => {
     );
     opened_leases++;
 
-    const finalLeases = await leaseInstance.getCurrentOpenLeases(
+    const finalLeases = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrower2wallet.address as string,
     );
@@ -364,7 +364,7 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     const openLease = () =>
-      leaseInstance.openLease(
+      leaserInstance.openLease(
         leaserContractAddress,
         borrowerWallet,
         'unsupported',
@@ -390,7 +390,7 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     const openLease = () =>
-      leaseInstance.openLease(
+      leaserInstance.openLease(
         leaserContractAddress,
         borrowerWallet,
         lppDenom,
@@ -415,7 +415,7 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     const openLease = () =>
-      leaseInstance.openLease(
+      leaserInstance.openLease(
         leaserContractAddress,
         borrowerWallet,
         lppDenom,

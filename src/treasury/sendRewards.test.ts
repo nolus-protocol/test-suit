@@ -12,7 +12,7 @@ describe('Treasury tests - Request rewards', () => {
   let user1Wallet: NolusWallet;
   let wasmAdminWallet: NolusWallet;
   let newDispatcherWallet: NolusWallet;
-  let leaseInstance: NolusContracts.Lease;
+  let treasuryInstance: NolusContracts.Treasury;
   const treasuryContractAddress = process.env.TREASURY_ADDRESS as string;
   let rewards: Asset;
 
@@ -23,7 +23,7 @@ describe('Treasury tests - Request rewards', () => {
     wasmAdminWallet = await getWasmAdminWallet();
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
-    leaseInstance = new NolusContracts.Lease(cosm);
+    treasuryInstance = new NolusContracts.Treasury(cosm);
 
     rewards = { symbol: NATIVE_MINIMAL_DENOM, amount: '100000' };
   });
@@ -39,7 +39,7 @@ describe('Treasury tests - Request rewards', () => {
       wasmAdminWallet.address as string,
     );
 
-    await leaseInstance.configRewardsTransfer(
+    await treasuryInstance.configRewardsTransfer(
       treasuryContractAddress,
       wasmAdminWallet,
       newDispatcherWallet.address as string,
@@ -56,7 +56,7 @@ describe('Treasury tests - Request rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    await leaseInstance.sendRewardsMsg(
+    await treasuryInstance.sendRewardsMsg(
       treasuryContractAddress,
       newDispatcherWallet,
       rewards,
@@ -91,7 +91,7 @@ describe('Treasury tests - Request rewards', () => {
       newDispatcherWallet.address as string,
     );
 
-    await leaseInstance.sendRewardsMsg(
+    await treasuryInstance.sendRewardsMsg(
       treasuryContractAddress,
       newDispatcherWallet,
       rewards,
@@ -110,7 +110,7 @@ describe('Treasury tests - Request rewards', () => {
 
   test('an unauthorized user tries to request rewards from the treasury - should produce an error', async () => {
     const broadcastTx = () =>
-      leaseInstance.sendRewardsMsg(
+      treasuryInstance.sendRewardsMsg(
         treasuryContractAddress,
         user1Wallet,
         rewards,
@@ -122,7 +122,7 @@ describe('Treasury tests - Request rewards', () => {
 
   test('an unauthorized user tries to change dispatcher address - should produce an error', async () => {
     const broadcastTx = () =>
-      leaseInstance.configRewardsTransfer(
+      treasuryInstance.configRewardsTransfer(
         treasuryContractAddress,
         user1Wallet,
         user1Wallet.address as string as string,
@@ -141,7 +141,7 @@ describe('Treasury tests - Request rewards', () => {
     rewards.amount = '0';
 
     const broadcastTx = () =>
-      leaseInstance.sendRewardsMsg(
+      treasuryInstance.sendRewardsMsg(
         treasuryContractAddress,
         newDispatcherWallet,
         rewards,
@@ -170,7 +170,7 @@ describe('Treasury tests - Request rewards', () => {
     ).toString();
 
     const broadcastTx = () =>
-      leaseInstance.sendRewardsMsg(
+      treasuryInstance.sendRewardsMsg(
         treasuryContractAddress,
         newDispatcherWallet,
         rewards,

@@ -10,6 +10,8 @@ describe('Leaser contract tests - Close lease', () => {
   let lppLiquidity: Coin;
   let lppDenom: string;
   let leaseInstance: NolusContracts.Lease;
+  let lppInstance: NolusContracts.Lpp;
+  let leaserInstance: NolusContracts.Leaser;
   let mainLeaseAddress: string;
   let secondLeaseAddress: string;
 
@@ -25,11 +27,13 @@ describe('Leaser contract tests - Close lease', () => {
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
     leaseInstance = new NolusContracts.Lease(cosm);
+    lppInstance = new NolusContracts.Lpp(cosm);
+    leaserInstance = new NolusContracts.Leaser(cosm);
 
-    const lppConfig = await leaseInstance.getLppConfig(lppContractAddress);
+    const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
     lppDenom = lppConfig.lpn_symbol;
 
-    await leaseInstance.lenderDeposit(
+    await lppInstance.lenderDeposit(
       lppContractAddress,
       user1Wallet,
       customFees.exec,
@@ -50,7 +54,7 @@ describe('Leaser contract tests - Close lease', () => {
       borrowerWallet.address as string,
     );
 
-    const result = await leaseInstance.openLease(
+    const result = await leaserInstance.openLease(
       leaserContractAddress,
       borrowerWallet,
       lppDenom,
@@ -62,7 +66,7 @@ describe('Leaser contract tests - Close lease', () => {
   });
 
   test('the borrower tries to close a lease before it is paid - should produce an error', async () => {
-    const leasesBefore = await leaseInstance.getCurrentOpenLeases(
+    const leasesBefore = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrowerWallet.address as string,
     );
@@ -83,7 +87,7 @@ describe('Leaser contract tests - Close lease', () => {
       /^.*The underlying loan is not fully repaid.*/,
     );
 
-    const leasesAfter = await leaseInstance.getCurrentOpenLeases(
+    const leasesAfter = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrowerWallet.address as string,
     );
@@ -152,7 +156,7 @@ describe('Leaser contract tests - Close lease', () => {
 
     expect(leaseStateAfterRepay.paid).toBeDefined();
 
-    const leasesAfterRepay = await leaseInstance.getCurrentOpenLeases(
+    const leasesAfterRepay = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrowerWallet.address as string,
     );
@@ -168,7 +172,7 @@ describe('Leaser contract tests - Close lease', () => {
       customFees.exec,
     );
 
-    const leasesAfterClose = await leaseInstance.getCurrentOpenLeases(
+    const leasesAfterClose = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrowerWallet.address as string,
     );
@@ -220,7 +224,7 @@ describe('Leaser contract tests - Close lease', () => {
       borrowerWallet.address as string,
     );
 
-    const result = await leaseInstance.openLease(
+    const result = await leaserInstance.openLease(
       leaserContractAddress,
       borrowerWallet,
       lppDenom,

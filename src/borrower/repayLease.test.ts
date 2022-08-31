@@ -20,6 +20,8 @@ describe('Leaser contract tests - Repay lease', () => {
   let lppLiquidity: Coin;
   let lppDenom: string;
   let leaseInstance: NolusContracts.Lease;
+  let lppInstance: NolusContracts.Lpp;
+  let leaserInstance: NolusContracts.Leaser;
   let mainLeaseAddress: string;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
@@ -35,11 +37,13 @@ describe('Leaser contract tests - Repay lease', () => {
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
     leaseInstance = new NolusContracts.Lease(cosm);
+    leaserInstance = new NolusContracts.Leaser(cosm);
+    lppInstance = new NolusContracts.Lpp(cosm);
 
-    const lppConfig = await leaseInstance.getLppConfig(lppContractAddress);
+    const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
     lppDenom = lppConfig.lpn_symbol;
 
-    await leaseInstance.lenderDeposit(
+    await lppInstance.lenderDeposit(
       lppContractAddress,
       user1Wallet,
       customFees.exec,
@@ -69,7 +73,7 @@ describe('Leaser contract tests - Repay lease', () => {
       borrowerWallet.address as string,
     );
 
-    const quote = await leaseInstance.makeLeaseApply(
+    const quote = await leaserInstance.makeLeaseApply(
       leaserContractAddress,
       downpayment,
       lppDenom,
@@ -83,7 +87,7 @@ describe('Leaser contract tests - Repay lease', () => {
       borrowerWallet.address as string,
     );
 
-    const result = await leaseInstance.openLease(
+    const result = await leaserInstance.openLease(
       leaserContractAddress,
       borrowerWallet,
       lppDenom,
@@ -92,6 +96,7 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     mainLeaseAddress = result.logs[0].events[7].attributes[3].value;
+    console.log(mainLeaseAddress);
 
     expect(mainLeaseAddress).not.toBe('');
 
@@ -102,12 +107,15 @@ describe('Leaser contract tests - Repay lease', () => {
       new Date().getTime() * 1000000
     ).toString();
 
-    let loan = await leaseInstance.getLoanInformation(
+    console.log(timeImmediatlyBeforeStateQuery);
+    let loan = await lppInstance.getLoanInformation(
       lppContractAddress,
       mainLeaseAddress,
     );
 
-    const outstandingInterest = await leaseInstance.getOutstandingInterest(
+    await sleep(1 * 1000);
+
+    const outstandingInterest = await lppInstance.getOutstandingInterest(
       lppContractAddress,
       mainLeaseAddress,
       timeImmediatlyBeforeStateQuery,
@@ -230,7 +238,7 @@ describe('Leaser contract tests - Repay lease', () => {
       [firstPayment],
     );
 
-    loan = await leaseInstance.getLoanInformation(
+    loan = await lppInstance.getLoanInformation(
       lppContractAddress,
       mainLeaseAddress,
     );
@@ -483,7 +491,7 @@ describe('Leaser contract tests - Repay lease', () => {
   });
 
   test('the borrower tries to pay a lease with an invalid denom - should produce an error', async () => {
-    const leases = await leaseInstance.getCurrentOpenLeases(
+    const leases = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrowerWallet.address as string,
     );
@@ -514,7 +522,7 @@ describe('Leaser contract tests - Repay lease', () => {
   });
 
   test('the borrower tries to pay a lease with more amount than he has - should produce an error', async () => {
-    const leases = await leaseInstance.getCurrentOpenLeases(
+    const leases = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrowerWallet.address as string,
     );
@@ -553,7 +561,7 @@ describe('Leaser contract tests - Repay lease', () => {
   });
 
   test('the borrower tries to pay a lease with 0 amount - should produce an error', async () => {
-    const leases = await leaseInstance.getCurrentOpenLeases(
+    const leases = await leaserInstance.getCurrentOpenLeases(
       leaserContractAddress,
       borrowerWallet.address as string,
     );
@@ -734,7 +742,7 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     // try lpp.outstanding_interest
-    let getOutstandingInterest = await leaseInstance.getOutstandingInterest(
+    let getOutstandingInterest = await lppInstance.getOutstandingInterest(
       lppContractAddress,
       mainLeaseAddress,
       (new Date().getTime() * 1000000).toString(),
@@ -750,7 +758,7 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     // try lpp.outstanding_interest
-    getOutstandingInterest = await leaseInstance.getOutstandingInterest(
+    getOutstandingInterest = await lppInstance.getOutstandingInterest(
       lppContractAddress,
       mainLeaseAddress,
       (new Date().getTime() * 1000000).toString(),
@@ -819,7 +827,7 @@ describe('Leaser contract tests - Repay lease', () => {
       borrowerWallet.address as string,
     );
 
-    const result = await leaseInstance.openLease(
+    const result = await leaserInstance.openLease(
       leaserContractAddress,
       borrowerWallet,
       lppDenom,

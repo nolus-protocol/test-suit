@@ -11,7 +11,7 @@ import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
 describe('Leaser contract tests - Config', () => {
   let user1Wallet: NolusWallet;
   let wallet: NolusWallet;
-  let leaseInstance: NolusContracts.Lease;
+  let leaserInstance: NolusContracts.Leaser;
   let configBefore: NolusContracts.LeaserConfig;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
@@ -39,9 +39,9 @@ describe('Leaser contract tests - Config', () => {
     wallet = await createWallet();
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
-    leaseInstance = new NolusContracts.Lease(cosm);
+    leaserInstance = new NolusContracts.Leaser(cosm);
 
-    configBefore = await leaseInstance.getLeaserConfig(leaserContractAddress);
+    configBefore = await leaserInstance.getLeaserConfig(leaserContractAddress);
 
     const adminBalance = {
       amount: '10000000',
@@ -72,7 +72,7 @@ describe('Leaser contract tests - Config', () => {
       },
     };
 
-    const configAfter = await leaseInstance.getLeaserConfig(
+    const configAfter = await leaserInstance.getLeaserConfig(
       leaserContractAddress,
     );
     expect(configAfter).toStrictEqual(configBefore);
@@ -82,7 +82,7 @@ describe('Leaser contract tests - Config', () => {
     await sendInitExecuteFeeTokens(user1Wallet, wallet.address as string);
 
     const result = () =>
-      leaseInstance.setLeaserConfig(
+      leaserInstance.setLeaserConfig(
         leaserContractAddress,
         wallet,
         leaserConfigMsg,
@@ -97,7 +97,7 @@ describe('Leaser contract tests - Config', () => {
       leaserConfigMsg.config.liability.healthy_percent + 1;
 
     const result = () =>
-      leaseInstance.setLeaserConfig(
+      leaserInstance.setLeaserConfig(
         leaserContractAddress,
         user1Wallet,
         leaserConfigMsg,
@@ -114,7 +114,7 @@ describe('Leaser contract tests - Config', () => {
       leaserConfigMsg.config.liability.max_percent + 1;
 
     const result = () =>
-      leaseInstance.setLeaserConfig(
+      leaserInstance.setLeaserConfig(
         leaserContractAddress,
         user1Wallet,
         leaserConfigMsg,
@@ -131,7 +131,7 @@ describe('Leaser contract tests - Config', () => {
       leaserConfigMsg.config.liability.max_percent + 1;
 
     const result = () =>
-      leaseInstance.setLeaserConfig(
+      leaserInstance.setLeaserConfig(
         leaserContractAddress,
         user1Wallet,
         leaserConfigMsg,
@@ -148,7 +148,7 @@ describe('Leaser contract tests - Config', () => {
       leaserConfigMsg.config.repayment.period_sec + 1;
 
     const result = () =>
-      leaseInstance.setLeaserConfig(
+      leaserInstance.setLeaserConfig(
         leaserContractAddress,
         user1Wallet,
         leaserConfigMsg,

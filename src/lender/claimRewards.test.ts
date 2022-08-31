@@ -8,7 +8,7 @@ describe('Lender tests - Claim rewards', () => {
   let user1Wallet: NolusWallet;
   let lenderWallet: NolusWallet;
   let lppDenom: string;
-  let leaseInstance: NolusContracts.Lease;
+  let lppInstance: NolusContracts.Lpp;
   let rewards: Coin;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const deposit = '1000000000';
@@ -18,19 +18,19 @@ describe('Lender tests - Claim rewards', () => {
     user1Wallet = await getUser1Wallet();
     lenderWallet = await createWallet();
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
-    leaseInstance = new NolusContracts.Lease(cosm);
+    lppInstance = new NolusContracts.Lpp(cosm);
 
-    const lppConfig = await leaseInstance.getLppConfig(lppContractAddress);
+    const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
     lppDenom = lppConfig.lpn_symbol;
 
     rewards = { amount: '20000000000', denom: NATIVE_MINIMAL_DENOM };
   });
 
   test('the successful claim rewards scenario - should work as expected', async () => {
-    const lppBalanceBefore = await leaseInstance.getLppBalance(
+    const lppBalanceBefore = await lppInstance.getLppBalance(
       lppContractAddress,
     );
-    const lenderDepositBefore = await leaseInstance.getLenderDeposit(
+    const lenderDepositBefore = await lppInstance.getLenderDeposit(
       lppContractAddress,
       lenderWallet.address as string,
     );
@@ -43,18 +43,16 @@ describe('Lender tests - Claim rewards', () => {
 
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
 
-    await leaseInstance.lenderDeposit(
+    await lppInstance.lenderDeposit(
       lppContractAddress,
       lenderWallet,
       customFees.exec,
       [{ denom: lppDenom, amount: deposit }],
     );
 
-    const lppBalanceAfter = await leaseInstance.getLppBalance(
-      lppContractAddress,
-    );
+    const lppBalanceAfter = await lppInstance.getLppBalance(lppContractAddress);
 
-    const lenderDepositAfter = await leaseInstance.getLenderDeposit(
+    const lenderDepositAfter = await lppInstance.getLenderDeposit(
       lppContractAddress,
       lenderWallet.address as string,
     );
@@ -76,7 +74,7 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    await leaseInstance.distributeRewards(
+    await lppInstance.distributeRewards(
       lppContractAddress,
       user1Wallet,
       customFees.exec,
@@ -94,7 +92,7 @@ describe('Lender tests - Claim rewards', () => {
         BigInt(customFees.exec.amount[0].amount),
     );
 
-    const lenderRewards = await leaseInstance.getLenderRewards(
+    const lenderRewards = await lppInstance.getLenderRewards(
       lppContractAddress,
       lenderWallet.address as string,
     );
@@ -116,7 +114,7 @@ describe('Lender tests - Claim rewards', () => {
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
 
     // Claim Rewards
-    await leaseInstance.claimRewards(
+    await lppInstance.claimRewards(
       lppContractAddress,
       lenderWallet,
       undefined,
@@ -136,19 +134,19 @@ describe('Lender tests - Claim rewards', () => {
   test('the lender tries to receive rewards to another account - should work as expected', async () => {
     const recipientWallet = await createWallet();
 
-    const lenderRewardsBefore = await leaseInstance.getLenderRewards(
+    const lenderRewardsBefore = await lppInstance.getLenderRewards(
       lppContractAddress,
       lenderWallet.address as string,
     );
 
-    await leaseInstance.distributeRewards(
+    await lppInstance.distributeRewards(
       lppContractAddress,
       user1Wallet,
       customFees.exec,
       [rewards],
     );
 
-    const lenderRewardsAfter = await leaseInstance.getLenderRewards(
+    const lenderRewardsAfter = await lppInstance.getLenderRewards(
       lppContractAddress,
       lenderWallet.address as string,
     );
@@ -168,7 +166,7 @@ describe('Lender tests - Claim rewards', () => {
     );
 
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
-    await leaseInstance.claimRewards(
+    await lppInstance.claimRewards(
       lppContractAddress,
       lenderWallet,
       recipientWallet.address as string,
@@ -201,7 +199,7 @@ describe('Lender tests - Claim rewards', () => {
     const rewards = { amount: '0', denom: NATIVE_MINIMAL_DENOM };
 
     const broadcastTx = () =>
-      leaseInstance.distributeRewards(
+      lppInstance.distributeRewards(
         lppContractAddress,
         user1Wallet,
         customFees.exec,
@@ -225,7 +223,7 @@ describe('Lender tests - Claim rewards', () => {
     );
 
     const broadcastTx = () =>
-      leaseInstance.distributeRewards(
+      lppInstance.distributeRewards(
         lppContractAddress,
         user1Wallet,
         customFees.exec,
@@ -252,7 +250,7 @@ describe('Lender tests - Claim rewards', () => {
     const rewards = { amount: '10', denom: lppDenom };
 
     const broadcastTx = () =>
-      leaseInstance.distributeRewards(
+      lppInstance.distributeRewards(
         lppContractAddress,
         user1Wallet,
         customFees.exec,
@@ -274,7 +272,7 @@ describe('Lender tests - Claim rewards', () => {
   test('the lender tries to claim 0 amount rewards - should produce an error', async () => {
     const newLenderWallet = await createWallet();
     const lenderRewardsTx = () =>
-      leaseInstance.getLenderRewards(
+      lppInstance.getLenderRewards(
         lppContractAddress,
         newLenderWallet.address as string,
       );
@@ -293,7 +291,7 @@ describe('Lender tests - Claim rewards', () => {
     );
 
     const broadcastTx = () =>
-      leaseInstance.claimRewards(
+      lppInstance.claimRewards(
         lppContractAddress,
         newLenderWallet,
         undefined,

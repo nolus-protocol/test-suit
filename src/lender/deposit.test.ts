@@ -12,6 +12,8 @@ describe('Lender tests - Make deposit', () => {
   let user1Wallet: NolusWallet;
   let lenderWallet: NolusWallet;
   let lppDenom: string;
+  let lppInstance: NolusContracts.Lpp;
+  let leaserInstance: NolusContracts.Leaser;
   let leaseInstance: NolusContracts.Lease;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
@@ -25,9 +27,11 @@ describe('Lender tests - Make deposit', () => {
     lenderWallet = await createWallet();
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
+    lppInstance = new NolusContracts.Lpp(cosm);
+    leaserInstance = new NolusContracts.Leaser(cosm);
     leaseInstance = new NolusContracts.Lease(cosm);
 
-    const lppConfig = await leaseInstance.getLppConfig(lppContractAddress);
+    const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
     lppDenom = lppConfig.lpn_symbol;
   });
 
@@ -37,11 +41,11 @@ describe('Lender tests - Make deposit', () => {
       lppDenom,
     );
 
-    const lppBalanceBeginning = await leaseInstance.getLppBalance(
+    const lppBalanceBeginning = await lppInstance.getLppBalance(
       lppContractAddress,
     );
 
-    const price = await leaseInstance.getPrice(lppContractAddress);
+    const price = await lppInstance.getPrice(lppContractAddress);
 
     if (+lppLiquidityBefore.amount === 0) {
       expect(price.amount.amount).toBe('1');
@@ -58,7 +62,7 @@ describe('Lender tests - Make deposit', () => {
       );
     }
 
-    const lenderDepositBefore = await leaseInstance.getLenderDeposit(
+    const lenderDepositBefore = await lppInstance.getLenderDeposit(
       lppContractAddress,
       lenderWallet.address as string,
     );
@@ -76,7 +80,7 @@ describe('Lender tests - Make deposit', () => {
 
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
 
-    await leaseInstance.lenderDeposit(
+    await lppInstance.lenderDeposit(
       lppContractAddress,
       lenderWallet,
       customFees.exec,
@@ -88,7 +92,7 @@ describe('Lender tests - Make deposit', () => {
       lppDenom,
     );
 
-    const lppBalanceResponse = await leaseInstance.getLppBalance(
+    const lppBalanceResponse = await lppInstance.getLppBalance(
       lppContractAddress,
     );
 
@@ -97,7 +101,7 @@ describe('Lender tests - Make deposit', () => {
       lppDenom,
     );
 
-    const lenderDepositAfter = await leaseInstance.getLenderDeposit(
+    const lenderDepositAfter = await lppInstance.getLenderDeposit(
       lppContractAddress,
       lenderWallet.address as string,
     );
@@ -129,7 +133,7 @@ describe('Lender tests - Make deposit', () => {
         ),
     );
 
-    const result = await leaseInstance.openLease(
+    const result = await leaserInstance.openLease(
       leaserContractAddress,
       user1Wallet,
       lppDenom,
@@ -152,11 +156,11 @@ describe('Lender tests - Make deposit', () => {
     );
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
 
-    const lppBalanceAfterLeaseOpen = await leaseInstance.getLppBalance(
+    const lppBalanceAfterLeaseOpen = await lppInstance.getLppBalance(
       lppContractAddress,
     );
 
-    const priceImediatAfterLeaseOpening = await leaseInstance.getPrice(
+    const priceImediatAfterLeaseOpening = await lppInstance.getPrice(
       lppContractAddress,
     );
 
@@ -171,14 +175,14 @@ describe('Lender tests - Make deposit', () => {
         +priceImediatAfterLeaseOpening.amount.amount,
     );
 
-    await leaseInstance.lenderDeposit(
+    await lppInstance.lenderDeposit(
       lppContractAddress,
       lenderWallet,
       customFees.exec,
       [{ denom: lppDenom, amount: deposit }],
     );
 
-    const priceAfterLeaseOpening = await leaseInstance.getPrice(
+    const priceAfterLeaseOpening = await lppInstance.getPrice(
       lppContractAddress,
     );
 
@@ -187,7 +191,7 @@ describe('Lender tests - Make deposit', () => {
       lppDenom,
     );
 
-    const lenderDepositAfterLeaseOpening = await leaseInstance.getLenderDeposit(
+    const lenderDepositAfterLeaseOpening = await lppInstance.getLenderDeposit(
       lppContractAddress,
       lenderWallet.address as string,
     );
@@ -227,7 +231,7 @@ describe('Lender tests - Make deposit', () => {
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
 
     const depositResult = () =>
-      leaseInstance.lenderDeposit(
+      lppInstance.lenderDeposit(
         lppContractAddress,
         lenderWallet,
         customFees.exec,
@@ -265,7 +269,7 @@ describe('Lender tests - Make deposit', () => {
     );
 
     const depositResult = () =>
-      leaseInstance.lenderDeposit(
+      lppInstance.lenderDeposit(
         lppContractAddress,
         lenderWallet,
         customFees.exec,
@@ -302,7 +306,7 @@ describe('Lender tests - Make deposit', () => {
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
 
     const depositResult = () =>
-      leaseInstance.lenderDeposit(
+      lppInstance.lenderDeposit(
         lppContractAddress,
         lenderWallet,
         customFees.exec,
@@ -327,7 +331,7 @@ describe('Lender tests - Make deposit', () => {
     await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
 
     const depositResult = () =>
-      leaseInstance.lenderDeposit(
+      lppInstance.lenderDeposit(
         lppContractAddress,
         lenderWallet,
         customFees.exec,
