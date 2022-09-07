@@ -22,7 +22,7 @@ import {
 } from '../util/utils';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
-const maybe = process.env.NODE_ENV === 'local' ? describe : describe.skip;
+const maybe = process.env.NODE_ENV == 'dev' ? describe : describe.skip;
 
 maybe('Staking Nolus tokens - Redelegation', () => {
   let user1Wallet: NolusWallet;

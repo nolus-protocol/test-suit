@@ -49,13 +49,13 @@ local -r wasm_admin=$(exportKey "$wasm_admin_key" "$accounts_dir")
 local -r validator_1_address=$(getValidatorAddress "0" "$accounts_dir" "$node_url")
 local -r validator_2_address=$(getValidatorAddress "1" "$accounts_dir" "$node_url")
 
-# Get contracts addresses and ids
+# Get contracts addresses
 
 local -r treasury_address=$(jq .contracts_info[0].treasury.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 local -r lpp_address=$(jq .contracts_info[1].lpp.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r leaser_address=$(jq .contracts_info[2].leaser.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r timealarms_address=$(jq .contracts_info[3].timealarms.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r oracle_address=$(jq .contracts_info[4].oracle.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
+local -r timealarms_address=$(jq .contracts_info[2].timealarms.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
+local -r oracle_address=$(jq .contracts_info[3].oracle.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
+local -r leaser_address=$(jq .contracts_info[4].leaser.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 local -r profit_address=$(jq .contracts_info[5].profit.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 local -r dispatcher_address=$(jq .contracts_info[6].rewards_dispatcher.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 

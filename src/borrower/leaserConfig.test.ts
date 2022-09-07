@@ -26,8 +26,8 @@ describe('Leaser contract tests - Config', () => {
         recalc_secs: 7200,
       },
       repayment: {
-        period_sec: 186000,
-        grace_period_sec: 23000,
+        period_sec: 5184000,
+        grace_period_sec: 864000,
       },
     },
   };
@@ -66,8 +66,8 @@ describe('Leaser contract tests - Config', () => {
           recalc_secs: 7200,
         },
         repayment: {
-          period_sec: 186000,
-          grace_period_sec: 23000,
+          period_sec: 5184000,
+          grace_period_sec: 864000,
         },
       },
     };
