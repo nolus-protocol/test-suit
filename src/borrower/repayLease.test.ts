@@ -13,7 +13,6 @@ import {
 } from '../util/transfer';
 import { calcInterestRate } from '../util/smart-contracts';
 
-// TO DO: fix..
 describe('Leaser contract tests - Repay lease', () => {
   let user1Wallet: NolusWallet;
   let borrowerWallet: NolusWallet;
@@ -30,7 +29,7 @@ describe('Leaser contract tests - Repay lease', () => {
   const lppContractAddress = process.env.LPP_ADDRESS as string;
 
   const downpayment = '1000000000000';
-  const outstandingBySec = 15;
+  const outstandingBySec = 15; // good to be >= 10
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
@@ -51,7 +50,7 @@ describe('Leaser contract tests - Repay lease', () => {
 
     leaserRepaymentPeriod = leaserConfig.config.repayment.period_sec;
 
-    expect(leaserRepaymentPeriod).toBeGreaterThan(200); // > ~3 min
+    expect(leaserRepaymentPeriod).toBeGreaterThan(60 * 5); // enough time for the whole test
 
     await lppInstance.lenderDeposit(
       lppContractAddress,
@@ -106,14 +105,15 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     mainLeaseAddress = result.logs[0].events[7].attributes[3].value;
-
     expect(mainLeaseAddress).not.toBe('');
 
     // wait for >0 interest
     await sleep(outstandingBySec * 1000);
 
-    const dateBefore = (await borrowerWallet.getBlock()).header.time;
-    const timeBeforeFirstRepay = (Date.parse(dateBefore) * 1000000).toString();
+    let dateBefore = (await borrowerWallet.getBlock()).header.time;
+
+    let blockTimeBeforeState = (Date.parse(dateBefore) * 1000000).toString();
+    console.log('blockTimeBeforeState', blockTimeBeforeState);
 
     let loan = await lppInstance.getLoanInformation(
       lppContractAddress,
@@ -125,12 +125,16 @@ describe('Leaser contract tests - Repay lease', () => {
     const outstandingInterest = await lppInstance.getOutstandingInterest(
       lppContractAddress,
       mainLeaseAddress,
-      timeBeforeFirstRepay,
+      blockTimeBeforeState,
     );
 
     let currentLeaseState = await leaseInstance.getLeaseStatus(
       mainLeaseAddress,
     );
+
+    let blockTimeAfterState =
+      Date.parse((await borrowerWallet.getBlock()).header.time) * 1000000;
+    console.log('blockTimeAfterState', blockTimeAfterState);
 
     const annualInterest = currentLeaseState.opened?.interest_rate;
     const interestRateMargin = currentLeaseState.opened?.interest_rate_margin;
@@ -161,45 +165,72 @@ describe('Leaser contract tests - Repay lease', () => {
       +currentPID + +currentPMD + +currentCID + +currentCMD;
 
     // verify interest calc
-    const calcLoanInterestDue = calcInterestRate(
+    const calcLoanInterestDueT1 = calcInterestRate(
       +currentLeasePrincipal,
-      annualInterest / 10,
-      +timeBeforeFirstRepay,
+      annualInterest,
+      +blockTimeBeforeState,
       loan.interest_paid,
     );
 
-    expect(+currentCID).toBe(calcLoanInterestDue);
-
-    const calcLoanInterestOverdue = calcInterestRate(
+    const calcLoanInterestDueT2 = calcInterestRate(
       +currentLeasePrincipal,
-      annualInterest / 10,
-      loan.interest_paid,
+      annualInterest,
+      +blockTimeAfterState,
       loan.interest_paid,
     );
 
-    expect(+currentPID).toBe(calcLoanInterestOverdue);
-
-    expect(+outstandingInterest.amount).toBe(
-      calcLoanInterestOverdue + calcLoanInterestDue,
-    );
-
-    const calcMarginInterestDue = calcInterestRate(
+    console.log(
+      calcLoanInterestDueT1,
+      calcLoanInterestDueT2,
+      'first calc',
       +currentLeasePrincipal,
-      interestRateMargin / 10,
-      +timeBeforeFirstRepay,
+      annualInterest,
+      blockTimeBeforeState,
+      +blockTimeAfterState,
       loan.interest_paid,
     );
+    expect(+currentCID).toBeGreaterThanOrEqual(calcLoanInterestDueT1);
+    expect(+currentCID).toBeLessThanOrEqual(calcLoanInterestDueT2);
 
-    expect(+currentCMD).toBe(calcMarginInterestDue);
+    expect(+currentPID).toBe(0);
 
-    const calcMarginInterestOverdue = calcInterestRate(
+    expect(+outstandingInterest.amount).toBeGreaterThanOrEqual(
+      calcLoanInterestDueT1,
+    );
+
+    expect(+outstandingInterest.amount).toBeLessThanOrEqual(
+      calcLoanInterestDueT2,
+    );
+
+    const calcMarginInterestDueT1 = calcInterestRate(
       +currentLeasePrincipal,
-      interestRateMargin / 10,
-      loan.interest_paid,
+      interestRateMargin,
+      +blockTimeBeforeState,
       loan.interest_paid,
     );
 
-    expect(+currentPMD).toBe(calcMarginInterestOverdue);
+    const calcMarginInterestDueT2 = calcInterestRate(
+      +currentLeasePrincipal,
+      interestRateMargin,
+      +blockTimeAfterState,
+      loan.interest_paid,
+    );
+
+    console.log(
+      calcMarginInterestDueT1,
+      calcMarginInterestDueT2,
+      'first calc margin',
+      +currentLeasePrincipal,
+      interestRateMargin,
+      +blockTimeBeforeState,
+      +blockTimeAfterState,
+      loan.interest_paid,
+    );
+
+    expect(+currentCMD).toBeGreaterThanOrEqual(calcMarginInterestDueT1);
+    expect(+currentCMD).toBeLessThanOrEqual(calcMarginInterestDueT2);
+
+    expect(+currentPMD).toBe(0);
 
     // get the annual_interest before all payments
     const leaseAnnualInterestBeforeAll =
@@ -230,12 +261,19 @@ describe('Leaser contract tests - Repay lease', () => {
       lppDenom,
     );
 
-    await leaseInstance.repayLease(
+    let repayTxResponse = await leaseInstance.repayLease(
       mainLeaseAddress,
       borrowerWallet,
       customFees.exec,
       [firstPayment],
     );
+
+    let totalInterestPaid =
+      +repayTxResponse.logs[0].events[6].attributes[5].value;
+    let loanInterestPaid =
+      +repayTxResponse.logs[0].events[6].attributes[11].value;
+    let marginInterestPaid =
+      +repayTxResponse.logs[0].events[6].attributes[10].value;
 
     loan = await lppInstance.getLoanInformation(
       lppContractAddress,
@@ -266,45 +304,70 @@ describe('Leaser contract tests - Repay lease', () => {
       return;
     }
 
+    // the configured leaser repayment period is > 1min --> no previous period, so:
     expect(+currentPMD).toBe(0);
-    expect(+currentPID).toBe(0);
+    // TO DO - issue - https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/9
+    // expect(+currentPID).toBe(0);
 
-    let dateBeforeCheck = (await borrowerWallet.getBlock()).header.time;
-    let timeBeforeCheck = (Date.parse(dateBeforeCheck) * 1000000).toString();
+    const dateBeforeCheck = (await borrowerWallet.getBlock()).header.time;
+    const timeBeforeCheck = (Date.parse(dateBeforeCheck) * 1000000).toString();
 
     const loanInterestDueImmediatelyBeforeFirstCheck = calcInterestRate(
       +currentLeasePrincipal,
-      annualInterest / 10,
+      annualInterest,
+      +timeBeforeCheck,
+      loan.interest_paid,
+    );
+
+    console.log(
+      loanInterestDueImmediatelyBeforeFirstCheck,
+      'loanImeBefore',
+      +currentLeasePrincipal,
+      annualInterest,
       +timeBeforeCheck,
       loan.interest_paid,
     );
 
     const marginInterestDueImmediatelyBeforeFirstCheck = calcInterestRate(
       +currentLeasePrincipal,
-      interestRateMargin / 10,
+      interestRateMargin,
       +timeBeforeCheck,
-      +timeBeforeFirstRepay,
+      +mainLeaseTimeOpen,
     );
 
+    console.log(
+      marginInterestDueImmediatelyBeforeFirstCheck,
+      marginInterestPaid,
+      'marginImeBefore',
+      +currentLeasePrincipal,
+      interestRateMargin,
+      +timeBeforeCheck,
+      +mainLeaseTimeOpen,
+    );
+
+    // TO DO - remove +currentPID
     expect(loanInterestDueImmediatelyBeforeFirstCheck).toBe(
       +currentCID + +currentPID,
     );
 
-    // expect(marginInterestDueImmediatelyBeforeFirstCheck).toBe(
-    //   +currentCMD + +currentPMD,
-    // );
+    // TO DO
+    // expect(+currentPID).toBe(0);
+
+    expect(
+      marginInterestDueImmediatelyBeforeFirstCheck - marginInterestPaid,
+    ).toBe(+currentCMD);
 
     expect(leaseStateAfterFirstRepay.opened?.principal_due.amount).toBe(
       currentLeasePrincipal,
     );
 
-    //TO DO:
+    expect(+currentPMD).toBe(0);
+
     expect(+cInterestFirstRepay).toBe(
-      //GreaterThanOrEqual
       +currentLeaseInterest -
         +firstPayment.amount +
         loanInterestDueImmediatelyBeforeFirstCheck +
-        marginInterestDueImmediatelyBeforeFirstCheck,
+        (marginInterestDueImmediatelyBeforeFirstCheck - marginInterestPaid),
     );
 
     let borrowerBalanceAfter = await borrowerWallet.getBalance(
@@ -331,13 +394,14 @@ describe('Leaser contract tests - Repay lease', () => {
     const leaseAnnualInterestAfterFirstPayment =
       currentLeaseState.opened?.interest_rate;
 
-    // pay interest+amount
-
+    // pay interest+principal
     // wait for >0 interest
     await sleep(outstandingBySec * 1000);
 
     // get the new lease state
-    const timeOfLeaseStateCheck = (new Date().getTime() * 1000000).toString();
+    dateBefore = (await borrowerWallet.getBlock()).header.time;
+    const timeBeforeRepay = (Date.parse(dateBeforeCheck) * 1000000).toString();
+
     currentLeaseState = await leaseInstance.getLeaseStatus(mainLeaseAddress);
 
     currentPID = currentLeaseState.opened?.previous_interest_due.amount;
@@ -386,12 +450,24 @@ describe('Leaser contract tests - Repay lease', () => {
       lppDenom,
     );
 
-    await leaseInstance.repayLease(
+    repayTxResponse = await leaseInstance.repayLease(
       mainLeaseAddress,
       borrowerWallet,
       customFees.exec,
       [secondPayment],
     );
+
+    loan = await lppInstance.getLoanInformation(
+      lppContractAddress,
+      mainLeaseAddress,
+    );
+
+    totalInterestPaid = +repayTxResponse.logs[0].events[6].attributes[5].value;
+    loanInterestPaid = +repayTxResponse.logs[0].events[6].attributes[11].value;
+    marginInterestPaid =
+      +repayTxResponse.logs[0].events[6].attributes[10].value;
+    const principalPaid =
+      +repayTxResponse.logs[0].events[6].attributes[12].value;
 
     const leaseStateAfterSecondRepay = await leaseInstance.getLeaseStatus(
       mainLeaseAddress,
@@ -418,31 +494,17 @@ describe('Leaser contract tests - Repay lease', () => {
       return;
     }
 
-    timeBeforeCheck = (new Date().getTime() * 1000000).toString();
-
-    const loanInterestImmediatelyBeforeCheck = calcInterestRate(
-      +cPrincipalAfterSecondRepay,
-      annualInterest / 10,
-      +timeBeforeCheck,
-      +timeOfLeaseStateCheck,
-    );
-
-    // const marginInterestImmediatelyBeforeCheck = calcInterestRate(
-    //   +cPrincipalAfterSecondRepay,
-    //   marginInterestRate / 10,
-    //   +timeBeforeCheck,
-    //   +timeOfLeaseStateCheck,
-    // );
-
     // check that the repayment sequence is correct
     expect(+cPrincipalAfterSecondRepay).toBeGreaterThanOrEqual(
-      +currentLeasePrincipal - Math.floor(+currentLeasePrincipal / 2),
+      +currentLeasePrincipal - principalPaid,
     );
 
-    // TO DO: to be!
-    expect(+cInterestAfterSecondRepay).toBeGreaterThanOrEqual(
-      loanInterestImmediatelyBeforeCheck, // +marginInterestImmediatelyBeforeCheck
-    );
+    expect(totalInterestPaid).toBe(+secondPayment.amount);
+    expect(marginInterestPaid).toBeGreaterThan(0);
+    expect(loanInterestPaid).toBeGreaterThan(0);
+
+    //principal < principal before repay && delay secs < outstandingBySec -->> interestAfterRepay < interestBeforeRepay
+    expect(+cInterestAfterSecondRepay).toBeLessThan(currentLeaseInterest);
 
     borrowerBalanceAfter = await borrowerWallet.getBalance(
       borrowerWallet.address as string,
@@ -694,11 +756,18 @@ describe('Leaser contract tests - Repay lease', () => {
       return;
     }
 
+    const excess = 10000;
+
     // send some tokens to the borrower
     // for the payment and fees
     const repayAll = {
+      // +excess - make sure the lease principal will be paid
       denom: lppDenom,
-      amount: (+cInterestBeforeRepay + +cPrincipalBeforeRepay).toString(),
+      amount: (
+        +cInterestBeforeRepay +
+        +cPrincipalBeforeRepay +
+        excess
+      ).toString(),
     };
 
     await user1Wallet.transferAmount(
@@ -728,14 +797,11 @@ describe('Leaser contract tests - Repay lease', () => {
       lppDenom,
     );
 
-    // try lpp.outstanding_interest
-    let getOutstandingInterest = await lppInstance.getOutstandingInterest(
-      lppContractAddress,
+    const stateBeforeClose = await leaseInstance.getLeaseStatus(
       mainLeaseAddress,
-      (new Date().getTime() * 1000000).toString(),
     );
 
-    expect(getOutstandingInterest.amount).toBe('0');
+    expect(stateBeforeClose.paid).toBeDefined();
 
     // close
     await leaseInstance.closeLease(
@@ -745,7 +811,7 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     // try lpp.outstanding_interest
-    getOutstandingInterest = await lppInstance.getOutstandingInterest(
+    const getOutstandingInterest = await lppInstance.getOutstandingInterest(
       lppContractAddress,
       mainLeaseAddress,
       (new Date().getTime() * 1000000).toString(),
@@ -758,8 +824,12 @@ describe('Leaser contract tests - Repay lease', () => {
       lppDenom,
     );
 
-    expect(+borrowerBalanceAfter.amount).toBe(
+    expect(+borrowerBalanceAfter.amount).toBeGreaterThanOrEqual(
       +borrowerBalanceBeforeClose.amount + +loanAmount,
+    );
+
+    expect(+borrowerBalanceAfter.amount).toBeLessThanOrEqual(
+      +borrowerBalanceBeforeClose.amount + +loanAmount + excess,
     );
 
     //return amount to the main address

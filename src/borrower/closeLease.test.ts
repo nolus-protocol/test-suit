@@ -305,7 +305,7 @@ describe('Leaser contract tests - Close lease', () => {
       secondLeaseAddress,
     );
 
-    expect(leaseStateAfterRepay.paid).toBeDefined(); // TO DO: maybe this will return 'Closed'
+    expect(leaseStateAfterRepay.paid).toBeDefined();
 
     await sendInitExecuteFeeTokens(user1Wallet, userWallet.address as string);
     const result = () =>
