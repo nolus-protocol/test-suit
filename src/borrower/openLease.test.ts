@@ -165,15 +165,21 @@ describe('Leaser contract tests - Open a lease', () => {
       leasesAfter[leasesAfter.length - 1],
     );
     const cAmount = currentLeaseState.opened?.amount.amount;
+    const cPrincipal = currentLeaseState.opened?.principal_due.amount;
 
-    if (!cAmount) {
+    if (!cAmount || !cPrincipal) {
       undefinedHandler();
       return;
     }
 
+    expect(+cAmount - +downpayment).toBe(+cPrincipal);
+
     //check if this borrow<=init%*LeaseTotal(borrow+downpayment);
-    expect(+cAmount - +downpayment).toBeLessThanOrEqual(
-      (leaserConfig.config.liability.init_percent / 100) * +cAmount,
+    expect(+cAmount - +downpayment).toBe(
+      Math.trunc(
+        (+downpayment * leaserConfig.config.liability.init_percent) /
+          (1000 - leaserConfig.config.liability.init_percent),
+      ),
     );
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
