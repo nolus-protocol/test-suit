@@ -54,7 +54,7 @@ describe('Oracle contract tests', () => {
     await sendInitExecuteFeeTokens(user1Wallet, feederWallet.address as string);
 
     // this period must expires
-    await sleep(PRICE_FEED_PERIOD * 1000);
+    await sleep(PRICE_FEED_PERIOD);
 
     const isFeeder = await oracleInstance.isFeeder(
       contractAddress,
@@ -204,7 +204,7 @@ describe('Oracle contract tests', () => {
     expect(afterResult.prices[0].quote.symbol).toBe(BASE_ASSET);
 
     // the price feed period has expired + block creation time
-    await sleep(BLOCK_CREATION_TIME_DEV + PRICE_FEED_PERIOD * 1000);
+    await sleep(BLOCK_CREATION_TIME_DEV + PRICE_FEED_PERIOD);
     const resultAfterPeriod = () =>
       oracleInstance.getPrices(contractAddress, [testPairMember]);
     await expect(resultAfterPeriod).rejects.toThrow(/^.*No price for pair.*/);

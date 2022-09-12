@@ -145,7 +145,8 @@ describe('Lender tests - Make deposit', () => {
     expect(leaseAddr).not.toBe('');
 
     // wait for interest
-    await sleep(10000);
+    const secsToWait = 10;
+    await sleep(secsToWait);
 
     const currentLeaseState = await leaseInstance.getLeaseStatus(leaseAddr);
 
