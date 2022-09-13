@@ -39,5 +39,5 @@ export function calcInterestRate(
   const interestPerYear = (principalDue * interestRate) / BigInt(1000);
   const duration = outstandingByNanoSec - interestPaidByNanoSec;
 
-  return (BigInt(interestPerYear) * BigInt(duration)) / BigInt(NANOSEC_YEAR);
+  return (interestPerYear * duration) / BigInt(NANOSEC_YEAR);
 }

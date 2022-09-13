@@ -67,7 +67,7 @@ describe('Leaser contract tests - Repay lease', () => {
     );
 
     // get the liquidity
-    lppLiquidity = await user1Wallet.getBalance(lppContractAddress, lppDenom);
+    lppLiquidity = await cosm.getBalance(lppContractAddress, lppDenom);
     expect(lppLiquidity.amount).not.toBe('0');
   });
 
@@ -170,9 +170,7 @@ describe('Leaser contract tests - Repay lease', () => {
       BigInt(loan.interest_paid),
     );
     expect(calcMarginInterestDue).toBeGreaterThanOrEqual(BigInt(0));
-
     expect(BigInt(currentCMD)).toBe(calcMarginInterestDue);
-
     expect(currentPMD).toBe('0');
 
     // get the annual_interest before all payments
@@ -210,8 +208,8 @@ describe('Leaser contract tests - Repay lease', () => {
       [firstPayment],
     );
 
-    const totalInterestPaid =
-      repayTxResponse.logs[0].events[6].attributes[5].value;
+    // const totalInterestPaid =
+    //   repayTxResponse.logs[0].events[6].attributes[5].value;
     let loanInterestPaid =
       repayTxResponse.logs[0].events[6].attributes[11].value;
     let marginInterestPaid =
@@ -260,6 +258,14 @@ describe('Leaser contract tests - Repay lease', () => {
       BigInt(leaseStateAfterFirstRepay.validity),
       BigInt(loan.interest_paid),
     );
+
+    const loanInterestDueImmediatelyBeforeFirstCheck2 = calcInterestRate(
+      cPrincipalFirstRepay,
+      annualInterest,
+      BigInt(leaseStateAfterFirstRepay.validity),
+      BigInt(mainLeaseTimeOpen),
+    );
+
     expect(loanInterestDueImmediatelyBeforeFirstCheck).toBeGreaterThanOrEqual(
       BigInt(0),
     );
@@ -296,11 +302,15 @@ describe('Leaser contract tests - Repay lease', () => {
     // TO DO
     // expect(currentPID).toBe('0');
 
+    expect(currentPMD).toBe('0');
+
+    expect(
+      loanInterestDueImmediatelyBeforeFirstCheck2 - BigInt(loanInterestPaid),
+    ).toBe(BigInt(currentCID) + BigInt(currentPID));
+
     expect(
       marginInterestDueImmediatelyBeforeFirstCheck - BigInt(marginInterestPaid),
     ).toBe(BigInt(currentCMD));
-
-    expect(currentPMD).toBe('0');
 
     expect(BigInt(cInterestFirstRepay)).toBe(
       BigInt(currentLeaseInterest) -
