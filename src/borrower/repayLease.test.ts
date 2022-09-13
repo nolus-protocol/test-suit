@@ -71,6 +71,113 @@ describe('Leaser contract tests - Repay lease', () => {
     expect(lppLiquidity.amount).not.toBe('0');
   });
 
+  test('verify margin interest calculation after lease repay', async () => {
+    //************** open lease
+    const result = await leaserInstance.openLease(
+      leaserContractAddress,
+      user1Wallet,
+      lppDenom,
+      customFees.exec,
+      [{ denom: lppDenom, amount: downpayment }],
+    );
+    mainLeaseAddress = result.logs[0].events[7].attributes[3].value;
+
+    //*********** get leaseOpen time
+    const loan = await lppInstance.getLoanInformation(
+      lppContractAddress,
+      mainLeaseAddress,
+    );
+    mainLeaseTimeOpen = loan.interest_paid;
+
+    // wait for interest
+    await sleep(outstandingBySec);
+
+    //***************** get state before - find ~ what amount to send to Repay
+    const leaseStateAfterOpenLease = (
+      await leaseInstance.getLeaseStatus(mainLeaseAddress)
+    ).opened;
+    console.log('Lease state after lease open:', leaseStateAfterOpenLease);
+
+    if (!leaseStateAfterOpenLease) {
+      undefinedHandler();
+      return;
+    }
+    const interestRateMargin = BigInt(
+      leaseStateAfterOpenLease.interest_rate_margin,
+    );
+
+    const initPID = leaseStateAfterOpenLease.previous_interest_due.amount;
+    const initPMD = leaseStateAfterOpenLease.previous_margin_due.amount;
+    const initCID = leaseStateAfterOpenLease.current_interest_due.amount;
+    const initCMD = leaseStateAfterOpenLease.current_margin_due.amount;
+    const leasePrincipalAfterLeaseOpen = BigInt(
+      leaseStateAfterOpenLease.principal_due.amount,
+    );
+
+    // find ~ what amount to send to Repay
+    const leaseInterestAfterLeaseOpen =
+      BigInt(initPID) + BigInt(initPMD) + BigInt(initCID) + BigInt(initCMD);
+
+    //**************** repay
+    const payment = {
+      denom: lppDenom,
+      amount: leaseInterestAfterLeaseOpen.toString(),
+    };
+    const repayTxResponse = await leaseInstance.repayLease(
+      mainLeaseAddress,
+      user1Wallet,
+      customFees.exec,
+      [payment],
+    );
+
+    //********* get how much margin exactly is paid
+
+    const marginInterestPaid =
+      repayTxResponse.logs[0].events[6].attributes[10].value;
+
+    //********** state after repay
+    const leaseStateAfterRepay = (
+      await leaseInstance.getLeaseStatus(mainLeaseAddress)
+    ).opened;
+    console.log('Lease state after repay:', leaseStateAfterRepay);
+
+    if (!leaseStateAfterRepay) {
+      undefinedHandler();
+      return;
+    }
+
+    const currentPMD_AfterRepay =
+      leaseStateAfterRepay.previous_margin_due.amount;
+    const currentCMD_AfterRepay =
+      leaseStateAfterRepay.current_margin_due.amount;
+    const principalAfterRepay = BigInt(
+      leaseStateAfterRepay.principal_due.amount,
+    );
+
+    if (!principalAfterRepay) {
+      undefinedHandler();
+      return;
+    }
+
+    //********* checks
+    expect(principalAfterRepay).toBe(leasePrincipalAfterLeaseOpen);
+
+    expect(currentPMD_AfterRepay).toBe('0');
+
+    const marginInterestDueUntillNow = calcInterestRate(
+      leasePrincipalAfterLeaseOpen,
+      interestRateMargin,
+      BigInt(leaseStateAfterRepay.validity),
+      BigInt(mainLeaseTimeOpen),
+    );
+
+    expect(marginInterestDueUntillNow).toBeGreaterThanOrEqual(BigInt(0));
+
+    expect(marginInterestDueUntillNow - BigInt(marginInterestPaid)).toBe(
+      BigInt(currentCMD_AfterRepay),
+    );
+  });
+
   test('the successful lease repayment scenario - should work as expected', async () => {
     // send some tokens to the borrower
     // for the downpayment and fees
