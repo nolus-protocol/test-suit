@@ -60,6 +60,7 @@ describe('Proposal submission tests', () => {
     );
     expect(isDeliverTxFailure(result)).toBeFalsy();
     const log = result.rawLog;
+    // console.log(result);
 
     if (!log) {
       undefinedHandler();
@@ -133,7 +134,7 @@ describe('Proposal submission tests', () => {
         title: 'Test Proposal',
         plan: {
           name: 'Upgrade 1',
-          height: Long.fromInt(10000),
+          height: Long.fromInt(+(await wallet.getBlock()).header.height + 1), // the next block
           info: '',
         },
       }).finish(),
@@ -166,7 +167,7 @@ describe('Proposal submission tests', () => {
         title: 'Test Proposal',
         plan: {
           name: 'Upgrade 1',
-          height: Long.fromInt(10000),
+          height: Long.fromInt(+(await wallet.getBlock()).header.height + 1), // the next block
           info: '',
         },
         upgradedClientState: {
