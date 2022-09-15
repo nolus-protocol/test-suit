@@ -1,6 +1,6 @@
 import { ChainConstants } from '@nolus/nolusjs';
 
-export const BLOCK_CREATION_TIME_DEV = 5000;
+export const BLOCK_CREATION_TIME_DEV_SEC = 5;
 
 export const NATIVE_MINIMAL_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
 

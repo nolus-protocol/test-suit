@@ -32,6 +32,8 @@ describe('Staking Nolus tokens - Delegation', () => {
   let validatorAddress: string;
 
   const delegatedAmount = '13';
+  const percision = 100000;
+  const gasPriceInteger = gasPrice * percision;
 
   const delegateMsg = {
     typeUrl: `${stakingModule}.MsgDelegate`,
@@ -46,7 +48,6 @@ describe('Staking Nolus tokens - Delegation', () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
     stakeholderWallet = await createWallet();
-
     validatorAddress = getValidator1Address();
 
     delegateMsg.value.delegatorAddress = stakeholderWallet.address as string;
@@ -75,6 +76,7 @@ describe('Staking Nolus tokens - Delegation', () => {
 
   test('the validator should exist and should be bonded', async () => {
     const expectedStatus: BondStatus = bondStatusFromJSON('BOND_STATUS_BONDED');
+
     const validatorStatus = (await getValidatorInformation(validatorAddress))
       .validator?.status;
 
@@ -136,10 +138,11 @@ describe('Staking Nolus tokens - Delegation', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+treasuryBalanceAfter.amount).toBe(
-      +treasuryBalanceBefore.amount +
-        +customFees.configs.amount[0].amount -
-        Math.floor(+customFees.configs.gas * gasPrice),
+    expect(BigInt(treasuryBalanceAfter.amount)).toBe(
+      BigInt(treasuryBalanceBefore.amount) +
+        BigInt(customFees.configs.amount[0].amount) -
+        (BigInt(customFees.configs.gas) * BigInt(gasPriceInteger)) /
+          BigInt(percision),
     );
 
     // see the stakeholder staked tokens to the current validator - after delegation
@@ -166,7 +169,7 @@ describe('Staking Nolus tokens - Delegation', () => {
       return;
     }
 
-    expect(+stakeholderDelegatedTokens).not.toBe(0);
+    expect(BigInt(stakeholderDelegatedTokens)).not.toBe(BigInt(0));
 
     // get the amount of tokens delegated to the validator - after delegation
     const validatorDelegatedTokensAfter = (
@@ -177,8 +180,8 @@ describe('Staking Nolus tokens - Delegation', () => {
       undefinedHandler();
       return;
     }
-    expect(+validatorDelegatedTokensAfter).toBe(
-      +validatorDelegatedTokensBefore + +delegatedAmount,
+    expect(BigInt(validatorDelegatedTokensAfter)).toBe(
+      BigInt(validatorDelegatedTokensBefore) + BigInt(delegatedAmount),
     );
   });
 
@@ -219,8 +222,8 @@ describe('Staking Nolus tokens - Delegation', () => {
       return;
     }
 
-    expect(+stakeholderDelegationsToValAfter).toBe(
-      +stakeholderDelegationsToValBefore,
+    expect(BigInt(stakeholderDelegationsToValAfter)).toBe(
+      BigInt(stakeholderDelegationsToValBefore),
     );
   });
 
@@ -247,7 +250,6 @@ describe('Staking Nolus tokens - Delegation', () => {
     );
 
     expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
-    expect(broadcastTx.rawLog).toEqual('internal');
   });
 
   test('the stakeholder tries to delegate tokens different than one defined by params.BondDenom - should produce an error', async () => {

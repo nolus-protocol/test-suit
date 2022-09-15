@@ -10,7 +10,7 @@ import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
 
 //TO DO: error msgs - https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/12
 describe('Leaser contract tests - Config', () => {
-  let user1Wallet: NolusWallet;
+  let wasmAdminWallet: NolusWallet;
   let wallet: NolusWallet;
   let leaserInstance: NolusContracts.Leaser;
   let configBefore: NolusContracts.LeaserConfig;
@@ -19,25 +19,40 @@ describe('Leaser contract tests - Config', () => {
 
   let leaserConfigMsg: LeaserConfig;
 
+  async function trySetConfig(expectedMsg: string): Promise<void> {
+    const result = () =>
+      leaserInstance.setLeaserConfig(
+        leaserContractAddress,
+        wasmAdminWallet,
+        leaserConfigMsg,
+        customFees.exec,
+      );
+
+    await expect(result).rejects.toThrow(`${expectedMsg}`);
+  }
+
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    user1Wallet = await getWasmAdminWallet();
-    const userWithBalance = await getUser1Wallet();
-    wallet = await createWallet();
-
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
+
     leaserInstance = new NolusContracts.Leaser(cosm);
+
+    wasmAdminWallet = await getWasmAdminWallet();
+    wallet = await createWallet();
 
     configBefore = await leaserInstance.getLeaserConfig(leaserContractAddress);
     leaserConfigMsg = JSON.parse(JSON.stringify(configBefore));
 
+    // feed the wasm admin
+    const userWithBalance = await getUser1Wallet();
+
+    const adminBalanceAmount = '10000000';
     const adminBalance = {
-      amount: '10000000',
+      amount: adminBalanceAmount,
       denom: NATIVE_MINIMAL_DENOM,
     };
-
     await userWithBalance.transferAmount(
-      user1Wallet.address as string,
+      wasmAdminWallet.address as string,
       [adminBalance],
       customFees.transfer,
     );
@@ -54,7 +69,7 @@ describe('Leaser contract tests - Config', () => {
   });
 
   test('an unauthorized user tries to change the configuration - should produce an error', async () => {
-    await sendInitExecuteFeeTokens(user1Wallet, wallet.address as string);
+    await sendInitExecuteFeeTokens(wasmAdminWallet, wallet.address as string);
 
     const result = () =>
       leaserInstance.setLeaserConfig(
@@ -71,16 +86,8 @@ describe('Leaser contract tests - Config', () => {
     leaserConfigMsg.config.liability.init_percent =
       leaserConfigMsg.config.liability.healthy_percent + 1;
 
-    const result = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
   });
 
@@ -88,16 +95,8 @@ describe('Leaser contract tests - Config', () => {
     leaserConfigMsg.config.liability.init_percent =
       leaserConfigMsg.config.liability.max_percent + 1;
 
-    const result = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
   });
 
@@ -105,16 +104,8 @@ describe('Leaser contract tests - Config', () => {
     leaserConfigMsg.config.liability.healthy_percent =
       leaserConfigMsg.config.liability.max_percent + 1;
 
-    const result = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
   });
 
@@ -122,31 +113,15 @@ describe('Leaser contract tests - Config', () => {
     leaserConfigMsg.config.liability.first_liq_warn =
       leaserConfigMsg.config.liability.healthy_percent - 1;
 
-    const result = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
 
     leaserConfigMsg.config.liability.first_liq_warn =
       leaserConfigMsg.config.liability.healthy_percent;
 
-    const result2 = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result2).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
   });
 
@@ -154,31 +129,15 @@ describe('Leaser contract tests - Config', () => {
     leaserConfigMsg.config.liability.second_liq_warn =
       leaserConfigMsg.config.liability.first_liq_warn - 1;
 
-    const result = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
 
     leaserConfigMsg.config.liability.second_liq_warn =
       leaserConfigMsg.config.liability.first_liq_warn;
 
-    const result2 = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result2).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
   });
 
@@ -186,30 +145,15 @@ describe('Leaser contract tests - Config', () => {
     leaserConfigMsg.config.liability.third_liq_warn =
       leaserConfigMsg.config.liability.second_liq_warn - 1;
 
-    const result = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
+
     leaserConfigMsg.config.liability.third_liq_warn =
       leaserConfigMsg.config.liability.second_liq_warn;
 
-    const result2 = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result2).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
   });
 
@@ -217,31 +161,15 @@ describe('Leaser contract tests - Config', () => {
     leaserConfigMsg.config.liability.third_liq_warn =
       leaserConfigMsg.config.liability.max_percent + 1;
 
-    const result = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
 
     leaserConfigMsg.config.liability.third_liq_warn =
       leaserConfigMsg.config.liability.max_percent;
 
-    const result2 = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result2).rejects.toThrow(
-      /^.*LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%.*/,
+    await trySetConfig(
+      'LeaseHealthyLiability% must be less than LeaseMaxLiability% and LeaseInitialLiability% must be less or equal to LeaseHealthyLiability%',
     );
   });
 
@@ -249,16 +177,6 @@ describe('Leaser contract tests - Config', () => {
     leaserConfigMsg.config.repayment.grace_period_sec =
       leaserConfigMsg.config.repayment.period_sec + 1;
 
-    const result = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        user1Wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
-
-    await expect(result).rejects.toThrow(
-      /^.*Period length should be greater than grace period.*/,
-    );
+    await trySetConfig('Period length should be greater than grace period');
   });
 });

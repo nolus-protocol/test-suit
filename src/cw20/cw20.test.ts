@@ -14,6 +14,9 @@ describe('CW20 transfer', () => {
   const totalSupply = '1000000000000000000';
   const treasuryAddress = process.env.TREASURY_ADDRESS as string;
 
+  const percision = 100000;
+  const gasPriceInteger = gasPrice * percision;
+
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
@@ -41,10 +44,11 @@ describe('CW20 transfer', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+treasuryBalanceAfter.amount).toBe(
-      +treasuryBalanceBefore.amount +
-        +customFees.upload.amount[0].amount -
-        Math.floor(+customFees.upload.gas * gasPrice),
+    expect(BigInt(treasuryBalanceAfter.amount)).toBe(
+      BigInt(treasuryBalanceBefore.amount) +
+        BigInt(customFees.upload.amount[0].amount) -
+        (BigInt(customFees.upload.gas) * BigInt(gasPriceInteger)) /
+          BigInt(percision),
     );
     const codeId = uploadReceipt.codeId;
 
@@ -74,10 +78,11 @@ describe('CW20 transfer', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+treasuryBalanceAfterInit.amount).toBe(
-      +treasuryBalanceAfter.amount +
-        +customFees.init.amount[0].amount -
-        Math.floor(+customFees.init.gas * gasPrice),
+    expect(BigInt(treasuryBalanceAfterInit.amount)).toBe(
+      BigInt(treasuryBalanceAfter.amount) +
+        BigInt(customFees.init.amount[0].amount) -
+        (BigInt(customFees.init.gas) * BigInt(gasPriceInteger)) /
+          BigInt(percision),
     );
 
     contractAddress = contract.contractAddress;
@@ -157,9 +162,11 @@ describe('CW20 transfer', () => {
         amount: amountToTransfer,
       },
     };
+
+    const nativeTokenAmount = '2000000';
     const nativeTokenTransfer = {
       denom: NATIVE_MINIMAL_DENOM,
-      amount: '2000000',
+      amount: nativeTokenAmount,
     };
 
     const balanceMsg = {
@@ -205,10 +212,11 @@ describe('CW20 transfer', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+treasuryBalanceAfterExec.amount).toBe(
-      +treasuryBalanceBeforeExec.amount +
-        +customFees.exec.amount[0].amount -
-        Math.floor(+customFees.exec.gas * gasPrice),
+    expect(BigInt(treasuryBalanceAfterExec.amount)).toBe(
+      BigInt(treasuryBalanceBeforeExec.amount) +
+        BigInt(customFees.exec.amount[0].amount) -
+        (BigInt(customFees.exec.gas) * BigInt(gasPriceInteger)) /
+          BigInt(percision),
     );
 
     const user2AllowanceAfter = (
@@ -227,11 +235,6 @@ describe('CW20 transfer', () => {
     const user2BalanceAfter = (
       await user2Wallet.queryContractSmart(contractAddress, balanceMsg)
     ).balance;
-    console.log(
-      'User after transfer allowance:',
-      (await user2Wallet.queryContractSmart(contractAddress, allowanceMsg))
-        .allowance,
-    );
 
     expect(BigInt(user2BalanceAfter)).toBe(
       BigInt(user2BalanceBefore) + BigInt(amountToTransfer),

@@ -23,6 +23,9 @@ describe('Transfers - Native transfer', () => {
   const transferAmount = 10;
   const treasuryAddress = process.env.TREASURY_ADDRESS as string;
 
+  const percision = 100000;
+  const gasPriceInteger = gasPrice * percision;
+
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     user1Wallet = await getUser1Wallet();
@@ -85,10 +88,11 @@ describe('Transfers - Native transfer', () => {
     );
 
     // 40% fees should be paid to treasury
-    expect(+treasuryBalanceAfter.amount).toBe(
-      +treasuryBalanceBefore.amount +
-        +customFees.transfer.amount[0].amount -
-        Math.floor(+customFees.transfer.gas * gasPrice),
+    expect(BigInt(treasuryBalanceAfter.amount)).toBe(
+      BigInt(treasuryBalanceBefore.amount) +
+        BigInt(customFees.transfer.amount[0].amount) -
+        (BigInt(customFees.transfer.gas) * BigInt(gasPriceInteger)) /
+          BigInt(percision),
     );
 
     assertIsDeliverTxSuccess(broadcastTxResponse1);
@@ -169,7 +173,7 @@ describe('Transfers - Native transfer', () => {
 
     expect(BigInt(user1Balance.amount)).toBe(
       BigInt(previousUser1Balance.amount) -
-        BigInt(+customFees.transfer.amount[0].amount * 3), //3 -> transfer1 -> amount=2*fee.amount; fee=1*fee.amount
+        BigInt(+customFees.transfer.amount[0].amount * 3), // *3 -> transfer1 -> amount=2*fee.amount; fee=1*fee.amount
     );
     expect(BigInt(user3Balance.amount)).toBe(
       BigInt(previousUser3Balance.amount),

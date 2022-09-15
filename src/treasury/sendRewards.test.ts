@@ -16,13 +16,17 @@ describe('Treasury tests - Request rewards', () => {
   const treasuryContractAddress = process.env.TREASURY_ADDRESS as string;
   let rewards: Asset;
 
+  const percision = 100000;
+  const gasPriceInteger = gasPrice * percision;
+
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
+    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+
     user1Wallet = await getUser1Wallet();
     newDispatcherWallet = await createWallet();
     wasmAdminWallet = await getWasmAdminWallet();
 
-    const cosm = await NolusClient.getInstance().getCosmWasmClient();
     treasuryInstance = new NolusContracts.Treasury(cosm);
 
     rewards = { symbol: NATIVE_MINIMAL_DENOM, amount: '100000' };
@@ -73,16 +77,18 @@ describe('Treasury tests - Request rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+dispatcherBalanceAfterFirstReward.amount).toBe(
-      +dispatcherBalanceBeforeFirstReward.amount + +rewards.amount,
+    expect(BigInt(dispatcherBalanceAfterFirstReward.amount)).toBe(
+      BigInt(dispatcherBalanceBeforeFirstReward.amount) +
+        BigInt(rewards.amount),
     );
 
     // balanceBefore - rewards + 40%gas
-    expect(+treasuryBalanceAfterFirstReward.amount).toBe(
-      +treasuryBalanceBeforeFirstReward.amount -
-        +rewards.amount +
-        (+customFees.exec.amount[0].amount -
-          Math.floor(+customFees.exec.gas * gasPrice)),
+    expect(BigInt(treasuryBalanceAfterFirstReward.amount)).toBe(
+      BigInt(treasuryBalanceBeforeFirstReward.amount) -
+        BigInt(rewards.amount) +
+        BigInt(customFees.exec.amount[0].amount) -
+        (BigInt(customFees.exec.gas) * BigInt(gasPriceInteger)) /
+          BigInt(percision),
     );
 
     //send more than once
@@ -103,8 +109,8 @@ describe('Treasury tests - Request rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+dispatcherBalanceAfterSecondReward.amount).toBe(
-      +dispatcherBalanceAfterFirstReward.amount + +rewards.amount,
+    expect(BigInt(dispatcherBalanceAfterSecondReward.amount)).toBe(
+      BigInt(dispatcherBalanceAfterFirstReward.amount) + BigInt(rewards.amount),
     );
   });
 
@@ -162,11 +168,14 @@ describe('Treasury tests - Request rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
+    const excess = 1;
+
     rewards.amount = (
-      +treasuryBalanceBefore.amount +
-      1 +
-      (+customFees.exec.amount[0].amount -
-        Math.floor(+customFees.exec.gas * gasPrice))
+      BigInt(treasuryBalanceBefore.amount) +
+      BigInt(excess) +
+      BigInt(customFees.exec.amount[0].amount) -
+      (BigInt(customFees.exec.gas) * BigInt(gasPriceInteger)) /
+        BigInt(percision)
     ).toString();
 
     const broadcastTx = () =>
@@ -189,15 +198,16 @@ describe('Treasury tests - Request rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(treasuryBalanceAfter.amount).toBe(
-      (
-        +treasuryBalanceBefore.amount +
-        (+customFees.exec.amount[0].amount -
-          Math.floor(+customFees.exec.gas * gasPrice))
-      ).toString(),
+    expect(BigInt(treasuryBalanceAfter.amount)).toBe(
+      BigInt(treasuryBalanceBefore.amount) +
+        BigInt(customFees.exec.amount[0].amount) -
+        (BigInt(customFees.exec.gas) * BigInt(gasPriceInteger)) /
+          BigInt(percision),
     );
-    expect(+dispatcherBalanceAfter.amount).toBe(
-      +dispatcherBalanceBefore.amount - +customFees.exec.amount[0].amount,
+
+    expect(BigInt(dispatcherBalanceAfter.amount)).toBe(
+      BigInt(dispatcherBalanceBefore.amount) -
+        BigInt(customFees.exec.amount[0].amount),
     );
   });
 });

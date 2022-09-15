@@ -92,15 +92,13 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
         delegatorWallet.address as string,
         validatorAddress,
       );
-      console.log(rewardResult.rewards[0]);
-      console.log(rewardResult.rewards[0]?.amount.length);
     } while (
       typeof rewardResult.rewards[0] === 'undefined' ||
       rewardResult.rewards[0].amount.length < percision + 1
     );
 
     const reward = rewardResult.rewards[0].amount;
-    const rewardInt = BigInt(+reward) / BigInt(Math.pow(10, percision));
+    const rewardInt = BigInt(reward) / BigInt(Math.pow(10, percision));
 
     // withdraw reward
     const withdrawMsg = {
@@ -123,9 +121,10 @@ describe('Staking Nolus tokens - Withdraw reward', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(BigInt(+delegatorBalanceAfter.amount)).toBeGreaterThan(
-      BigInt(+delegatorBalanceBefore.amount) -
-        BigInt(+customFees.configs.amount[0].amount),
+    expect(BigInt(delegatorBalanceAfter.amount)).toBeGreaterThanOrEqual(
+      BigInt(delegatorBalanceBefore.amount) +
+        BigInt(rewardInt) -
+        BigInt(customFees.configs.amount[0].amount),
     );
   });
 });

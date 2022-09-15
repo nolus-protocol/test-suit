@@ -13,16 +13,20 @@ import NODE_ENDPOINT, {
 import { customFees, gasPrice, NATIVE_MINIMAL_DENOM } from '../util/utils';
 
 describe('Transfers - tokens other than native', () => {
-  const existingDenom = process.env.STABLE_DENOM as string;
   let user1Wallet: NolusWallet;
   let user2Wallet: NolusWallet;
   let user3Wallet: NolusWallet;
   let transfer: Coin;
   const transferAmount = '10';
   const treasuryAddress = process.env.TREASURY_ADDRESS as string;
+  const existingDenom = process.env.STABLE_DENOM as string;
+
+  const percision = 100000;
+  const gasPriceInteger = gasPrice * percision;
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
+
     user1Wallet = await getUser1Wallet();
     user2Wallet = await getUser2Wallet();
     user3Wallet = await getUser3Wallet();
@@ -93,10 +97,11 @@ describe('Transfers - tokens other than native', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+treasuryBalanceAfter.amount).toBe(
-      +treasuryBalanceBefore.amount +
-        +customFees.transfer.amount[0].amount -
-        Math.floor(+customFees.transfer.gas * gasPrice),
+    expect(BigInt(treasuryBalanceAfter.amount)).toBe(
+      BigInt(treasuryBalanceBefore.amount) +
+        BigInt(customFees.transfer.amount[0].amount) -
+        (BigInt(customFees.transfer.gas) * BigInt(gasPriceInteger)) /
+          BigInt(percision),
     );
 
     const nextUser2Balance = await user2Wallet.getBalance(

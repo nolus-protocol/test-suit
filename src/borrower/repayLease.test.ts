@@ -519,7 +519,6 @@ describe('Leaser contract tests - Repay lease', () => {
         [payment],
       );
 
-    // const resultMsg = new RegExp(`Found currency ${invalidLppDenom}`);
     await expect(result).rejects.toThrow(
       `Found currency ${invalidLppDenom} expecting ${lppDenom}`,
     );
@@ -730,12 +729,7 @@ describe('Leaser contract tests - Repay lease', () => {
       [repayWithExcess],
     );
 
-    // const totalPaid = getTotalPaidFromRepayResponse(repayTxReponse);
     const principalPaid = getPrincipalPaidFromRepayResponse(repayTxReponse);
-    // const loanInterestPaid =
-    //   getLoanInterestPaidFromRepayResponse(repayTxReponse);
-    const marginInterestPaid =
-      getMarginInterestPaidFromRepayResponse(repayTxReponse);
 
     const exactExcess =
       BigInt(principalPaid) - BigInt(leasePrincipalBeforeRepay);

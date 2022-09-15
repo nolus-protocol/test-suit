@@ -1,4 +1,5 @@
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
+import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
 
 const NANOSEC_YEAR = 365 * 24 * 60 * 60 * 1000000000;
 
@@ -42,6 +43,21 @@ export function calcInterestRate(
   const duration = outstandingByNanoSec - interestPaidByNanoSec;
 
   return (interestPerYear * duration) / BigInt(NANOSEC_YEAR);
+}
+
+export function LPNS_To_NLPNS(lpns: number, price: Price): bigint {
+  const result = Math.trunc(
+    lpns * (+price.amount.amount / +price.amount_quote.amount),
+  );
+  return BigInt(result);
+}
+
+export function NLPNS_To_LPNS(nlpns: number, price: Price): bigint {
+  const result = Math.trunc(
+    nlpns / (+price.amount.amount / +price.amount_quote.amount),
+  );
+
+  return BigInt(result);
 }
 
 export function getLeaseAddressFromOpenLeaseResponse(

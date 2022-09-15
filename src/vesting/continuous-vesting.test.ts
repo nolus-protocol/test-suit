@@ -32,9 +32,19 @@ describe('Continuous vesting tests', () => {
     value: createVestingAccountMsg,
   };
 
+  async function verifyVestingAccountBalance() {
+    const vestingAccountBalance = await vestingWallet.getBalance(
+      vestingWallet.address as string,
+      NATIVE_TOKEN_DENOM,
+    );
+
+    expect(BigInt(vestingAccountBalance.amount)).toBe(BigInt(0));
+  }
+
   beforeAll(async () => {
-    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
     NolusClient.setInstance(NODE_ENDPOINT);
+    NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
+
     user1Wallet = await getUser1Wallet();
     vestingWallet = await createWallet();
 
@@ -48,7 +58,6 @@ describe('Continuous vesting tests', () => {
   });
 
   test('creation a continuous vesting account with 0 amount - should produce an error', async () => {
-    // try to create vesting account
     createVestingAccountMsg.amount = [
       { denom: NATIVE_MINIMAL_DENOM, amount: '0' },
     ];
@@ -61,17 +70,10 @@ describe('Continuous vesting tests', () => {
 
     await expect(broadcastTx).rejects.toThrow(/^.*0unls: invalid coins.*/);
 
-    // get balance
-    const vestingAccountBalance = await vestingWallet.getBalance(
-      vestingWallet.address as string,
-      NATIVE_TOKEN_DENOM,
-    );
-
-    expect(+vestingAccountBalance.amount).toBe(0);
+    await verifyVestingAccountBalance();
   });
 
   test('creation a continuous vesting account with invalid "to" address - should produce an error', async () => {
-    // try to create vesting account
     createVestingAccountMsg.toAddress =
       'wasm1gzkmn2lfm56m0q0l4rmjamq7rlwpfjrp7k78xw';
 
@@ -84,13 +86,7 @@ describe('Continuous vesting tests', () => {
 
     await expect(broadcastTx).rejects.toThrow(/^.*internal.*/);
 
-    // get balance
-    const vestingAccountBalance = await vestingWallet.getBalance(
-      vestingWallet.address as string,
-      NATIVE_TOKEN_DENOM,
-    );
-
-    expect(+vestingAccountBalance.amount).toBe(0);
+    await verifyVestingAccountBalance();
   });
 
   test('creation a continuous vesting account with 0 EndTime - should produce an error', async () => {
@@ -105,13 +101,7 @@ describe('Continuous vesting tests', () => {
       /^.* invalid end time: invalid request.*/,
     );
 
-    // get balance
-    const vestingAccountBalance = await vestingWallet.getBalance(
-      vestingWallet.address as string,
-      NATIVE_TOKEN_DENOM,
-    );
-
-    expect(+vestingAccountBalance.amount).toBe(0);
+    await verifyVestingAccountBalance();
   });
 
   test('the successful scenario for creation a continuous vesting account - should work as expected', async () => {
@@ -153,7 +143,7 @@ describe('Continuous vesting tests', () => {
     expect(sendFailTx.rawLog).toMatch(
       /^.*smaller than 5000unls: insufficient funds.*/,
     );
-    await sleep((ENDTIME_SECONDS / 2) * 1000 + 1000);
+    await sleep(ENDTIME_SECONDS / 2 + 1); // > half
 
     // half the tokens are provided now but not all
     sendFailTx = await vestingWallet.transferAmount(
@@ -182,10 +172,10 @@ describe('Continuous vesting tests', () => {
       NATIVE_TOKEN_DENOM,
     );
 
-    expect(+vestingAccountBalanceAfter.amount).toBe(
-      +vestingAccountBalanceBefore.amount -
-        +HALF_AMOUNT.amount -
-        +customFees.transfer.amount[0].amount * 2,
+    expect(BigInt(vestingAccountBalanceAfter.amount)).toBe(
+      BigInt(vestingAccountBalanceBefore.amount) -
+        BigInt(HALF_AMOUNT.amount) -
+        BigInt(customFees.transfer.amount[0].amount) * BigInt(2),
     );
   });
 

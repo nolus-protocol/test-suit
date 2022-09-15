@@ -1,10 +1,15 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { Coin } from '@cosmjs/amino';
 import { customFees } from '../util/utils';
-import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
+import {
+  NolusClient,
+  NolusWallet,
+  NolusContracts,
+  ChainConstants,
+} from '@nolus/nolusjs';
 
 describe('Leaser contract tests - Apply for a lease', () => {
-  let user1Wallet: NolusWallet;
+  let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;
   let lppDenom: string;
@@ -14,30 +19,32 @@ describe('Leaser contract tests - Apply for a lease', () => {
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
 
-  const downpayment = '100';
+  const downpayment = '10';
+  const minimalAmountInLpp = '100000';
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    user1Wallet = await getUser1Wallet();
+    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+
+    feederWallet = await getUser1Wallet();
     borrowerWallet = await createWallet();
 
-    const cosm = await NolusClient.getInstance().getCosmWasmClient();
     leaserInstance = new NolusContracts.Leaser(cosm);
     lppInstance = new NolusContracts.Lpp(cosm);
 
     const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
     lppDenom = lppConfig.lpn_symbol;
 
-    // send init tokens to lpp address to provide liquidity, otherwise cant send query
+    // provide liquidity
     await lppInstance.lenderDeposit(
       lppContractAddress,
-      user1Wallet,
+      feederWallet,
       customFees.exec,
-      [{ denom: lppDenom, amount: '10000' }],
+      [{ denom: lppDenom, amount: minimalAmountInLpp }],
     );
 
     // get the liquidity
-    lppLiquidity = await user1Wallet.getBalance(lppContractAddress, lppDenom);
+    lppLiquidity = await cosm.getBalance(lppContractAddress, lppDenom);
 
     const quote = await leaserInstance.makeLeaseApply(
       leaserContractAddress,
@@ -45,8 +52,8 @@ describe('Leaser contract tests - Apply for a lease', () => {
       lppDenom,
     );
 
-    if (+quote.borrow.amount > +lppLiquidity.amount) {
-      await user1Wallet.transferAmount(
+    if (BigInt(quote.borrow.amount) > BigInt(lppLiquidity.amount)) {
+      await feederWallet.transferAmount(
         lppContractAddress,
         [{ denom: lppDenom, amount: quote.borrow.amount }],
         customFees.transfer,
@@ -76,6 +83,44 @@ describe('Leaser contract tests - Apply for a lease', () => {
     expect(quote.total).toBeDefined();
     expect(quote.borrow).toBeDefined();
     expect(quote.annual_interest_rate).toBeDefined();
+
+    //TO DO calc
+    // const toPercent = 10;
+
+    // baseInterestRate = lppConfig.base_interest_rate / toPercent; //%
+    // utilizationOptimal = lppConfig.utilization_optimal / toPercent; //%
+    // addonOptimalInterestRate =
+    //   lppConfig.addon_optimal_interest_rate / toPercent; //%
+
+    // const lppInformation = await lppInstance.getLppBalance(lppContractAddress);
+
+    // const totalPrincipalDueByNow = lppInformation.total_principal_due;
+    // const totalInterestDueByNow = lppInformation.total_interest_due;
+    // const lppLiquidity = lppInformation.balance;
+
+    // expect(lppLiquidity.amount).not.toBe('0');
+    // expect(lppBalance.amount).toBe(lppLiquidity.amount);
+
+    // const utilization = calcUtilization(
+    //   +totalPrincipalDueByNow.amount,
+    //   +quote.borrow.amount,
+    //   +totalInterestDueByNow.amount,
+    //   +lppLiquidity.amount,
+    // );
+
+    // let leaserConfig = await leaserInstance.getLeaserConfig(
+    //   leaserContractAddress,
+    // );
+
+    // expect(
+    //   calcQuoteAnnualInterestRate(
+    //     utilization,
+    //     utilizationOptimal,
+    //     baseInterestRate,
+    //     addonOptimalInterestRate,
+    //   ),
+    // ).toBe(quote.annual_interest_rate);
+
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });
 
@@ -97,15 +142,21 @@ describe('Leaser contract tests - Apply for a lease', () => {
     const quoteQueryResult = () =>
       leaserInstance.makeLeaseApply(
         leaserContractAddress,
-        (+lppLiquidity.amount + 1).toString(),
+        (BigInt(lppLiquidity.amount) + BigInt(1)).toString(),
         lppDenom,
       );
     await expect(quoteQueryResult).rejects.toThrow(/^.*NoLiquidity.*/);
   });
 
   test('the borrower tries to apply for a lease with unsupported lpp denom as a down payment denom - should produce an error', async () => {
+    const invalidLppDenom = ChainConstants.COIN_MINIMAL_DENOM;
+
     const quoteQueryResult = () =>
-      leaserInstance.makeLeaseApply(leaserContractAddress, '100', 'A');
+      leaserInstance.makeLeaseApply(
+        leaserContractAddress,
+        '100',
+        invalidLppDenom,
+      );
     await expect(quoteQueryResult).rejects.toThrow(/^.*invalid request.*/);
   });
 });

@@ -1,8 +1,8 @@
 import {
   customFees,
-  BLOCK_CREATION_TIME_DEV,
   sleep,
   NATIVE_MINIMAL_DENOM,
+  BLOCK_CREATION_TIME_DEV_SEC,
 } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,
@@ -204,7 +204,7 @@ describe('Oracle contract tests', () => {
     expect(afterResult.prices[0].quote.symbol).toBe(BASE_ASSET);
 
     // the price feed period has expired + block creation time
-    await sleep(BLOCK_CREATION_TIME_DEV + PRICE_FEED_PERIOD);
+    await sleep(BLOCK_CREATION_TIME_DEV_SEC + PRICE_FEED_PERIOD);
     const resultAfterPeriod = () =>
       oracleInstance.getPrices(contractAddress, [testPairMember]);
     await expect(resultAfterPeriod).rejects.toThrow(/^.*No price for pair.*/);

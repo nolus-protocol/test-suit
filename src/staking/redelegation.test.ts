@@ -22,7 +22,7 @@ import {
 } from '../util/utils';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 
-const maybe = process.env.NODE_ENV == 'dev' ? describe : describe.skip;
+const maybe = (process.env.ENV as string) === 'dev' ? describe : describe.skip;
 
 maybe('Staking Nolus tokens - Redelegation', () => {
   let user1Wallet: NolusWallet;
@@ -165,8 +165,8 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       return;
     }
 
-    expect(+delegationsToSrcValAfter).toBe(
-      +delegationsToSrcValBefore - +redelegatedAmount,
+    expect(BigInt(delegationsToSrcValAfter)).toBe(
+      BigInt(delegationsToSrcValBefore) - BigInt(redelegatedAmount),
     );
 
     // see the delegator staked tokens to the destination validator - after redelegation
@@ -180,7 +180,7 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       return;
     }
 
-    expect(+delegationsToDstValAfter).toBe(+redelegatedAmount);
+    expect(BigInt(delegationsToDstValAfter)).toBe(BigInt(redelegatedAmount));
   });
 
   test('the delegator tries to redelegate 0 tokens - should produce an error', async () => {
@@ -262,7 +262,9 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       return;
     }
 
-    expect(+delegationsToSrcValAfter).toBe(+delegationsToSrcValBefore);
+    expect(BigInt(delegationsToSrcValAfter)).toBe(
+      BigInt(delegationsToSrcValBefore),
+    );
   });
 
   test('the delegator tries to redelegate tokens to non-existent validator - should produce an error', async () => {
@@ -313,9 +315,9 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     }
 
     const loopIteration = maxEntries - redelegationsCounter;
-    const loopRedelegateAmount = Math.floor(
-      +delegatedAmount / (loopIteration + 1),
-    );
+    const loopRedelegateAmount =
+      BigInt(delegatedAmount) / BigInt(loopIteration) + BigInt(1);
+
     redelegateMsg.value.amount.amount = loopRedelegateAmount.toString();
 
     for (let i = 0; i < loopIteration; i++) {

@@ -221,13 +221,12 @@ describe('Proposal submission tests', () => {
     };
     moduleName = 'wasm';
 
+    const gas = '20000000000';
     fee = {
-      gas: '20000000000',
+      gas: gas,
       amount: [
         {
-          amount: Math.floor(
-            (20000000000 * gasPrice) / validatorPart,
-          ).toString(),
+          amount: Math.floor((+gas * gasPrice) / validatorPart).toString(),
           denom: NATIVE_MINIMAL_DENOM,
         },
       ],

@@ -158,8 +158,8 @@ describe('Staking Nolus tokens - Undelegation', () => {
       return;
     }
 
-    expect(+delegatorDelegationsToValAfter).toBe(
-      +delegatorDelegationsToValBefore - +undelegatedAmount,
+    expect(BigInt(delegatorDelegationsToValAfter)).toBe(
+      BigInt(delegatorDelegationsToValBefore) - BigInt(undelegatedAmount),
     );
   });
 
@@ -248,8 +248,8 @@ describe('Staking Nolus tokens - Undelegation', () => {
       return;
     }
 
-    expect(+delegatorDelegationsToValAfter).toBe(
-      +delegatorDelegationsToValBefore,
+    expect(BigInt(delegatorDelegationsToValAfter)).toBe(
+      BigInt(delegatorDelegationsToValBefore),
     );
   });
 
@@ -312,9 +312,9 @@ describe('Staking Nolus tokens - Undelegation', () => {
     }
     generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
     const loopIteration = maxEntries - undelegationsCounter;
-    const loopUndelegateAmount = Math.floor(
-      +delegatedAmount / (loopIteration + 1),
-    );
+    const loopUndelegateAmount =
+      BigInt(delegatedAmount) / (BigInt(loopIteration) + BigInt(1));
+
     generalMsg.value.amount.amount = loopUndelegateAmount.toString();
 
     for (let i = 0; i < loopIteration; i++) {

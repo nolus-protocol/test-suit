@@ -5,7 +5,7 @@ import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { Coin } from '@cosmjs/proto-signing';
 
 describe('Lender tests - Claim rewards', () => {
-  let user1Wallet: NolusWallet;
+  let feederWallet: NolusWallet;
   let lenderWallet: NolusWallet;
   let lppDenom: string;
   let lppInstance: NolusContracts.Lpp;
@@ -15,9 +15,11 @@ describe('Lender tests - Claim rewards', () => {
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    user1Wallet = await getUser1Wallet();
-    lenderWallet = await createWallet();
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
+
+    feederWallet = await getUser1Wallet();
+    lenderWallet = await createWallet();
+
     lppInstance = new NolusContracts.Lpp(cosm);
 
     const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
@@ -35,14 +37,18 @@ describe('Lender tests - Claim rewards', () => {
       lenderWallet.address as string,
     );
 
-    await user1Wallet.transferAmount(
+    await feederWallet.transferAmount(
       lenderWallet.address as string,
       [{ denom: lppDenom, amount: deposit }],
       customFees.transfer,
     );
 
-    await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
+    await sendInitExecuteFeeTokens(
+      feederWallet,
+      lenderWallet.address as string,
+    );
 
+    // provide rewards
     await lppInstance.lenderDeposit(
       lppContractAddress,
       lenderWallet,
@@ -57,11 +63,11 @@ describe('Lender tests - Claim rewards', () => {
       lenderWallet.address as string,
     );
 
-    expect(+lppBalanceAfter.balance.amount).toBe(
-      +lppBalanceBefore.balance.amount + +deposit,
+    expect(BigInt(lppBalanceAfter.balance.amount)).toBe(
+      BigInt(lppBalanceBefore.balance.amount) + BigInt(deposit),
     );
-    expect(+lenderDepositAfter.balance).toBeGreaterThan(
-      +lenderDepositBefore.balance,
+    expect(BigInt(lenderDepositAfter.balance)).toBeGreaterThan(
+      BigInt(lenderDepositBefore.balance),
     );
 
     const lenderBalanceBefore = await lenderWallet.getBalance(
@@ -69,25 +75,25 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    const user1BalanceBefore = await user1Wallet.getBalance(
-      user1Wallet.address as string,
+    const feederBalanceBefore = await feederWallet.getBalance(
+      feederWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
     await lppInstance.distributeRewards(
       lppContractAddress,
-      user1Wallet,
+      feederWallet,
       customFees.exec,
       [rewards],
     );
 
-    const user1BalanceAfter = await user1Wallet.getBalance(
-      user1Wallet.address as string,
+    const feederBalanceAfter = await feederWallet.getBalance(
+      feederWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(BigInt(user1BalanceAfter.amount)).toBe(
-      BigInt(user1BalanceBefore.amount) -
+    expect(BigInt(feederBalanceAfter.amount)).toBe(
+      BigInt(feederBalanceBefore.amount) -
         BigInt(rewards.amount) -
         BigInt(customFees.exec.amount[0].amount),
     );
@@ -102,18 +108,14 @@ describe('Lender tests - Claim rewards', () => {
         +lenderDepositAfter.balance,
     );
 
-    // TO DO: error
-    // const errorEstimation =
-    //   (((+rewards.amount / +lppBalanceAfter.balance_nlpn.amount) *
-    //     +lenderDepositAfter.balance) %
-    //     1.0) *
-    //   (+price.amount.amount / +price.amount_quote.amount);
-
     expect(+lenderRewards.rewards.amount).toBe(calcLenderRewards);
 
-    await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
+    // claim rewards
+    await sendInitExecuteFeeTokens(
+      feederWallet,
+      lenderWallet.address as string,
+    );
 
-    // Claim Rewards
     await lppInstance.claimRewards(
       lppContractAddress,
       lenderWallet,
@@ -126,8 +128,8 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+lenderBalanceAfter.amount).toBe(
-      +lenderBalanceBefore.amount + +lenderRewards.rewards.amount,
+    expect(BigInt(lenderBalanceAfter.amount)).toBe(
+      BigInt(lenderBalanceBefore.amount) + BigInt(lenderRewards.rewards.amount),
     );
   });
 
@@ -141,7 +143,7 @@ describe('Lender tests - Claim rewards', () => {
 
     await lppInstance.distributeRewards(
       lppContractAddress,
-      user1Wallet,
+      feederWallet,
       customFees.exec,
       [rewards],
     );
@@ -151,8 +153,8 @@ describe('Lender tests - Claim rewards', () => {
       lenderWallet.address as string,
     );
 
-    expect(+lenderRewardsAfter.rewards.amount).toBeGreaterThan(
-      +lenderRewardsBefore.rewards.amount,
+    expect(BigInt(lenderRewardsAfter.rewards.amount)).toBeGreaterThan(
+      BigInt(lenderRewardsBefore.rewards.amount),
     );
 
     const lenderBalanceBefore = await lenderWallet.getBalance(
@@ -165,7 +167,10 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    await sendInitExecuteFeeTokens(user1Wallet, lenderWallet.address as string);
+    await sendInitExecuteFeeTokens(
+      feederWallet,
+      lenderWallet.address as string,
+    );
     await lppInstance.claimRewards(
       lppContractAddress,
       lenderWallet,
@@ -183,16 +188,19 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+lenderBalanceAfter.amount).toBe(+lenderBalanceBefore.amount);
+    expect(BigInt(lenderBalanceAfter.amount)).toBe(
+      BigInt(lenderBalanceBefore.amount),
+    );
 
-    expect(+otherRecipientBalanceAfter.amount).toBe(
-      +otherRecipientBalanceBefore.amount + +lenderRewardsAfter.rewards.amount,
+    expect(BigInt(otherRecipientBalanceAfter.amount)).toBe(
+      BigInt(otherRecipientBalanceBefore.amount) +
+        BigInt(lenderRewardsAfter.rewards.amount),
     );
   });
 
   test('the dispatcher tries to send 0 rewards - should produce an error', async () => {
-    const user1BalanceBefore = await user1Wallet.getBalance(
-      user1Wallet.address as string,
+    const dispatcherBalanceBefore = await feederWallet.getBalance(
+      feederWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
@@ -201,49 +209,52 @@ describe('Lender tests - Claim rewards', () => {
     const broadcastTx = () =>
       lppInstance.distributeRewards(
         lppContractAddress,
-        user1Wallet,
+        feederWallet,
         customFees.exec,
         [rewards],
       );
 
     await expect(broadcastTx).rejects.toThrow(/^.*invalid coins.*/);
 
-    const user1BalanceAfter = await user1Wallet.getBalance(
-      user1Wallet.address as string,
+    const dispatcherBalanceAfter = await feederWallet.getBalance(
+      feederWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+user1BalanceAfter).toBe(+user1BalanceBefore);
+    expect(dispatcherBalanceAfter.amount).toBe(dispatcherBalanceBefore.amount);
   });
 
   test('the dispatcher tries not to send funds when calling "distribute rewards" msg - should produce an error', async () => {
-    const user1BalanceBefore = await user1Wallet.getBalance(
-      user1Wallet.address as string,
+    const dispatcherBalanceBefore = await feederWallet.getBalance(
+      feederWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
     const broadcastTx = () =>
       lppInstance.distributeRewards(
         lppContractAddress,
-        user1Wallet,
+        feederWallet,
         customFees.exec,
       );
 
     await expect(broadcastTx).rejects.toThrow(
-      /^.*Expecting funds of unls but found none.*/,
+      `Expecting funds of ${NATIVE_MINIMAL_DENOM} but found none`,
     );
 
-    const user1BalanceAfter = await user1Wallet.getBalance(
-      user1Wallet.address as string,
+    const dispatcherBalanceAfter = await feederWallet.getBalance(
+      feederWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+user1BalanceAfter).toBe(+user1BalanceBefore);
+    expect(BigInt(dispatcherBalanceAfter.amount)).toBe(
+      BigInt(dispatcherBalanceBefore.amount) -
+        BigInt(customFees.exec.amount[0].amount),
+    );
   });
 
-  test('the dispatcher tries to send rewards in unsupported lpp currency - should produce an error', async () => {
-    const user1BalanceBefore = await user1Wallet.getBalance(
-      user1Wallet.address as string,
+  test('the dispatcher tries to send rewards in unsupported rewards currency - should produce an error', async () => {
+    const dispatcherBalanceBefore = await feederWallet.getBalance(
+      feederWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
@@ -252,21 +263,24 @@ describe('Lender tests - Claim rewards', () => {
     const broadcastTx = () =>
       lppInstance.distributeRewards(
         lppContractAddress,
-        user1Wallet,
+        feederWallet,
         customFees.exec,
         [rewards],
       );
 
     await expect(broadcastTx).rejects.toThrow(
-      /^.*Found currency uusdc expecting unls.*/,
+      `Found currency ${lppDenom} expecting ${NATIVE_MINIMAL_DENOM}`,
     );
 
-    const user1BalanceAfter = await user1Wallet.getBalance(
-      user1Wallet.address as string,
+    const dispatcherBalanceAfter = await feederWallet.getBalance(
+      feederWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+user1BalanceAfter).toBe(+user1BalanceBefore);
+    expect(BigInt(dispatcherBalanceAfter.amount)).toBe(
+      BigInt(dispatcherBalanceBefore.amount) -
+        BigInt(customFees.exec.amount[0].amount),
+    );
   });
 
   test('the lender tries to claim 0 amount rewards - should produce an error', async () => {
@@ -280,14 +294,14 @@ describe('Lender tests - Claim rewards', () => {
       /^.*The deposit does not exist.*/,
     );
 
-    await sendInitExecuteFeeTokens(
-      user1Wallet,
-      newLenderWallet.address as string,
-    );
-
     const lenderBalanceBefore = await newLenderWallet.getBalance(
       newLenderWallet.address as string,
       NATIVE_MINIMAL_DENOM,
+    );
+
+    await sendInitExecuteFeeTokens(
+      feederWallet,
+      newLenderWallet.address as string,
     );
 
     const broadcastTx = () =>
@@ -307,6 +321,6 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    expect(+lenderBalanceAfter).toBe(+lenderBalanceBefore);
+    expect(lenderBalanceAfter.amount).toBe(lenderBalanceBefore.amount);
   });
 });
