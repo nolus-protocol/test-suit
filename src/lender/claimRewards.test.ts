@@ -20,20 +20,17 @@ describe('Lender tests - Claim rewards', () => {
     feederWallet = await getUser1Wallet();
     lenderWallet = await createWallet();
 
-    lppInstance = new NolusContracts.Lpp(cosm);
+    lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
 
-    const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
+    const lppConfig = await lppInstance.getLppConfig();
     lppDenom = lppConfig.lpn_symbol;
 
     rewards = { amount: '20000000000', denom: NATIVE_MINIMAL_DENOM };
   });
 
   test('the successful claim rewards scenario - should work as expected', async () => {
-    const lppBalanceBefore = await lppInstance.getLppBalance(
-      lppContractAddress,
-    );
+    const lppBalanceBefore = await lppInstance.getLppBalance();
     const lenderDepositBefore = await lppInstance.getLenderDeposit(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -49,17 +46,13 @@ describe('Lender tests - Claim rewards', () => {
     );
 
     // provide rewards
-    await lppInstance.lenderDeposit(
-      lppContractAddress,
-      lenderWallet,
-      customFees.exec,
-      [{ denom: lppDenom, amount: deposit }],
-    );
+    await lppInstance.deposit(lenderWallet, customFees.exec, [
+      { denom: lppDenom, amount: deposit },
+    ]);
 
-    const lppBalanceAfter = await lppInstance.getLppBalance(lppContractAddress);
+    const lppBalanceAfter = await lppInstance.getLppBalance();
 
     const lenderDepositAfter = await lppInstance.getLenderDeposit(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -80,12 +73,9 @@ describe('Lender tests - Claim rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    await lppInstance.distributeRewards(
-      lppContractAddress,
-      feederWallet,
-      customFees.exec,
-      [rewards],
-    );
+    await lppInstance.distributeRewards(feederWallet, customFees.exec, [
+      rewards,
+    ]);
 
     const feederBalanceAfter = await feederWallet.getBalance(
       feederWallet.address as string,
@@ -99,7 +89,6 @@ describe('Lender tests - Claim rewards', () => {
     );
 
     const lenderRewards = await lppInstance.getLenderRewards(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -116,12 +105,7 @@ describe('Lender tests - Claim rewards', () => {
       lenderWallet.address as string,
     );
 
-    await lppInstance.claimRewards(
-      lppContractAddress,
-      lenderWallet,
-      undefined,
-      customFees.exec,
-    );
+    await lppInstance.claimRewards(lenderWallet, undefined, customFees.exec);
 
     const lenderBalanceAfter = await lenderWallet.getBalance(
       lenderWallet.address as string,
@@ -137,19 +121,14 @@ describe('Lender tests - Claim rewards', () => {
     const recipientWallet = await createWallet();
 
     const lenderRewardsBefore = await lppInstance.getLenderRewards(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
-    await lppInstance.distributeRewards(
-      lppContractAddress,
-      feederWallet,
-      customFees.exec,
-      [rewards],
-    );
+    await lppInstance.distributeRewards(feederWallet, customFees.exec, [
+      rewards,
+    ]);
 
     const lenderRewardsAfter = await lppInstance.getLenderRewards(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -172,7 +151,6 @@ describe('Lender tests - Claim rewards', () => {
       lenderWallet.address as string,
     );
     await lppInstance.claimRewards(
-      lppContractAddress,
       lenderWallet,
       recipientWallet.address as string,
       customFees.exec,
@@ -207,12 +185,7 @@ describe('Lender tests - Claim rewards', () => {
     const rewards = { amount: '0', denom: NATIVE_MINIMAL_DENOM };
 
     const broadcastTx = () =>
-      lppInstance.distributeRewards(
-        lppContractAddress,
-        feederWallet,
-        customFees.exec,
-        [rewards],
-      );
+      lppInstance.distributeRewards(feederWallet, customFees.exec, [rewards]);
 
     await expect(broadcastTx).rejects.toThrow(/^.*invalid coins.*/);
 
@@ -231,11 +204,7 @@ describe('Lender tests - Claim rewards', () => {
     );
 
     const broadcastTx = () =>
-      lppInstance.distributeRewards(
-        lppContractAddress,
-        feederWallet,
-        customFees.exec,
-      );
+      lppInstance.distributeRewards(feederWallet, customFees.exec);
 
     await expect(broadcastTx).rejects.toThrow(
       `Expecting funds of ${NATIVE_MINIMAL_DENOM} but found none`,
@@ -261,12 +230,7 @@ describe('Lender tests - Claim rewards', () => {
     const rewards = { amount: '10', denom: lppDenom };
 
     const broadcastTx = () =>
-      lppInstance.distributeRewards(
-        lppContractAddress,
-        feederWallet,
-        customFees.exec,
-        [rewards],
-      );
+      lppInstance.distributeRewards(feederWallet, customFees.exec, [rewards]);
 
     await expect(broadcastTx).rejects.toThrow(
       `Found currency ${lppDenom} expecting ${NATIVE_MINIMAL_DENOM}`,
@@ -286,10 +250,7 @@ describe('Lender tests - Claim rewards', () => {
   test('the lender tries to claim 0 amount rewards - should produce an error', async () => {
     const newLenderWallet = await createWallet();
     const lenderRewardsTx = () =>
-      lppInstance.getLenderRewards(
-        lppContractAddress,
-        newLenderWallet.address as string,
-      );
+      lppInstance.getLenderRewards(newLenderWallet.address as string);
     await expect(lenderRewardsTx).rejects.toThrow(
       /^.*The deposit does not exist.*/,
     );
@@ -305,12 +266,7 @@ describe('Lender tests - Claim rewards', () => {
     );
 
     const broadcastTx = () =>
-      lppInstance.claimRewards(
-        lppContractAddress,
-        newLenderWallet,
-        undefined,
-        customFees.exec,
-      );
+      lppInstance.claimRewards(newLenderWallet, undefined, customFees.exec);
 
     await expect(broadcastTx).rejects.toThrow(
       /^.*The deposit does not exist.*/,

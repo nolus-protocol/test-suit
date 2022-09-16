@@ -22,7 +22,6 @@ describe('Leaser contract tests - Config', () => {
   async function trySetConfig(expectedMsg: string): Promise<void> {
     const result = () =>
       leaserInstance.setLeaserConfig(
-        leaserContractAddress,
         wasmAdminWallet,
         leaserConfigMsg,
         customFees.exec,
@@ -35,12 +34,12 @@ describe('Leaser contract tests - Config', () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-    leaserInstance = new NolusContracts.Leaser(cosm);
+    leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
 
     wasmAdminWallet = await getWasmAdminWallet();
     wallet = await createWallet();
 
-    configBefore = await leaserInstance.getLeaserConfig(leaserContractAddress);
+    configBefore = await leaserInstance.getLeaserConfig();
     leaserConfigMsg = JSON.parse(JSON.stringify(configBefore));
 
     // feed the wasm admin
@@ -61,9 +60,7 @@ describe('Leaser contract tests - Config', () => {
   afterEach(async () => {
     leaserConfigMsg = JSON.parse(JSON.stringify(configBefore));
 
-    const configAfter = await leaserInstance.getLeaserConfig(
-      leaserContractAddress,
-    );
+    const configAfter = await leaserInstance.getLeaserConfig();
 
     expect(configAfter).toStrictEqual(configBefore);
   });
@@ -72,12 +69,7 @@ describe('Leaser contract tests - Config', () => {
     await sendInitExecuteFeeTokens(wasmAdminWallet, wallet.address as string);
 
     const result = () =>
-      leaserInstance.setLeaserConfig(
-        leaserContractAddress,
-        wallet,
-        leaserConfigMsg,
-        customFees.exec,
-      );
+      leaserInstance.setLeaserConfig(wallet, leaserConfigMsg, customFees.exec);
 
     await expect(result).rejects.toThrow(/^.*Unauthorized.*/);
   });

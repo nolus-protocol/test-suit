@@ -134,7 +134,7 @@ describe('Proposal submission tests', () => {
         title: 'Test Proposal',
         plan: {
           name: 'Upgrade 1',
-          height: Long.fromInt(+(await wallet.getBlock()).header.height + 1), // the next block
+          height: Long.fromInt(+(await wallet.getBlock()).header.height + 1000), // any block after the current one
           info: '',
         },
       }).finish(),
@@ -167,7 +167,7 @@ describe('Proposal submission tests', () => {
         title: 'Test Proposal',
         plan: {
           name: 'Upgrade 1',
-          height: Long.fromInt(+(await wallet.getBlock()).header.height + 1), // the next block
+          height: Long.fromInt(+(await wallet.getBlock()).header.height + 1000), // any block after the current one
           info: '',
         },
         upgradedClientState: {

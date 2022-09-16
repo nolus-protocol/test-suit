@@ -63,7 +63,7 @@ local -r dispatcher_address=$(jq .contracts_info[6].rewards_dispatcher.instance 
 
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${node_url}
-NODE_ENV=${node_env}
+ENV=${node_env}
 STABLE_DENOM=${stable_denom}
 USER_1_PRIV_KEY=${user_1_priv_key}
 USER_2_PRIV_KEY=${user_2_priv_key}

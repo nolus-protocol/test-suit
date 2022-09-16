@@ -19,15 +19,15 @@ describe('Lender tests - Make deposit', () => {
   let lppDenom: string;
   let lppInstance: NolusContracts.Lpp;
   let leaserInstance: NolusContracts.Leaser;
-  let leaseInstance: NolusContracts.Lease;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
+  let cosm: any;
 
   const deposit = '100000';
   const downpayment = '10000000000';
 
   async function verifyLppBalance(lppLiquidityBefore: string) {
-    const lppLiquidityAfter = await lenderWallet.getBalance(
+    const lppLiquidityAfter = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -50,30 +50,27 @@ describe('Lender tests - Make deposit', () => {
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+    cosm = await NolusClient.getInstance().getCosmWasmClient();
 
     feederWallet = await getUser1Wallet();
     lenderWallet = await createWallet();
 
-    lppInstance = new NolusContracts.Lpp(cosm);
-    leaserInstance = new NolusContracts.Leaser(cosm);
-    leaseInstance = new NolusContracts.Lease(cosm);
+    lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
+    leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
 
-    const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
+    const lppConfig = await lppInstance.getLppConfig();
     lppDenom = lppConfig.lpn_symbol;
   });
 
   test('the successful provide liquidity scenario - should work as expected', async () => {
-    const lppLiquidityBefore = await lenderWallet.getBalance(
+    const lppLiquidityBefore = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
 
-    const lppBalanceBeginning = await lppInstance.getLppBalance(
-      lppContractAddress,
-    );
+    const lppBalanceBeginning = await lppInstance.getLppBalance();
 
-    const price = await lppInstance.getPrice(lppContractAddress);
+    const price = await lppInstance.getPrice();
 
     if (BigInt(lppLiquidityBefore.amount) === BigInt(0)) {
       expect(price.amount.amount).toBe('1');
@@ -83,7 +80,6 @@ describe('Lender tests - Make deposit', () => {
     }
 
     const lenderDepositBefore = await lppInstance.getLenderDeposit(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -105,25 +101,18 @@ describe('Lender tests - Make deposit', () => {
       lenderWallet.address as string,
     );
 
-    const priceImmediatlyBeforeDeposit = await lppInstance.getPrice(
-      lppContractAddress,
-    );
+    const priceImmediatlyBeforeDeposit = await lppInstance.getPrice();
 
-    await lppInstance.lenderDeposit(
-      lppContractAddress,
-      lenderWallet,
-      customFees.exec,
-      [{ denom: lppDenom, amount: deposit.toString() }],
-    );
+    await lppInstance.deposit(lenderWallet, customFees.exec, [
+      { denom: lppDenom, amount: deposit.toString() },
+    ]);
 
-    const lppLiquidityAfterDeposit = await lenderWallet.getBalance(
+    const lppLiquidityAfterDeposit = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
 
-    const lppBalanceResponse = await lppInstance.getLppBalance(
-      lppContractAddress,
-    );
+    const lppBalanceResponse = await lppInstance.getLppBalance();
 
     const lenderBalanceAfter = await lenderWallet.getBalance(
       lenderWallet.address as string,
@@ -131,7 +120,6 @@ describe('Lender tests - Make deposit', () => {
     );
 
     const lenderDepositAfter = await lppInstance.getLenderDeposit(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -162,7 +150,6 @@ describe('Lender tests - Make deposit', () => {
 
     // try again if there is open leases and respectively interest
     const result = await leaserInstance.openLease(
-      leaserContractAddress,
       feederWallet,
       lppDenom,
       customFees.exec,
@@ -176,7 +163,8 @@ describe('Lender tests - Make deposit', () => {
     const secsToWait = 10;
     await sleep(secsToWait);
 
-    const currentLeaseState = await leaseInstance.getLeaseStatus(leaseAddr);
+    const leaseInstance = new NolusContracts.Lease(cosm, leaseAddr);
+    const currentLeaseState = await leaseInstance.getLeaseStatus();
 
     await feederWallet.transferAmount(
       lenderWallet.address as string,
@@ -184,34 +172,29 @@ describe('Lender tests - Make deposit', () => {
       customFees.transfer,
     );
 
-    const priceImediatAfterLeaseOpening = await lppInstance.getPrice(
-      lppContractAddress,
+    await sendInitExecuteFeeTokens(
+      feederWallet,
+      lenderWallet.address as string,
     );
 
-    const lppBalanceAfterLeaseOpen = await lppInstance.getLppBalance(
-      lppContractAddress,
-    );
+    const priceImediatAfterLeaseOpening = await lppInstance.getPrice();
+
+    const lppBalanceAfterLeaseOpen = await lppInstance.getLppBalance();
 
     verifyPrice(priceImediatAfterLeaseOpening, lppBalanceAfterLeaseOpen);
 
-    await lppInstance.lenderDeposit(
-      lppContractAddress,
-      lenderWallet,
-      customFees.exec,
-      [{ denom: lppDenom, amount: deposit.toString() }],
-    );
+    await lppInstance.deposit(lenderWallet, customFees.exec, [
+      { denom: lppDenom, amount: deposit.toString() },
+    ]);
 
-    const priceAfterLeaseOpening = await lppInstance.getPrice(
-      lppContractAddress,
-    );
+    const priceAfterLeaseOpening = await lppInstance.getPrice();
 
-    const lppLiquidityAfterLeaseOpening = await lenderWallet.getBalance(
+    const lppLiquidityAfterLeaseOpening = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
 
     const lenderDepositAfterLeaseOpening = await lppInstance.getLenderDeposit(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -236,7 +219,7 @@ describe('Lender tests - Make deposit', () => {
   });
 
   test('the lender tries to deposit unsuported lpp currency - should produce an error', async () => {
-    const lppLiquidityBefore = await lenderWallet.getBalance(
+    const lppLiquidityBefore = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -254,12 +237,9 @@ describe('Lender tests - Make deposit', () => {
     );
 
     const depositResult = () =>
-      lppInstance.lenderDeposit(
-        lppContractAddress,
-        lenderWallet,
-        customFees.exec,
-        [{ denom: NATIVE_MINIMAL_DENOM, amount: deposit }],
-      );
+      lppInstance.deposit(lenderWallet, customFees.exec, [
+        { denom: NATIVE_MINIMAL_DENOM, amount: deposit },
+      ]);
 
     await expect(depositResult).rejects.toThrow(
       `Found currency ${invalidLppDenom} expecting ${lppDenom}`,
@@ -269,7 +249,7 @@ describe('Lender tests - Make deposit', () => {
   });
 
   test('the lender tries to deposit more amount than he owns - should produce an error', async () => {
-    const lppLiquidityBefore = await lenderWallet.getBalance(
+    const lppLiquidityBefore = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -291,17 +271,12 @@ describe('Lender tests - Make deposit', () => {
     );
 
     const depositResult = () =>
-      lppInstance.lenderDeposit(
-        lppContractAddress,
-        lenderWallet,
-        customFees.exec,
-        [
-          {
-            denom: lppDenom,
-            amount: (BigInt(lenderBalanceBefore.amount) + BigInt(1)).toString(),
-          },
-        ],
-      );
+      lppInstance.deposit(lenderWallet, customFees.exec, [
+        {
+          denom: lppDenom,
+          amount: (BigInt(lenderBalanceBefore.amount) + BigInt(1)).toString(),
+        },
+      ]);
     await expect(depositResult).rejects.toThrow(/^.*insufficient funds.*/);
 
     const lenderBalanceAfter = await lenderWallet.getBalance(
@@ -315,7 +290,7 @@ describe('Lender tests - Make deposit', () => {
   });
 
   test('the lender tries to deposit 0 amount - should produce an error', async () => {
-    const lppLiquidityBefore = await lenderWallet.getBalance(
+    const lppLiquidityBefore = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -326,19 +301,16 @@ describe('Lender tests - Make deposit', () => {
     );
 
     const depositResult = () =>
-      lppInstance.lenderDeposit(
-        lppContractAddress,
-        lenderWallet,
-        customFees.exec,
-        [{ denom: lppDenom, amount: '0' }],
-      );
+      lppInstance.deposit(lenderWallet, customFees.exec, [
+        { denom: lppDenom, amount: '0' },
+      ]);
     await expect(depositResult).rejects.toThrow(/^.*invalid coins.*/);
 
     await verifyLppBalance(lppLiquidityBefore.amount);
   });
 
   test('the lender tries not to send funds when calling "deposit" - should produce an error', async () => {
-    const lppLiquidityBefore = await lenderWallet.getBalance(
+    const lppLiquidityBefore = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -349,11 +321,7 @@ describe('Lender tests - Make deposit', () => {
     );
 
     const depositResult = () =>
-      lppInstance.lenderDeposit(
-        lppContractAddress,
-        lenderWallet,
-        customFees.exec,
-      );
+      lppInstance.deposit(lenderWallet, customFees.exec);
     await expect(depositResult).rejects.toThrow(
       `Expecting funds of ${lppDenom} but found none`,
     );

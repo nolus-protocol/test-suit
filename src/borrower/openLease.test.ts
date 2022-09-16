@@ -10,10 +10,10 @@ describe('Leaser contract tests - Open a lease', () => {
   let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppDenom: string;
-  let leaseInstance: NolusContracts.Lease;
   let lppInstance: NolusContracts.Lpp;
   let leaserInstance: NolusContracts.Leaser;
   let lppBalance: Coin;
+  let cosm: any;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -24,26 +24,22 @@ describe('Leaser contract tests - Open a lease', () => {
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+    cosm = await NolusClient.getInstance().getCosmWasmClient();
 
     feederWallet = await getUser1Wallet();
     borrowerWallet = await createWallet();
 
-    leaseInstance = new NolusContracts.Lease(cosm);
-    leaserInstance = new NolusContracts.Leaser(cosm);
-    lppInstance = new NolusContracts.Lpp(cosm);
+    leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
+    lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
 
-    const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
+    const lppConfig = await lppInstance.getLppConfig();
 
     lppDenom = lppConfig.lpn_symbol;
 
-    await lppInstance.lenderDeposit(
-      lppContractAddress,
-      feederWallet,
-      customFees.exec,
-      [{ denom: lppDenom, amount: minimalAmountLpp }],
-    );
-    lppBalance = await borrowerWallet.getBalance(lppContractAddress, lppDenom);
+    await lppInstance.deposit(feederWallet, customFees.exec, [
+      { denom: lppDenom, amount: minimalAmountLpp },
+    ]);
+    lppBalance = await cosm.getBalance(lppContractAddress, lppDenom);
 
     expect(lppBalance.amount).not.toBe('0');
   });
@@ -59,11 +55,7 @@ describe('Leaser contract tests - Open a lease', () => {
       borrowerWallet.address as string,
     );
 
-    const quote = await leaserInstance.makeLeaseApply(
-      leaserContractAddress,
-      downpayment,
-      lppDenom,
-    );
+    const quote = await leaserInstance.leaseQuote(downpayment, lppDenom);
 
     expect(quote.borrow).toBeDefined();
 
@@ -74,40 +66,37 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     // get the liquidity before
-    const lppLiquidityBefore = await borrowerWallet.getBalance(
+    const lppLiquidityBefore = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
 
-    const leasesBefore = await leaserInstance.getCurrentOpenLeases(
-      leaserContractAddress,
+    const leasesBefore = await leaserInstance.getCurrentOpenLeasesByOwner(
       borrowerWallet.address as string,
     );
 
     //get config before open a lease
-    const leaserConfig = await leaserInstance.getLeaserConfig(
-      leaserContractAddress,
-    );
+    const leaserConfig = await leaserInstance.getLeaserConfig();
 
     const response = await leaserInstance.openLease(
-      leaserContractAddress,
       borrowerWallet,
       lppDenom,
       customFees.exec,
       [{ denom: lppDenom, amount: downpayment }],
     );
 
-    const leasesAfter = await leaserInstance.getCurrentOpenLeases(
-      leaserContractAddress,
+    const leasesAfter = await leaserInstance.getCurrentOpenLeasesByOwner(
       borrowerWallet.address as string,
     );
 
     expect(leasesAfter.length).toBe(leasesBefore.length + 1);
 
-    // get the new lease state
-    const currentLeaseState = await leaseInstance.getLeaseStatus(
+    const leaseInstance = new NolusContracts.Lease(
+      cosm,
       getLeaseAddressFromOpenLeaseResponse(response),
     );
+    // get the new lease state
+    const currentLeaseState = await leaseInstance.getLeaseStatus();
 
     const leaseAmount = currentLeaseState.opened?.amount.amount;
     const leasePrincipal = currentLeaseState.opened?.principal_due.amount;
@@ -134,7 +123,7 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     // get the liquidity after
-    const lppLiquidityAfter = await borrowerWallet.getBalance(
+    const lppLiquidityAfter = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -165,8 +154,7 @@ describe('Leaser contract tests - Open a lease', () => {
       borrower2wallet.address as string,
     );
 
-    const quote = await leaserInstance.makeLeaseApply(
-      leaserContractAddress,
+    const quote = await leaserInstance.leaseQuote(
       (BigInt(downpayment) / BigInt(2)).toString(),
       lppDenom,
     );
@@ -180,18 +168,16 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     // get the liquidity before
-    const lppLiquidityBefore = await borrower2wallet.getBalance(
+    const lppLiquidityBefore = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
 
-    const leasesBefore = await leaserInstance.getCurrentOpenLeases(
-      leaserContractAddress,
+    const leasesBefore = await leaserInstance.getCurrentOpenLeasesByOwner(
       borrower2wallet.address as string,
     );
 
     const firstLeaseOpenResponse = await leaserInstance.openLease(
-      leaserContractAddress,
       borrower2wallet,
       lppDenom,
       customFees.exec,
@@ -205,23 +191,23 @@ describe('Leaser contract tests - Open a lease', () => {
     openedLeases++;
 
     //test - query a quote after open a lease
-    const quoteAfterLeaseOpen = await leaserInstance.makeLeaseApply(
-      leaserContractAddress,
+    const quoteAfterLeaseOpen = await leaserInstance.leaseQuote(
       (BigInt(downpayment) / BigInt(2)).toString(),
       lppDenom,
     );
     expect(quoteAfterLeaseOpen.borrow).toBeDefined();
 
-    const leasesAfter = await leaserInstance.getCurrentOpenLeases(
-      leaserContractAddress,
+    const leasesAfter = await leaserInstance.getCurrentOpenLeasesByOwner(
       borrower2wallet.address as string,
     );
     expect(leasesAfter.length).toBe(leasesBefore.length + openedLeases);
 
-    // get the lease1 state
-    const firstLeaseState = await leaseInstance.getLeaseStatus(
+    const leaseInstance = new NolusContracts.Lease(
+      cosm,
       getLeaseAddressFromOpenLeaseResponse(firstLeaseOpenResponse),
     );
+    // get the lease1 state
+    const firstLeaseState = await leaseInstance.getLeaseStatus();
 
     await sendInitExecuteFeeTokens(
       feederWallet,
@@ -229,7 +215,6 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     const secondLeaseOpenResponse = await leaserInstance.openLease(
-      leaserContractAddress,
       borrower2wallet,
       lppDenom,
       customFees.exec,
@@ -242,16 +227,18 @@ describe('Leaser contract tests - Open a lease', () => {
     );
     openedLeases++;
 
-    const finalLeasesCount = await leaserInstance.getCurrentOpenLeases(
-      leaserContractAddress,
+    const finalLeasesCount = await leaserInstance.getCurrentOpenLeasesByOwner(
       borrower2wallet.address as string,
     );
     expect(finalLeasesCount.length).toBe(leasesBefore.length + openedLeases);
 
-    // get lease2 state
-    const secondLeaseState = await leaseInstance.getLeaseStatus(
+    const secondLeaseInstance = new NolusContracts.Lease(
+      cosm,
       getLeaseAddressFromOpenLeaseResponse(secondLeaseOpenResponse),
     );
+
+    // get lease2 state
+    const secondLeaseState = await secondLeaseInstance.getLeaseStatus();
 
     const leaseAmountFirstLease = firstLeaseState.opened?.amount.amount;
     const leaseAmountSecondLease = secondLeaseState.opened?.amount.amount;
@@ -267,7 +254,7 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     // get the liquidity after
-    const lppLiquidityAfter = await borrower2wallet.getBalance(
+    const lppLiquidityAfter = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
     );
@@ -303,13 +290,9 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     const openLease = () =>
-      leaserInstance.openLease(
-        leaserContractAddress,
-        borrowerWallet,
-        'unsupported',
-        customFees.exec,
-        [{ denom: lppDenom, amount: anyAmount }],
-      );
+      leaserInstance.openLease(borrowerWallet, 'unsupported', customFees.exec, [
+        { denom: lppDenom, amount: anyAmount },
+      ]);
 
     await expect(openLease).rejects.toThrow(/^.*TO DO:.*/);
 
@@ -332,13 +315,9 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     const openLease = () =>
-      leaserInstance.openLease(
-        leaserContractAddress,
-        borrowerWallet,
-        lppDenom,
-        customFees.exec,
-        [{ denom: lppDenom, amount: '0' }],
-      );
+      leaserInstance.openLease(borrowerWallet, lppDenom, customFees.exec, [
+        { denom: lppDenom, amount: '0' },
+      ]);
 
     await expect(openLease).rejects.toThrow(/^.*invalid coins.*/);
 
@@ -361,20 +340,12 @@ describe('Leaser contract tests - Open a lease', () => {
     );
 
     const openLease = () =>
-      leaserInstance.openLease(
-        leaserContractAddress,
-        borrowerWallet,
-        lppDenom,
-        customFees.exec,
-        [
-          {
-            denom: lppDenom,
-            amount: (
-              BigInt(borrowerBalanceBefore.amount) + BigInt(1)
-            ).toString(),
-          },
-        ],
-      );
+      leaserInstance.openLease(borrowerWallet, lppDenom, customFees.exec, [
+        {
+          denom: lppDenom,
+          amount: (BigInt(borrowerBalanceBefore.amount) + BigInt(1)).toString(),
+        },
+      ]);
 
     await expect(openLease).rejects.toThrow(/^.*insufficient fund.*/);
 

@@ -19,9 +19,9 @@ describe('Lender tests - Burn deposit', () => {
     lenderWallet = await createWallet();
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
-    lppInstance = new NolusContracts.Lpp(cosm);
+    lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
 
-    const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
+    const lppConfig = await lppInstance.getLppConfig();
     lppDenom = lppConfig.lpn_symbol;
   });
 
@@ -39,30 +39,22 @@ describe('Lender tests - Burn deposit', () => {
       lenderWallet.address as string,
     );
 
-    const lppBalance = await lppInstance.getLppBalance(lppContractAddress);
+    const lppBalance = await lppInstance.getLppBalance();
 
     // if the total depositors balance_nlpn==0 lpp returns err, because otherwise funds are frozen in the contract
     if (BigInt(lppBalance.balance_nlpn.amount) === BigInt(0)) {
       console.log('No deposits.');
       const broadcastTx = () =>
-        lppInstance.distributeRewards(
-          lppContractAddress,
-          feederWallet,
-          customFees.exec,
-          [rewards],
-        );
+        lppInstance.distributeRewards(feederWallet, customFees.exec, [rewards]);
 
       await expect(broadcastTx).rejects.toThrow(
         /^.*Distribute rewards with zero balance nlpn.*/,
       );
     }
 
-    await lppInstance.lenderDeposit(
-      lppContractAddress,
-      lenderWallet,
-      customFees.exec,
-      [{ denom: lppDenom, amount: deposit }],
-    );
+    await lppInstance.deposit(lenderWallet, customFees.exec, [
+      { denom: lppDenom, amount: deposit },
+    ]);
 
     const lenderBalanceBeforeFirstBurn = await lenderWallet.getBalance(
       lenderWallet.address as string,
@@ -75,22 +67,17 @@ describe('Lender tests - Burn deposit', () => {
     );
 
     const lenderDepositBeforeFirstBurn = await lppInstance.getLenderDeposit(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
     // burn part of the deposit amount
 
     // provide rewards
-    await lppInstance.distributeRewards(
-      lppContractAddress,
-      feederWallet,
-      customFees.exec,
-      [rewards],
-    );
+    await lppInstance.distributeRewards(feederWallet, customFees.exec, [
+      rewards,
+    ]);
 
     const lenderRewardsBeforeFirstBurn = await lppInstance.getLenderRewards(
-      lppContractAddress,
       lenderWallet.address as string,
     );
     expect(lenderRewardsBeforeFirstBurn.rewards.amount).not.toBe('0');
@@ -99,22 +86,16 @@ describe('Lender tests - Burn deposit', () => {
       BigInt(lenderDepositBeforeFirstBurn.balance) / BigInt(2)
     ).toString();
 
-    const priceBeforeBurn = await lppInstance.getPrice(lppContractAddress);
+    const priceBeforeBurn = await lppInstance.getPrice();
 
     await sendInitExecuteFeeTokens(
       feederWallet,
       lenderWallet.address as string,
     );
 
-    await lppInstance.burnDeposit(
-      lppContractAddress,
-      lenderWallet,
-      burnAmount,
-      customFees.exec,
-    );
+    await lppInstance.burnDeposit(lenderWallet, burnAmount, customFees.exec);
 
     const lenderDepositAfterFirstBurn = await lppInstance.getLenderDeposit(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -129,7 +110,6 @@ describe('Lender tests - Burn deposit', () => {
     );
 
     const lenderRewardsAfterFirstBurn = await lppInstance.getLenderRewards(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -157,19 +137,15 @@ describe('Lender tests - Burn deposit', () => {
       feederWallet,
       lenderWallet.address as string,
     );
-    const priceBeforeSecondBurn = await lppInstance.getPrice(
-      lppContractAddress,
-    );
+    const priceBeforeSecondBurn = await lppInstance.getPrice();
 
     await lppInstance.burnDeposit(
-      lppContractAddress,
       lenderWallet,
       lenderDepositAfterFirstBurn.balance,
       customFees.exec,
     );
 
     const lenderDepositAfterSecondBurn = await lppInstance.getLenderDeposit(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -184,10 +160,7 @@ describe('Lender tests - Burn deposit', () => {
     );
 
     const lenderRewardsAfterSecondBurnTx = () =>
-      lppInstance.getLenderRewards(
-        lppContractAddress,
-        lenderWallet.address as string,
-      );
+      lppInstance.getLenderRewards(lenderWallet.address as string);
     await expect(lenderRewardsAfterSecondBurnTx).rejects.toThrow(
       /^.*The deposit does not exist.*/,
     );
@@ -210,12 +183,9 @@ describe('Lender tests - Burn deposit', () => {
   });
 
   test('the non-lender user tries to burn deposit - should produce an error', async () => {
-    await lppInstance.lenderDeposit(
-      lppContractAddress,
-      feederWallet,
-      customFees.exec,
-      [{ denom: lppDenom, amount: deposit }],
-    );
+    await lppInstance.deposit(feederWallet, customFees.exec, [
+      { denom: lppDenom, amount: deposit },
+    ]);
 
     const newLenderWallet = await createWallet();
 
@@ -226,7 +196,6 @@ describe('Lender tests - Burn deposit', () => {
 
     const broadcastTx = () =>
       lppInstance.burnDeposit(
-        lppContractAddress,
         newLenderWallet,
         '10', // any amount
         customFees.exec,
@@ -251,12 +220,9 @@ describe('Lender tests - Burn deposit', () => {
       newLenderWallet.address as string,
     );
 
-    await lppInstance.lenderDeposit(
-      lppContractAddress,
-      newLenderWallet,
-      customFees.exec,
-      [{ denom: lppDenom, amount: deposit }],
-    );
+    await lppInstance.deposit(newLenderWallet, customFees.exec, [
+      { denom: lppDenom, amount: deposit },
+    ]);
 
     await sendInitExecuteFeeTokens(
       feederWallet,
@@ -264,12 +230,7 @@ describe('Lender tests - Burn deposit', () => {
     );
 
     const broadcastTx = () =>
-      lppInstance.burnDeposit(
-        lppContractAddress,
-        newLenderWallet,
-        '0',
-        customFees.exec,
-      );
+      lppInstance.burnDeposit(newLenderWallet, '0', customFees.exec);
 
     await expect(broadcastTx).rejects.toThrow(/^.*Zero withdraw amount.*/);
   });
@@ -286,19 +247,15 @@ describe('Lender tests - Burn deposit', () => {
       customFees.transfer,
     );
 
-    await lppInstance.lenderDeposit(
-      lppContractAddress,
-      lenderWallet,
-      customFees.exec,
-      [{ denom: lppDenom, amount: deposit }],
-    );
+    await lppInstance.deposit(lenderWallet, customFees.exec, [
+      { denom: lppDenom, amount: deposit },
+    ]);
     await sendInitExecuteFeeTokens(
       feederWallet,
       lenderWallet.address as string,
     );
 
     const lenderDeposit = await lppInstance.getLenderDeposit(
-      lppContractAddress,
       lenderWallet.address as string,
     );
 
@@ -309,7 +266,6 @@ describe('Lender tests - Burn deposit', () => {
 
     const broadcastTx = () =>
       lppInstance.burnDeposit(
-        lppContractAddress,
         lenderWallet,
         (BigInt(lenderDeposit.balance) + BigInt(1)).toString(),
         customFees.exec,

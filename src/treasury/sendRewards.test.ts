@@ -9,70 +9,72 @@ import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { Asset } from '@nolus/nolusjs/build/contracts';
 
 describe('Treasury tests - Request rewards', () => {
-  let user1Wallet: NolusWallet;
+  let feederWallet: NolusWallet;
   let wasmAdminWallet: NolusWallet;
   let newDispatcherWallet: NolusWallet;
   let treasuryInstance: NolusContracts.Treasury;
   const treasuryContractAddress = process.env.TREASURY_ADDRESS as string;
   let rewards: Asset;
+  let cosm: any;
 
   const percision = 100000;
   const gasPriceInteger = gasPrice * percision;
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+    cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-    user1Wallet = await getUser1Wallet();
+    feederWallet = await getUser1Wallet();
     newDispatcherWallet = await createWallet();
     wasmAdminWallet = await getWasmAdminWallet();
 
-    treasuryInstance = new NolusContracts.Treasury(cosm);
+    treasuryInstance = new NolusContracts.Treasury(
+      cosm,
+      treasuryContractAddress,
+    );
 
     rewards = { symbol: NATIVE_MINIMAL_DENOM, amount: '100000' };
   });
 
   test('the configured dispatcher account tries to request rewards from the treasury - should work as expected', async () => {
-    const dispatcherBalanceBeforeFirstReward = await user1Wallet.getBalance(
+    const dispatcherBalanceBeforeFirstReward = await feederWallet.getBalance(
       newDispatcherWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
     await sendInitExecuteFeeTokens(
-      user1Wallet,
+      feederWallet,
       wasmAdminWallet.address as string,
     );
 
     await treasuryInstance.configRewardsTransfer(
-      treasuryContractAddress,
       wasmAdminWallet,
       newDispatcherWallet.address as string,
       customFees.exec,
     );
 
     await sendInitExecuteFeeTokens(
-      user1Wallet,
+      feederWallet,
       newDispatcherWallet.address as string,
     );
 
-    const treasuryBalanceBeforeFirstReward = await user1Wallet.getBalance(
+    const treasuryBalanceBeforeFirstReward = await cosm.getBalance(
       treasuryContractAddress,
       NATIVE_MINIMAL_DENOM,
     );
 
-    await treasuryInstance.sendRewardsMsg(
-      treasuryContractAddress,
+    await treasuryInstance.sendRewards(
       newDispatcherWallet,
       rewards,
       customFees.exec,
     );
 
-    const treasuryBalanceAfterFirstReward = await user1Wallet.getBalance(
+    const treasuryBalanceAfterFirstReward = await cosm.getBalance(
       treasuryContractAddress,
       NATIVE_MINIMAL_DENOM,
     );
 
-    const dispatcherBalanceAfterFirstReward = await user1Wallet.getBalance(
+    const dispatcherBalanceAfterFirstReward = await feederWallet.getBalance(
       newDispatcherWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
@@ -93,18 +95,17 @@ describe('Treasury tests - Request rewards', () => {
 
     //send more than once
     await sendInitExecuteFeeTokens(
-      user1Wallet,
+      feederWallet,
       newDispatcherWallet.address as string,
     );
 
-    await treasuryInstance.sendRewardsMsg(
-      treasuryContractAddress,
+    await treasuryInstance.sendRewards(
       newDispatcherWallet,
       rewards,
       customFees.exec,
     );
 
-    const dispatcherBalanceAfterSecondReward = await user1Wallet.getBalance(
+    const dispatcherBalanceAfterSecondReward = await feederWallet.getBalance(
       newDispatcherWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
@@ -116,12 +117,7 @@ describe('Treasury tests - Request rewards', () => {
 
   test('an unauthorized user tries to request rewards from the treasury - should produce an error', async () => {
     const broadcastTx = () =>
-      treasuryInstance.sendRewardsMsg(
-        treasuryContractAddress,
-        user1Wallet,
-        rewards,
-        customFees.exec,
-      );
+      treasuryInstance.sendRewards(feederWallet, rewards, customFees.exec);
 
     await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized.*/);
   });
@@ -129,9 +125,8 @@ describe('Treasury tests - Request rewards', () => {
   test('an unauthorized user tries to change dispatcher address - should produce an error', async () => {
     const broadcastTx = () =>
       treasuryInstance.configRewardsTransfer(
-        treasuryContractAddress,
-        user1Wallet,
-        user1Wallet.address as string as string,
+        feederWallet,
+        feederWallet.address as string as string,
         customFees.exec,
       );
 
@@ -140,15 +135,14 @@ describe('Treasury tests - Request rewards', () => {
 
   test('the configured dispatcher account tries to request 0 rewards from the treasury - should produce an error', async () => {
     await sendInitExecuteFeeTokens(
-      user1Wallet,
+      feederWallet,
       newDispatcherWallet.address as string,
     );
 
     rewards.amount = '0';
 
     const broadcastTx = () =>
-      treasuryInstance.sendRewardsMsg(
-        treasuryContractAddress,
+      treasuryInstance.sendRewards(
         newDispatcherWallet,
         rewards,
         customFees.exec,
@@ -158,12 +152,12 @@ describe('Treasury tests - Request rewards', () => {
   });
 
   test('the configured dispatcher account tries to request more rewards than the treasury has - should produce an error', async () => {
-    const dispatcherBalanceBefore = await user1Wallet.getBalance(
+    const dispatcherBalanceBefore = await feederWallet.getBalance(
       newDispatcherWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
-    const treasuryBalanceBefore = await user1Wallet.getBalance(
+    const treasuryBalanceBefore = await feederWallet.getBalance(
       treasuryContractAddress,
       NATIVE_MINIMAL_DENOM,
     );
@@ -179,8 +173,7 @@ describe('Treasury tests - Request rewards', () => {
     ).toString();
 
     const broadcastTx = () =>
-      treasuryInstance.sendRewardsMsg(
-        treasuryContractAddress,
+      treasuryInstance.sendRewards(
         newDispatcherWallet,
         rewards,
         customFees.exec,
@@ -188,12 +181,12 @@ describe('Treasury tests - Request rewards', () => {
 
     await expect(broadcastTx).rejects.toThrow(/^.*insufficient funds.*/);
 
-    const dispatcherBalanceAfter = await user1Wallet.getBalance(
+    const dispatcherBalanceAfter = await feederWallet.getBalance(
       newDispatcherWallet.address as string,
       NATIVE_MINIMAL_DENOM,
     );
 
-    const treasuryBalanceAfter = await user1Wallet.getBalance(
+    const treasuryBalanceAfter = await feederWallet.getBalance(
       treasuryContractAddress,
       NATIVE_MINIMAL_DENOM,
     );

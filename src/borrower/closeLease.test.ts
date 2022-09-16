@@ -13,10 +13,10 @@ describe('Leaser contract tests - Close lease', () => {
   let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;
   let lppDenom: string;
-  let leaseInstance: NolusContracts.Lease;
   let lppInstance: NolusContracts.Lpp;
   let leaserInstance: NolusContracts.Leaser;
   let mainLeaseAddress: string;
+  let cosm: any;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -25,28 +25,24 @@ describe('Leaser contract tests - Close lease', () => {
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+    cosm = await NolusClient.getInstance().getCosmWasmClient();
 
     feederWallet = await getUser1Wallet();
     borrowerWallet = await createWallet();
 
-    leaseInstance = new NolusContracts.Lease(cosm);
-    lppInstance = new NolusContracts.Lpp(cosm);
-    leaserInstance = new NolusContracts.Leaser(cosm);
+    lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
+    leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
 
-    const lppConfig = await lppInstance.getLppConfig(lppContractAddress);
+    const lppConfig = await lppInstance.getLppConfig();
     lppDenom = lppConfig.lpn_symbol;
 
     const initDeposit = '1000';
-    await lppInstance.lenderDeposit(
-      lppContractAddress,
-      feederWallet,
-      customFees.exec,
-      [{ denom: lppDenom, amount: initDeposit }],
-    );
+    await lppInstance.deposit(feederWallet, customFees.exec, [
+      { denom: lppDenom, amount: initDeposit },
+    ]);
 
     // get the liquidity
-    lppLiquidity = await feederWallet.getBalance(lppContractAddress, lppDenom);
+    lppLiquidity = await cosm.getBalance(lppContractAddress, lppDenom);
     expect(lppLiquidity.amount).not.toBe('0');
 
     // preparе one open lease
@@ -61,7 +57,6 @@ describe('Leaser contract tests - Close lease', () => {
     );
 
     const result = await leaserInstance.openLease(
-      leaserContractAddress,
       borrowerWallet,
       lppDenom,
       customFees.exec,
@@ -77,12 +72,9 @@ describe('Leaser contract tests - Close lease', () => {
       borrowerWallet.address as string,
     );
 
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
     const result = () =>
-      leaseInstance.closeLease(
-        mainLeaseAddress,
-        borrowerWallet,
-        customFees.exec,
-      );
+      leaseInstance.closeLease(borrowerWallet, customFees.exec);
 
     await expect(result).rejects.toThrow(
       /^.*The underlying loan is not fully repaid.*/,
@@ -107,12 +99,7 @@ describe('Leaser contract tests - Close lease', () => {
       borrowerWallet.address as string,
     );
 
-    await leaseInstance.repayLease(
-      mainLeaseAddress,
-      borrowerWallet,
-      customFees.exec,
-      [payment],
-    );
+    await leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
 
     await sendInitExecuteFeeTokens(
       feederWallet,
@@ -120,11 +107,7 @@ describe('Leaser contract tests - Close lease', () => {
     );
 
     const result2 = () =>
-      leaseInstance.closeLease(
-        mainLeaseAddress,
-        borrowerWallet,
-        customFees.exec,
-      );
+      leaseInstance.closeLease(borrowerWallet, customFees.exec);
 
     await expect(result2).rejects.toThrow(
       /^.*The underlying loan is not fully repaid.*/,
@@ -134,7 +117,8 @@ describe('Leaser contract tests - Close lease', () => {
   test('unauthorized user tries to close unpaid lease - should produce an error', async () => {
     const newUserWallet = await createWallet();
 
-    const leaseState = await leaseInstance.getLeaseStatus(mainLeaseAddress);
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
+    const leaseState = await leaseInstance.getLeaseStatus();
 
     expect(leaseState.opened).toBeDefined();
 
@@ -143,11 +127,7 @@ describe('Leaser contract tests - Close lease', () => {
       newUserWallet.address as string,
     );
     const result = () =>
-      leaseInstance.closeLease(
-        mainLeaseAddress,
-        newUserWallet,
-        customFees.exec,
-      );
+      leaseInstance.closeLease(newUserWallet, customFees.exec);
 
     await expect(result).rejects.toThrow(/^.*Unauthorized.*/);
   });
@@ -158,9 +138,8 @@ describe('Leaser contract tests - Close lease', () => {
       lppDenom,
     );
 
-    const leaseStateBeforeRepay = (
-      await leaseInstance.getLeaseStatus(mainLeaseAddress)
-    ).opened;
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
+    const leaseStateBeforeRepay = (await leaseInstance.getLeaseStatus()).opened;
 
     if (!leaseStateBeforeRepay) {
       undefinedHandler();
@@ -206,7 +185,6 @@ describe('Leaser contract tests - Close lease', () => {
     );
 
     const repayTxReponse = await leaseInstance.repayLease(
-      mainLeaseAddress,
       borrowerWallet,
       customFees.exec,
       [repayAll],
@@ -217,13 +195,10 @@ describe('Leaser contract tests - Close lease', () => {
     const exactExcess =
       BigInt(principalPaid) - BigInt(leasePrincipalBeforeRepay);
 
-    const leaseStateAfterRepay = await leaseInstance.getLeaseStatus(
-      mainLeaseAddress,
-    );
+    const leaseStateAfterRepay = await leaseInstance.getLeaseStatus();
     expect(leaseStateAfterRepay.paid).toBeDefined();
 
-    const leasesAfterRepay = await leaserInstance.getCurrentOpenLeases(
-      leaserContractAddress,
+    const leasesAfterRepay = await leaserInstance.getCurrentOpenLeasesByOwner(
       borrowerWallet.address as string,
     );
 
@@ -236,11 +211,7 @@ describe('Leaser contract tests - Close lease', () => {
       newUserWallet.address as string,
     );
     const result = () =>
-      leaseInstance.closeLease(
-        mainLeaseAddress,
-        newUserWallet,
-        customFees.exec,
-      );
+      leaseInstance.closeLease(newUserWallet, customFees.exec);
 
     await expect(result).rejects.toThrow(/^.*Unauthorized.*/);
 
@@ -249,22 +220,15 @@ describe('Leaser contract tests - Close lease', () => {
       feederWallet,
       borrowerWallet.address as string,
     );
-    await leaseInstance.closeLease(
-      mainLeaseAddress,
-      borrowerWallet,
-      customFees.exec,
-    );
+    await leaseInstance.closeLease(borrowerWallet, customFees.exec);
 
-    const leasesAfterClose = await leaserInstance.getCurrentOpenLeases(
-      leaserContractAddress,
+    const leasesAfterClose = await leaserInstance.getCurrentOpenLeasesByOwner(
       borrowerWallet.address as string,
     );
 
     expect(leasesAfterClose.length).toEqual(leasesAfterRepay.length);
 
-    const leaseStateAfterClose = await leaseInstance.getLeaseStatus(
-      mainLeaseAddress,
-    );
+    const leaseStateAfterClose = await leaseInstance.getLeaseStatus();
     expect(leaseStateAfterClose.closed).toBeDefined();
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
@@ -284,12 +248,9 @@ describe('Leaser contract tests - Close lease', () => {
     );
 
     // mainLease is now closed due to the previous test
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
     const result = () =>
-      leaseInstance.closeLease(
-        mainLeaseAddress,
-        borrowerWallet,
-        customFees.exec,
-      );
+      leaseInstance.closeLease(borrowerWallet, customFees.exec);
 
     await expect(result).rejects.toThrow(/^.*The underlying loan is closed.*/);
   });
