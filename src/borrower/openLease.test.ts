@@ -1,8 +1,15 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { customFees, undefinedHandler } from '../util/utils';
+import {
+  customFees,
+  NATIVE_MINIMAL_DENOM,
+  undefinedHandler,
+} from '../util/utils';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
-import { getLeaseAddressFromOpenLeaseResponse } from '../util/smart-contracts';
+import {
+  calcBorrow,
+  getLeaseAddressFromOpenLeaseResponse,
+} from '../util/smart-contracts';
 import { InstantiateOptions } from '@cosmjs/cosmwasm-stargate';
 import { Coin } from '@cosmjs/proto-signing';
 
@@ -112,9 +119,10 @@ describe('Leaser contract tests - Open a lease', () => {
 
     //check if this borrow<=init%*LeaseTotal(borrow+downpayment);
     expect(BigInt(leaseAmount) - BigInt(downpayment)).toBe(
-      (BigInt(downpayment) *
-        BigInt(leaserConfig.config.liability.init_percent)) /
-        (BigInt(1000) - BigInt(leaserConfig.config.liability.init_percent)),
+      calcBorrow(
+        BigInt(downpayment),
+        BigInt(leaserConfig.config.liability.init_percent),
+      ),
     );
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
@@ -289,12 +297,14 @@ describe('Leaser contract tests - Open a lease', () => {
       lppDenom,
     );
 
+    const unsupported = NATIVE_MINIMAL_DENOM;
+
     const openLease = () =>
-      leaserInstance.openLease(borrowerWallet, 'unsupported', customFees.exec, [
+      leaserInstance.openLease(borrowerWallet, unsupported, customFees.exec, [
         { denom: lppDenom, amount: anyAmount },
       ]);
 
-    await expect(openLease).rejects.toThrow(/^.*TO DO:.*/);
+    await expect(openLease).rejects.toThrow(`TO DO`);
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
       borrowerWallet.address as string,

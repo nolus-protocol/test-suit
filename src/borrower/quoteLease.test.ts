@@ -7,14 +7,22 @@ import {
   NolusContracts,
   ChainConstants,
 } from '@nolus/nolusjs';
+import {
+  calcBorrow,
+  calcQuoteAnnualInterestRate,
+  calcUtilization,
+} from '../util/smart-contracts';
 
-describe('Leaser contract tests - Apply for a lease', () => {
+describe('Leaser contract tests - Quote lease', () => {
   let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;
   let lppDenom: string;
   let leaserInstance: NolusContracts.Leaser;
   let lppInstance: NolusContracts.Lpp;
+  let baseInterestRate: number;
+  let utilizationOptimal: number;
+  let addonOptimalInterestRate: number;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -22,6 +30,7 @@ describe('Leaser contract tests - Apply for a lease', () => {
 
   const downpayment = '10';
   const minimalAmountInLpp = '100000';
+  const toPercent = 10;
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
@@ -35,6 +44,11 @@ describe('Leaser contract tests - Apply for a lease', () => {
 
     const lppConfig = await lppInstance.getLppConfig();
     lppDenom = lppConfig.lpn_symbol;
+
+    baseInterestRate = lppConfig.base_interest_rate / toPercent; //%
+    utilizationOptimal = lppConfig.utilization_optimal / toPercent; //%
+    addonOptimalInterestRate =
+      lppConfig.addon_optimal_interest_rate / toPercent; //%
 
     // provide liquidity
     await lppInstance.deposit(feederWallet, customFees.exec, [
@@ -74,42 +88,40 @@ describe('Leaser contract tests - Apply for a lease', () => {
     expect(quote.borrow).toBeDefined();
     expect(quote.annual_interest_rate).toBeDefined();
 
-    //TO DO calc
-    // const toPercent = 10;
+    expect(BigInt(quote.total.amount)).toBe(
+      BigInt(quote.borrow.amount) + BigInt(downpayment),
+    );
 
-    // baseInterestRate = lppConfig.base_interest_rate / toPercent; //%
-    // utilizationOptimal = lppConfig.utilization_optimal / toPercent; //%
-    // addonOptimalInterestRate =
-    //   lppConfig.addon_optimal_interest_rate / toPercent; //%
+    const lppInformation = await lppInstance.getLppBalance();
+    const totalPrincipalDueByNow = lppInformation.total_principal_due;
+    const totalInterestDueByNow = lppInformation.total_interest_due;
+    const lppLiquidity = lppInformation.balance;
 
-    // const lppInformation = await lppInstance.getLppBalance(lppContractAddress);
+    const leaserConfig = await leaserInstance.getLeaserConfig();
 
-    // const totalPrincipalDueByNow = lppInformation.total_principal_due;
-    // const totalInterestDueByNow = lppInformation.total_interest_due;
-    // const lppLiquidity = lppInformation.balance;
+    const utilization = calcUtilization(
+      +totalPrincipalDueByNow.amount,
+      +quote.borrow.amount,
+      +totalInterestDueByNow.amount,
+      +lppLiquidity.amount,
+    );
 
-    // expect(lppLiquidity.amount).not.toBe('0');
-    // expect(lppBalance.amount).toBe(lppLiquidity.amount);
+    expect(
+      calcQuoteAnnualInterestRate(
+        +utilization,
+        +utilizationOptimal,
+        +baseInterestRate,
+        +addonOptimalInterestRate,
+      ),
+    ).toBe(quote.annual_interest_rate);
 
-    // const utilization = calcUtilization(
-    //   +totalPrincipalDueByNow.amount,
-    //   +quote.borrow.amount,
-    //   +totalInterestDueByNow.amount,
-    //   +lppLiquidity.amount,
-    // );
-
-    // let leaserConfig = await leaserInstance.getLeaserConfig(
-    //   leaserContractAddress,
-    // );
-
-    // expect(
-    //   calcQuoteAnnualInterestRate(
-    //     utilization,
-    //     utilizationOptimal,
-    //     baseInterestRate,
-    //     addonOptimalInterestRate,
-    //   ),
-    // ).toBe(quote.annual_interest_rate);
+    //borrow<=init%*LeaseTotal(borrow+downpayment);
+    expect(BigInt(quote.total.amount) - BigInt(downpayment)).toBe(
+      calcBorrow(
+        BigInt(downpayment),
+        BigInt(leaserConfig.config.liability.init_percent),
+      ),
+    );
 
     expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
   });

@@ -749,7 +749,6 @@ describe('Leaser contract tests - Repay lease', () => {
       lppDenom,
     );
 
-    // fails due to - TO DO - https://app.clickup.com/t/2t2zd3v
     expect(BigInt(borrowerBalanceAfterClose.amount)).toBe(
       BigInt(borrowerBalanceBeforeClose.amount) +
         BigInt(leaseAmountBeforeRepay) +

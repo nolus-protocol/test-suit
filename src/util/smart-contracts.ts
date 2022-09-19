@@ -3,6 +3,10 @@ import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
 
 const NANOSEC_YEAR = 365 * 24 * 60 * 60 * 1000000000;
 
+export function calcBorrow(downpayment: bigint, initPercent: bigint): bigint {
+  return (downpayment * initPercent) / (BigInt(1000) - initPercent);
+}
+
 export function calcUtilization( // %
   totalPrincipalDueByNow: number,
   quoteBorrow: number,
@@ -11,6 +15,7 @@ export function calcUtilization( // %
 ): number {
   const totalLiabilityPast =
     totalInterestDueByNow + quoteBorrow + totalPrincipalDueByNow;
+
   return (
     (totalLiabilityPast / (totalLiabilityPast + (lppLiquidity - quoteBorrow))) *
     100
@@ -23,11 +28,12 @@ export function calcQuoteAnnualInterestRate( // permille
   baseInterestRate: number,
   addonOptimalInterestRate: number,
 ): number {
-  return Math.floor(
+  const result =
     (baseInterestRate +
-      ((utilization - utilizationOptimal) / 100) * addonOptimalInterestRate) *
-      10,
-  );
+      (utilization / utilizationOptimal) * addonOptimalInterestRate) *
+    10;
+
+  return Math.trunc(result);
 }
 
 export function calcInterestRate(
@@ -56,7 +62,6 @@ export function NLPNS_To_LPNS(nlpns: number, price: Price): bigint {
   const result = Math.trunc(
     nlpns / (+price.amount.amount / +price.amount_quote.amount),
   );
-
   return BigInt(result);
 }
 

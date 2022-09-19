@@ -15,7 +15,6 @@
   "keywords": [],
   "author": "",
   "devDependencies": {
-    "@cosmjs/cosmwasm-stargate": "0.28.0",
     "@cosmjs/crypto": "0.28.0",
     "@cosmjs/encoding": "0.28.0",
     "@cosmjs/proto-signing": "0.28.0",
