@@ -48,6 +48,45 @@ describe('Lender tests - Make deposit', () => {
     );
   }
 
+  function verifyLenderNLPNBalance(
+    lppLenderDepositResponse: bigint,
+    deposit: number,
+    lenderDepositBefore: bigint,
+    priceBeforeDeposit: Price,
+    priceAfterDeposit: Price,
+  ): void {
+    expect(lppLenderDepositResponse).toBeLessThanOrEqual(
+      lenderDepositBefore + LPNS_To_NLPNS(deposit, priceBeforeDeposit),
+    );
+
+    expect(lppLenderDepositResponse).toBeGreaterThanOrEqual(
+      lenderDepositBefore + LPNS_To_NLPNS(deposit, priceAfterDeposit),
+    );
+  }
+
+  function getCustomPrice(
+    lppBalanceBeforeDeposit: LppBalance,
+    lppBalanceAfterDeposit: LppBalance,
+    symbol: string,
+  ): Price {
+    const totalLPNinLPP =
+      BigInt(lppBalanceAfterDeposit.balance.amount) +
+      BigInt(lppBalanceAfterDeposit.total_principal_due.amount) +
+      BigInt(lppBalanceAfterDeposit.total_interest_due.amount);
+
+    const customPriceAfterDeposit: Price = {
+      amount: {
+        amount: lppBalanceBeforeDeposit.balance_nlpn.amount,
+        symbol: symbol,
+      },
+      amount_quote: {
+        amount: totalLPNinLPP.toString(),
+        symbol: lppDenom,
+      },
+    };
+
+    return customPriceAfterDeposit;
+  }
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     cosm = await NolusClient.getInstance().getCosmWasmClient();
@@ -101,11 +140,21 @@ describe('Lender tests - Make deposit', () => {
       lenderWallet.address as string,
     );
 
+    const lppBalanceImmediatlyBeforeDeposit = await lppInstance.getLppBalance();
     const priceImmediatlyBeforeDeposit = await lppInstance.getPrice();
 
     await lppInstance.deposit(lenderWallet, customFees.exec, [
       { denom: lppDenom, amount: deposit.toString() },
     ]);
+
+    const lppBalanceImmediatlyAfterDeposit = await lppInstance.getLppBalance();
+
+    // define a price where only the total LPN value changes
+    const customPriceAfterDeposit = getCustomPrice(
+      lppBalanceImmediatlyBeforeDeposit,
+      lppBalanceImmediatlyAfterDeposit,
+      priceImmediatlyBeforeDeposit.amount.symbol,
+    );
 
     const lppLiquidityAfterDeposit = await cosm.getBalance(
       lppContractAddress,
@@ -135,17 +184,12 @@ describe('Lender tests - Make deposit', () => {
       BigInt(lenderBalanceBefore.amount) - BigInt(deposit),
     );
 
-    console.log(
-      lenderDepositBefore.balance,
+    verifyLenderNLPNBalance(
+      BigInt(lenderDepositAfter.balance),
       deposit,
-      priceImmediatlyBeforeDeposit.amount.amount,
-      priceImmediatlyBeforeDeposit.amount_quote.amount,
+      BigInt(lenderDepositBefore.balance),
       priceImmediatlyBeforeDeposit,
-    );
-
-    expect(BigInt(lenderDepositAfter.balance)).toBe(
-      BigInt(lenderDepositBefore.balance) +
-        LPNS_To_NLPNS(deposit, priceImmediatlyBeforeDeposit),
+      customPriceAfterDeposit,
     );
 
     // try again if there is open leases and respectively interest
@@ -177,25 +221,26 @@ describe('Lender tests - Make deposit', () => {
       lenderWallet.address as string,
     );
 
-    const priceImediatAfterLeaseOpening = await lppInstance.getPrice();
-
-    const lppBalanceAfterLeaseOpen = await lppInstance.getLppBalance();
-
-    verifyPrice(priceImediatAfterLeaseOpening, lppBalanceAfterLeaseOpen);
+    const lppBalanceImmediatlyBeforeSecondDeposit =
+      await lppInstance.getLppBalance();
+    const priceImmediatlyBeforeSecondDeposit = await lppInstance.getPrice();
 
     await lppInstance.deposit(lenderWallet, customFees.exec, [
       { denom: lppDenom, amount: deposit.toString() },
     ]);
 
-    const priceAfterLeaseOpening = await lppInstance.getPrice();
+    const lppBalanceImmediatlyAfterSecondDeposit =
+      await lppInstance.getLppBalance();
+
+    const customPriceAfterSecondDeposit = getCustomPrice(
+      lppBalanceImmediatlyBeforeSecondDeposit,
+      lppBalanceImmediatlyAfterSecondDeposit,
+      priceImmediatlyBeforeDeposit.amount.symbol,
+    );
 
     const lppLiquidityAfterLeaseOpening = await cosm.getBalance(
       lppContractAddress,
       lppDenom,
-    );
-
-    const lenderDepositAfterLeaseOpening = await lppInstance.getLenderDeposit(
-      lenderWallet.address as string,
     );
 
     const borrowAmount = currentLeaseState.opened?.amount.amount;
@@ -205,6 +250,10 @@ describe('Lender tests - Make deposit', () => {
       return;
     }
 
+    const lenderDepositAfterSecondDeposit = await lppInstance.getLenderDeposit(
+      lenderWallet.address as string,
+    );
+
     expect(BigInt(lppLiquidityAfterLeaseOpening.amount)).toBe(
       BigInt(lppLiquidityAfterDeposit.amount) -
         BigInt(borrowAmount) +
@@ -212,9 +261,12 @@ describe('Lender tests - Make deposit', () => {
         BigInt(deposit),
     );
 
-    expect(BigInt(lenderDepositAfterLeaseOpening.balance)).toBe(
-      BigInt(lenderDepositAfter.balance) +
-        LPNS_To_NLPNS(deposit, priceAfterLeaseOpening),
+    verifyLenderNLPNBalance(
+      BigInt(lenderDepositAfterSecondDeposit.balance),
+      deposit,
+      BigInt(lenderDepositAfter.balance),
+      priceImmediatlyBeforeSecondDeposit,
+      customPriceAfterSecondDeposit,
     );
   });
 
