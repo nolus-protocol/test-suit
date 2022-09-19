@@ -55,8 +55,8 @@ local -r treasury_address=$(jq .contracts_info[0].treasury.instance "$contracts_
 local -r lpp_address=$(jq .contracts_info[1].lpp.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 local -r timealarms_address=$(jq .contracts_info[2].timealarms.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 local -r oracle_address=$(jq .contracts_info[3].oracle.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r leaser_address=$(jq .contracts_info[4].leaser.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r profit_address=$(jq .contracts_info[5].profit.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
+local -r profit_address=$(jq .contracts_info[4].profit.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
+local -r leaser_address=$(jq .contracts_info[5].leaser.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 local -r dispatcher_address=$(jq .contracts_info[6].rewards_dispatcher.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
 
 # Save the results
