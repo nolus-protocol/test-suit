@@ -24,14 +24,15 @@ export function calcUtilization( // %
 
 export function calcQuoteAnnualInterestRate( // permille
   utilization: number,
-  utilizationOptimal: number,
-  baseInterestRate: number,
-  addonOptimalInterestRate: number,
+  utilizationOptimalPercent: number,
+  baseInterestRatePercent: number,
+  addonOptimalInterestRatePercent: number,
 ): number {
   const result =
-    (baseInterestRate +
-      (utilization / utilizationOptimal) * addonOptimalInterestRate) *
-    10;
+    (baseInterestRatePercent +
+      (utilization / utilizationOptimalPercent) *
+        addonOptimalInterestRatePercent) *
+    10; // permille
 
   return Math.trunc(result);
 }
@@ -87,6 +88,10 @@ export function getPrincipalPaidFromRepayResponse(
   response: ExecuteResult,
 ): bigint {
   return BigInt(response.logs[0].events[6].attributes[12].value);
+}
+
+export function getChangeFromRepayResponse(response: ExecuteResult): bigint {
+  return BigInt(response.logs[0].events[6].attributes[13].value);
 }
 
 export function getTotalPaidFromRepayResponse(response: ExecuteResult): bigint {

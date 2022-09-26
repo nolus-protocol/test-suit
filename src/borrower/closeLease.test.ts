@@ -4,11 +4,11 @@ import { customFees, undefinedHandler } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
+  getChangeFromRepayResponse,
   getLeaseAddressFromOpenLeaseResponse,
-  getPrincipalPaidFromRepayResponse,
 } from '../util/smart-contracts';
 
-describe('Leaser contract tests - Close lease', () => {
+describe('Borrower tests - Close lease', () => {
   let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;
@@ -190,10 +190,7 @@ describe('Leaser contract tests - Close lease', () => {
       [repayAll],
     );
 
-    const principalPaid = getPrincipalPaidFromRepayResponse(repayTxReponse);
-
-    const exactExcess =
-      BigInt(principalPaid) - BigInt(leasePrincipalBeforeRepay);
+    const exactExcess = getChangeFromRepayResponse(repayTxReponse);
 
     const leaseStateAfterRepay = await leaseInstance.getLeaseStatus();
     expect(leaseStateAfterRepay.paid).toBeDefined();

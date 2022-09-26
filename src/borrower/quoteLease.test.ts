@@ -13,7 +13,7 @@ import {
   calcUtilization,
 } from '../util/smart-contracts';
 
-describe('Leaser contract tests - Quote lease', () => {
+describe('Borrower contract tests - Quote lease', () => {
   let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;
@@ -142,7 +142,7 @@ describe('Leaser contract tests - Quote lease', () => {
         (BigInt(lppLiquidity.amount) + BigInt(1)).toString(),
         lppDenom,
       );
-    await expect(quoteQueryResult).rejects.toThrow(/^.*NoLiquidity.*/);
+    await expect(quoteQueryResult).rejects.toThrow(/^.*No Liquidity.*/);
   });
 
   test('the borrower tries to apply for a lease with unsupported lpp denom as a down payment denom - should produce an error', async () => {

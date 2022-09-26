@@ -188,7 +188,7 @@ describe('Proposal submission tests', () => {
   });
 
   // TO DO
-  test('validator should be able to submit a ClientUpgrade proposal', async () => {
+  xtest('validator should be able to submit a ClientUpgrade proposal', async () => {
     msg.value.content = {
       typeUrl: '/ibc.core.client.v1.ClientUpdateProposal',
       value: ClientUpdateProposal.encode({

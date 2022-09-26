@@ -13,7 +13,7 @@ import {
 import { InstantiateOptions } from '@cosmjs/cosmwasm-stargate';
 import { Coin } from '@cosmjs/proto-signing';
 
-describe('Leaser contract tests - Open a lease', () => {
+describe('Borrower contract tests - Open a lease', () => {
   let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppDenom: string;
@@ -304,7 +304,7 @@ describe('Leaser contract tests - Open a lease', () => {
         { denom: lppDenom, amount: anyAmount },
       ]);
 
-    await expect(openLease).rejects.toThrow(`TO DO`);
+    await expect(openLease).rejects.toThrow('Unknown currency symbol');
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
       borrowerWallet.address as string,

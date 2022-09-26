@@ -13,6 +13,7 @@ import {
 } from '../util/transfer';
 import {
   calcInterestRate,
+  getChangeFromRepayResponse,
   getLeaseAddressFromOpenLeaseResponse,
   getLoanInterestPaidFromRepayResponse,
   getMarginInterestPaidFromRepayResponse,
@@ -21,7 +22,7 @@ import {
 } from '../util/smart-contracts';
 import { PreciseDate } from '@google-cloud/precise-date';
 
-describe('Leaser contract tests - Repay lease', () => {
+describe('Borrower contract tests - Repay lease', () => {
   let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;
@@ -30,9 +31,11 @@ describe('Leaser contract tests - Repay lease', () => {
   let leaserInstance: NolusContracts.Leaser;
   let mainLeaseAddress: string;
   let leaserRepaymentPeriod: number;
+  let cosm: any;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
+  const profitContractAddress = process.env.PROFIT_ADDRESS as string;
 
   const downpayment = '10000000000';
   const outstandingBySec = 15; // good to be >= 10
@@ -60,11 +63,18 @@ describe('Leaser contract tests - Repay lease', () => {
   async function verifyTransferAfterRepay(
     lppLiquidityBefore: bigint,
     borrowerBalanceBefore: bigint,
+    profitBalanceBefore: bigint,
     borrowerAddress: string,
     payment: bigint,
+    exactMarginPaid: bigint,
   ): Promise<void> {
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
       borrowerAddress,
+      lppDenom,
+    );
+
+    const profitBalanceAfter = await cosm.getBalance(
+      profitContractAddress,
       lppDenom,
     );
 
@@ -81,11 +91,15 @@ describe('Leaser contract tests - Repay lease', () => {
     expect(BigInt(borrowerBalanceAfter.amount)).toBe(
       borrowerBalanceBefore - payment,
     );
+
+    expect(BigInt(profitBalanceAfter.amount)).toBe(
+      profitBalanceBefore + exactMarginPaid,
+    );
   }
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    const cosm = await NolusClient.getInstance().getCosmWasmClient();
+    cosm = await NolusClient.getInstance().getCosmWasmClient();
 
     feederWallet = await getUser1Wallet();
     borrowerWallet = await createWallet();
@@ -97,9 +111,9 @@ describe('Leaser contract tests - Repay lease', () => {
     lppDenom = lppConfig.lpn_symbol;
 
     const leaserConfig = await leaserInstance.getLeaserConfig();
-    leaserRepaymentPeriod = leaserConfig.config.repayment.period_sec;
-    const fiveMinsInSecs = 300;
-    expect(leaserRepaymentPeriod).toBeGreaterThan(fiveMinsInSecs); // enough time for the whole test
+    leaserRepaymentPeriod = leaserConfig.config.repayment.period;
+    const fiveMinsInNanosec = 300000000000;
+    expect(leaserRepaymentPeriod).toBeGreaterThan(fiveMinsInNanosec); // enough time for the whole test
 
     await lppInstance.deposit(feederWallet, customFees.exec, [
       {
@@ -149,10 +163,7 @@ describe('Leaser contract tests - Repay lease', () => {
 
     let loan = await lppInstance.getLoanInformation(mainLeaseAddress);
 
-    const leaseInstance = new NolusContracts.Lease(
-      await NolusClient.getInstance().getCosmWasmClient(),
-      mainLeaseAddress,
-    );
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
     const leaseStateBeforeFirstRepay = (await leaseInstance.getLeaseStatus())
       .opened;
 
@@ -237,6 +248,11 @@ describe('Leaser contract tests - Repay lease', () => {
       borrowerWallet.address as string,
       lppDenom,
     );
+    const profitBalanceBeforeFirstRepay = await cosm.getBalance(
+      profitContractAddress,
+      lppDenom,
+    );
+
     const lppLiquidityBeforeFirstRepay = await feederWallet.getBalance(
       lppContractAddress,
       lppDenom,
@@ -249,6 +265,8 @@ describe('Leaser contract tests - Repay lease', () => {
     );
     const marginInterestPaidTo =
       getMarginPaidTimeFromRepayResponse(repayTxResponse);
+    let marginInterestPaid =
+      getMarginInterestPaidFromRepayResponse(repayTxResponse);
 
     loan = await lppInstance.getLoanInformation(mainLeaseAddress);
 
@@ -318,8 +336,10 @@ describe('Leaser contract tests - Repay lease', () => {
     await verifyTransferAfterRepay(
       BigInt(lppLiquidityBeforeFirstRepay.amount),
       BigInt(borrowerBalanceBeforeFirstRepay.amount),
+      BigInt(profitBalanceBeforeFirstRepay.amount),
       borrowerWallet.address as string,
       BigInt(firstPayment.amount),
+      BigInt(marginInterestPaid),
     );
 
     // get the annual_interest before the second payment
@@ -383,6 +403,10 @@ describe('Leaser contract tests - Repay lease', () => {
       borrowerWallet.address as string,
       lppDenom,
     );
+    const profitBalanceBeforeSecondRepay = await borrowerWallet.getBalance(
+      profitContractAddress,
+      lppDenom,
+    );
     const lppLiquidityBeforeSecondRepay = await feederWallet.getBalance(
       lppContractAddress,
       lppDenom,
@@ -395,7 +419,7 @@ describe('Leaser contract tests - Repay lease', () => {
     );
     const loanInterestPaid =
       getLoanInterestPaidFromRepayResponse(repayTxResponse);
-    const marginInterestPaid =
+    marginInterestPaid =
       getMarginInterestPaidFromRepayResponse(repayTxResponse);
     const principalPaid = getPrincipalPaidFromRepayResponse(repayTxResponse);
 
@@ -447,8 +471,10 @@ describe('Leaser contract tests - Repay lease', () => {
     await verifyTransferAfterRepay(
       BigInt(lppLiquidityBeforeSecondRepay.amount),
       BigInt(borrowerBalanceBeforeSecondRepay.amount),
+      BigInt(profitBalanceBeforeSecondRepay.amount),
       borrowerWallet.address as string,
       BigInt(secondPayment.amount),
+      BigInt(marginInterestPaid),
     );
 
     //get the annual_interest after the second payment and expect these annual_interests to be equal
@@ -485,10 +511,7 @@ describe('Leaser contract tests - Repay lease', () => {
       customFees.transfer,
     );
 
-    const leaseInstance = new NolusContracts.Lease(
-      await NolusClient.getInstance().getCosmWasmClient(),
-      mainLeaseAddress,
-    );
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
     const result = () =>
       leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
 
@@ -522,10 +545,7 @@ describe('Leaser contract tests - Repay lease', () => {
       amount: (forBalance + 1).toString(),
     };
 
-    const leaseInstance = new NolusContracts.Lease(
-      await NolusClient.getInstance().getCosmWasmClient(),
-      mainLeaseAddress,
-    );
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
     const result = () =>
       leaseInstance.repayLease(borrowerWallet, customFees.exec, [repayMore]);
 
@@ -543,10 +563,7 @@ describe('Leaser contract tests - Repay lease', () => {
       amount: '0',
     };
 
-    const leaseInstance = new NolusContracts.Lease(
-      await NolusClient.getInstance().getCosmWasmClient(),
-      mainLeaseAddress,
-    );
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
     const result = () =>
       leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
 
@@ -556,10 +573,7 @@ describe('Leaser contract tests - Repay lease', () => {
   test('a user, other than the lease owner, tries to pay - should work as expected', async () => {
     const newUserWallet = await createWallet();
 
-    const leaseInstance = new NolusContracts.Lease(
-      await NolusClient.getInstance().getCosmWasmClient(),
-      mainLeaseAddress,
-    );
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
     const leaseStateBeforeRepay = (await leaseInstance.getLeaseStatus()).opened;
 
     if (!leaseStateBeforeRepay) {
@@ -640,10 +654,7 @@ describe('Leaser contract tests - Repay lease', () => {
   });
 
   test('the borrower tries to repay the lease at once and to pay excess', async () => {
-    const leaseInstance = new NolusContracts.Lease(
-      await NolusClient.getInstance().getCosmWasmClient(),
-      mainLeaseAddress,
-    );
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
     const leaseStateBeforeRepay = (await leaseInstance.getLeaseStatus()).opened;
 
     if (!leaseStateBeforeRepay) {
@@ -696,10 +707,7 @@ describe('Leaser contract tests - Repay lease', () => {
       [repayWithExcess],
     );
 
-    const principalPaid = getPrincipalPaidFromRepayResponse(repayTxReponse);
-
-    const exactExcess =
-      BigInt(principalPaid) - BigInt(leasePrincipalBeforeRepay);
+    const exactExcess = getChangeFromRepayResponse(repayTxReponse);
 
     const stateBeforeClose = await leaseInstance.getLeaseStatus();
 
@@ -783,15 +791,10 @@ describe('Leaser contract tests - Repay lease', () => {
       borrowerWallet.address as string,
     );
 
-    const leaseInstance = new NolusContracts.Lease(
-      await NolusClient.getInstance().getCosmWasmClient(),
-      mainLeaseAddress,
-    );
+    const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
     const result = () =>
       leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
 
     await expect(result).rejects.toThrow(/^.*The underlying loan is closed.*/);
   });
-
-  // TO DO: partial liquidation , complete liquidation; Liability max% - in a new file
 });

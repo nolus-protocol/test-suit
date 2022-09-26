@@ -27,10 +27,10 @@ export const customFees = {
     ],
   },
   exec: {
-    gas: '900000',
+    gas: '9000000',
     amount: [
       {
-        amount: Math.floor((900000 * gasPrice) / validatorPart).toString(),
+        amount: Math.floor((9000000 * gasPrice) / validatorPart).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],

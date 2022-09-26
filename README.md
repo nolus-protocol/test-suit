@@ -79,14 +79,14 @@ Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://
 
     * **--nolus-local-network <nolus-local-net-url>**, by default this is: http://localhost:26612
 
-    * **--lpp-native <stable-denom>**, by default this is: uusdc
+    * **--lpp-native <stable-denom>**, by default this is: uusdc - ibc/fj29fj0fj
 
     * **--home-dir <nolus-accounts-dir>**, by default this is: home/.nolus
 
     You can get selected lpp-native in reserve account through: **/cosmzone/scripts/init-local-network.sh**.
     Example:
 
-    ``./scripts/init-local-network.sh --wasm-code-path <path_to_contracts_wasm_files> --wasm-script-path <path_to_"smart-contracts/scripts/deploy-contracts-genesis.sh"> --reserve-tokens 1000000000uusdc,100000000unolus``
+    ``./scripts/init-local-network.sh --wasm-code-path <path_to_contracts_wasm_files> --wasm-script-path <path_to_"smart-contracts/scripts/deploy-contracts-genesis.sh"> --lpp-native ibc/fj29fj0fj --reserve-tokens 10000000000000ibc/fj29fj0fj,10000000000000unls``
 
     ```sh
     yarn test
