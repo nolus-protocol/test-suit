@@ -22,7 +22,7 @@ import {
 } from '../util/smart-contracts';
 import { PreciseDate } from '@google-cloud/precise-date';
 
-describe('Borrower contract tests - Repay lease', () => {
+describe('Borrower tests - Repay lease', () => {
   let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;

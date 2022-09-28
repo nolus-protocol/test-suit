@@ -1,5 +1,7 @@
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
+import { NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
+import { customFees } from './utils';
 
 const NANOSEC_YEAR = 365 * 24 * 60 * 60 * 1000000000;
 
@@ -102,4 +104,20 @@ export function getMarginPaidTimeFromRepayResponse(
   response: ExecuteResult,
 ): bigint {
   return BigInt(response.logs[0].events[6].attributes[2].value);
+}
+
+export async function removeAllFeeders(
+  oracleInstance: NolusContracts.Oracle,
+  wasmAdminWallet: NolusWallet,
+): Promise<void> {
+  const allFeeders = await oracleInstance.getFeeders();
+
+  for (let i = 0; i < allFeeders.length; i++) {
+    console.log('Feeder removing...');
+    await oracleInstance.removeFeeder(
+      wasmAdminWallet,
+      allFeeders[i],
+      customFees.exec,
+    );
+  }
 }

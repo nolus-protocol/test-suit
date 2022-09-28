@@ -8,7 +8,6 @@ import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
 
-//TO DO: error msgs - https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/12
 describe('Leaser contract tests - Config', () => {
   let wasmAdminWallet: NolusWallet;
   let wallet: NolusWallet;
@@ -148,5 +147,12 @@ describe('Leaser contract tests - Config', () => {
       leaserConfigMsg.config.repayment.period + 1;
 
     await trySetConfig('Period length should be greater than grace period');
+  });
+
+  test('the business tries to set recalc period < 1hour - should produce an error', async () => {
+    // const oneHourNanoSec = ;
+    leaserConfigMsg.config.liability.recalc_time = 1;
+
+    await trySetConfig('Recalculate cadence in seconds should be >= 1h');
   });
 });

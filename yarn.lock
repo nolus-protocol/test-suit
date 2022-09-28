@@ -338,24 +338,6 @@
     "@cosmjs/math" "0.28.4"
     "@cosmjs/utils" "0.28.4"
 
-"@cosmjs/cosmwasm-stargate@0.28.0":
-  version "0.28.0"
-  resolved "https://registry.npmjs.org/@cosmjs/cosmwasm-stargate/-/cosmwasm-stargate-0.28.0.tgz"
-  integrity sha512-VFslhS7ntZv4Ifi1G6+jUHzCWNXfYjdd2MHcy5ZVVDby64s18gEou+2PnD1I+Gt1QcDYe6cfEosMQUGOjccbog==
-  dependencies:
-    "@cosmjs/amino" "0.28.0"
-    "@cosmjs/crypto" "0.28.0"
-    "@cosmjs/encoding" "0.28.0"
-    "@cosmjs/math" "0.28.0"
-    "@cosmjs/proto-signing" "0.28.0"
-    "@cosmjs/stargate" "0.28.0"
-    "@cosmjs/tendermint-rpc" "0.28.0"
-    "@cosmjs/utils" "0.28.0"
-    cosmjs-types "^0.4.0"
-    long "^4.0.0"
-    pako "^2.0.2"
-    protobufjs "~6.10.2"
-
 "@cosmjs/cosmwasm-stargate@0.28.4":
   version "0.28.4"
   resolved "https://registry.npmjs.org/@cosmjs/cosmwasm-stargate/-/cosmwasm-stargate-0.28.4.tgz"
@@ -1173,10 +1155,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@nolus/nolusjs@^0.0.48":
-  version "0.0.48"
-  resolved "https://registry.yarnpkg.com/@nolus/nolusjs/-/nolusjs-0.0.48.tgz#52e13555ac6985005dc8c92bb95b71520984db7e"
-  integrity sha512-2xKAxJDeWMQD+mLYl+/J+bhSuY+3bCwHzBfFBKA9joyRzAvBqVZz5HQ8nQskeKMQh47tSoYF6D6rcfjztrI47g==
+"@nolus/nolusjs@^0.0.53":
+  version "0.0.53"
+  resolved "https://registry.yarnpkg.com/@nolus/nolusjs/-/nolusjs-0.0.53.tgz#38ffa45fb35a1877c2f3a1d1066d6b1c56411b5e"
+  integrity sha512-d/IhnRCgmh2EYNsaOpT6ie9jdDy0GY+b4F7fV33K9yf9gut2DstcPWjYJuzUXnRib/zcxSL9GE4I/7gRVuWghA==
   dependencies:
     "@cosmjs/cosmwasm-stargate" "0.28.4"
     "@cosmjs/crypto" "0.28.4"

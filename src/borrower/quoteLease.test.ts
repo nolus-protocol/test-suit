@@ -13,7 +13,7 @@ import {
   calcUtilization,
 } from '../util/smart-contracts';
 
-describe('Borrower contract tests - Quote lease', () => {
+describe('Borrower tests - Quote lease', () => {
   let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppLiquidity: Coin;

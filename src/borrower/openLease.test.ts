@@ -13,7 +13,7 @@ import {
 import { InstantiateOptions } from '@cosmjs/cosmwasm-stargate';
 import { Coin } from '@cosmjs/proto-signing';
 
-describe('Borrower contract tests - Open a lease', () => {
+describe('Borrower tests - Open a lease', () => {
   let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
   let lppDenom: string;
