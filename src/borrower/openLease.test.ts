@@ -304,7 +304,9 @@ describe('Borrower tests - Open a lease', () => {
         { denom: lppDenom, amount: anyAmount },
       ]);
 
-    await expect(openLease).rejects.toThrow('Unknown currency symbol');
+    await expect(openLease).rejects.toThrow(
+      'ot defined in the given currency group',
+    );
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(
       borrowerWallet.address as string,

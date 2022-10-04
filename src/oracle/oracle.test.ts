@@ -97,7 +97,7 @@ describe('Oracle contract tests', () => {
     await oracleInstance.setConfig(
       wasmAdminWallet,
       PRICE_FEED_PERIOD,
-      10, //permille
+      10, //1% permille
       customFees.exec,
     );
 
@@ -105,7 +105,6 @@ describe('Oracle contract tests', () => {
 
     // calc needed votes
     const onePercentNeeded = Math.trunc(listFeeders.length / 100) + 1; // 1%
-    console.log(listFeeders.length, onePercentNeeded);
 
     // create the required number of feeders - 1
     for (let i = 1; i < onePercentNeeded; i++) {
@@ -208,10 +207,6 @@ describe('Oracle contract tests', () => {
     );
   });
 
-  // test('feed nested price should works as expected', async () => {  // [OSMO,UST] [B,UST] -> get OSMO,B
-  // TO DO
-  // });
-
   // TO DO: Alarm ?
 
   test('only the wasm admin should be able to change the config', async () => {
@@ -302,7 +297,7 @@ describe('Oracle contract tests', () => {
       oracleInstance.setConfig(wasmAdminWallet, 1, 0, customFees.exec); // any pricePeriod
 
     await expect(result2).rejects.toThrow(
-      'Percent of expected available feeders should be > 0 and <= 100',
+      'Percent of expected available feeders should be > 0 and <= 1000',
     );
 
     // feeder precentage needed > 100%, 1000permille
@@ -312,5 +307,73 @@ describe('Oracle contract tests', () => {
     await expect(result3).rejects.toThrow(
       'Percent of expected available feeders should be > 0 and <= 100',
     );
+  });
+
+  test('try to feed price for base different from the init msg base_asset parameter', async () => {
+    feedPrices = {
+      prices: [
+        {
+          amount: { amount: '2', symbol: BASE_ASSET }, // any amount
+          amount_quote: { amount: '5', symbol: testPairMember }, //any amount
+        },
+      ],
+    };
+
+    await sendInitExecuteFeeTokens(
+      wasmAdminWallet,
+      feederWallet.address as string,
+    );
+
+    const broadcastTx = () =>
+      oracleInstance.feedPrices(feederWallet, feedPrices, customFees.exec);
+
+    await expect(broadcastTx).rejects.toThrow(/^.*Unsupported denom pairs.*/);
+  });
+
+  test('try to feed price 0', async () => {
+    feedPrices = {
+      prices: [
+        {
+          amount: { amount: '0', symbol: testPairMember }, // any amount
+          amount_quote: { amount: '0', symbol: BASE_ASSET }, //any amount
+        },
+      ],
+    };
+
+    await sendInitExecuteFeeTokens(
+      wasmAdminWallet,
+      feederWallet.address as string,
+    );
+
+    const broadcastTx = () =>
+      oracleInstance.feedPrices(feederWallet, feedPrices, customFees.exec);
+
+    await expect(broadcastTx).rejects.toThrow(/^.*Unsupported denom pairs.*/);
+  });
+
+  test('try to update supported pairs with a base asset other than the init msg "base_asset" parameter', async () => {
+    const newSupportedPairs = [BASE_ASSET, testPairMember];
+
+    const broadcastTx = () =>
+      oracleInstance.updateSupportPairs(
+        wasmAdminWallet,
+        [newSupportedPairs],
+        customFees.exec,
+      );
+
+    await expect(broadcastTx).rejects.toThrow(/^.*Invalid denom pair.*/);
+  });
+
+  test('try to set empty supported pairs array', async () => {
+    const newSupportedPairs: any = [];
+
+    const broadcastTx = () =>
+      oracleInstance.updateSupportPairs(
+        wasmAdminWallet,
+        [newSupportedPairs],
+        customFees.exec,
+      );
+
+    await expect(broadcastTx).rejects.toThrow(/^.*Invalid denom pair.*/);
   });
 });
