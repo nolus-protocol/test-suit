@@ -2,6 +2,8 @@ import { ChainConstants } from '@nolus/nolusjs';
 
 export const BLOCK_CREATION_TIME_DEV_SEC = 5;
 
+export const NANOSEC = 1000000000;
+
 export const NATIVE_MINIMAL_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
 
 export const gasPrice = 0.0025;
