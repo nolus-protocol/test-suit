@@ -119,7 +119,7 @@ describe('Borrower tests - Quote lease', () => {
     expect(BigInt(quote.total.amount) - BigInt(downpayment)).toBe(
       calcBorrow(
         BigInt(downpayment),
-        BigInt(leaserConfig.config.liability.init_percent),
+        BigInt(leaserConfig.config.liability.initial),
       ),
     );
 

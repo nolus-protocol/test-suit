@@ -41,7 +41,7 @@ describe('Oracle tests - Configurations', () => {
     const newSupportedPairs: any = [];
 
     const broadcastTx = () =>
-      oracleInstance.updateSupportPairs(
+      oracleInstance.updateCurrencyPaths(
         wasmAdminWallet,
         [newSupportedPairs],
         customFees.exec,
@@ -54,7 +54,7 @@ describe('Oracle tests - Configurations', () => {
     const newSupportedPairs = [BASE_ASSET, testPairMember];
 
     const broadcastTx = () =>
-      oracleInstance.updateSupportPairs(
+      oracleInstance.updateCurrencyPaths(
         wasmAdminWallet,
         [newSupportedPairs],
         customFees.exec,
@@ -68,7 +68,7 @@ describe('Oracle tests - Configurations', () => {
     const dublicatePath = [testPairMember, 'B', BASE_ASSET];
 
     const broadcastTx = () =>
-      oracleInstance.updateSupportPairs(
+      oracleInstance.updateCurrencyPaths(
         wasmAdminWallet,
         [firstPath, dublicatePath],
         customFees.exec,
@@ -80,7 +80,7 @@ describe('Oracle tests - Configurations', () => {
   test('the supported pairs should match the configured currency paths', async () => {
     const currencyPath = ['A', 'B', 'C', BASE_ASSET];
 
-    await oracleInstance.updateSupportPairs(
+    await oracleInstance.updateCurrencyPaths(
       wasmAdminWallet,
       [currencyPath],
       customFees.exec,

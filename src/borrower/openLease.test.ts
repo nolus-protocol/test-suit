@@ -121,7 +121,7 @@ describe('Borrower tests - Open a lease', () => {
     expect(BigInt(leaseAmount) - BigInt(downpayment)).toBe(
       calcBorrow(
         BigInt(downpayment),
-        BigInt(leaserConfig.config.liability.init_percent),
+        BigInt(leaserConfig.config.liability.initial),
       ),
     );
 
@@ -305,7 +305,7 @@ describe('Borrower tests - Open a lease', () => {
       ]);
 
     await expect(openLease).rejects.toThrow(
-      'ot defined in the given currency group',
+      `Found currency '${unsupported}' which is not defined in the lease currency group`,
     );
 
     const borrowerBalanceAfter = await borrowerWallet.getBalance(

@@ -294,7 +294,7 @@ describe('Lender tests - Make deposit', () => {
       ]);
 
     await expect(depositResult).rejects.toThrow(
-      `Found currency ${invalidLppDenom} expecting ${lppDenom}`,
+      `Found currency '${invalidLppDenom}' expecting '${lppDenom}'`,
     );
 
     await verifyLppBalance(lppLiquidityBefore.amount);

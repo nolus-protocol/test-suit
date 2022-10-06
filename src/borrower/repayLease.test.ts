@@ -516,7 +516,7 @@ describe('Borrower tests - Repay lease', () => {
       leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
 
     await expect(result).rejects.toThrow(
-      `Found currency ${invalidLppDenom} expecting ${lppDenom}`,
+      `Found currency '${invalidLppDenom}' expecting '${lppDenom}'`,
     );
   });
 

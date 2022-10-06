@@ -73,83 +73,83 @@ describe('Leaser contract tests - Config', () => {
     await expect(result).rejects.toThrow(/^.*Unauthorized.*/);
   });
 
-  test('the business tries to set initial liability % > healthy liability % - should produce an error', async () => {
-    leaserConfigMsg.config.liability.init_percent =
-      leaserConfigMsg.config.liability.healthy_percent + 1;
+  test('the wasm_admin tries to set initial liability % > healthy liability % - should produce an error', async () => {
+    leaserConfigMsg.config.liability.initial =
+      leaserConfigMsg.config.liability.healthy + 1;
 
-    await trySetConfig('Healthy % should be >= initial %');
+    await trySetConfig('Initial % should be <= healthy %');
   });
 
-  test('the business tries to set initial liability % > max liability % - should produce an error', async () => {
-    leaserConfigMsg.config.liability.init_percent =
-      leaserConfigMsg.config.liability.max_percent + 1;
+  test('the wasm_admin tries to set initial liability % > max liability % - should produce an error', async () => {
+    leaserConfigMsg.config.liability.initial =
+      leaserConfigMsg.config.liability.max + 1;
 
-    await trySetConfig('Healthy % should be >= initial %');
+    await trySetConfig('Initial % should be <= healthy %');
   });
 
-  test('the business tries to set healthy liability % > max liability % - should produce an error', async () => {
-    leaserConfigMsg.config.liability.healthy_percent =
-      leaserConfigMsg.config.liability.max_percent + 1;
+  test('the wasm_admin tries to set healthy liability % > max liability % - should produce an error', async () => {
+    leaserConfigMsg.config.liability.healthy =
+      leaserConfigMsg.config.liability.max + 1;
 
-    await trySetConfig('First liquidation % should be > healthy %');
+    await trySetConfig('Healthy % should be < first liquidation %');
   });
 
-  test('the business tries to set first liq warn % <= healthy liability % - should produce an error', async () => {
+  test('the wasm_admin tries to set first liq warn % <= healthy liability % - should produce an error', async () => {
     leaserConfigMsg.config.liability.first_liq_warn =
-      leaserConfigMsg.config.liability.healthy_percent - 1;
+      leaserConfigMsg.config.liability.healthy - 1;
 
-    await trySetConfig('First liquidation % should be > healthy %');
+    await trySetConfig('Healthy % should be < first liquidation %');
 
     leaserConfigMsg.config.liability.first_liq_warn =
-      leaserConfigMsg.config.liability.healthy_percent;
+      leaserConfigMsg.config.liability.healthy;
 
-    await trySetConfig('First liquidation % should be > healthy %');
+    await trySetConfig('Healthy % should be < first liquidation %');
   });
 
-  test('the business tries to set second liq warn % <= first liq warn % - should produce an error', async () => {
+  test('the wasm_admin tries to set second liq warn % <= first liq warn % - should produce an error', async () => {
     leaserConfigMsg.config.liability.second_liq_warn =
       leaserConfigMsg.config.liability.first_liq_warn - 1;
 
-    await trySetConfig('Second liquidation % should be > first liquidation %');
+    await trySetConfig('First liquidation % should be < second liquidation %');
 
     leaserConfigMsg.config.liability.second_liq_warn =
       leaserConfigMsg.config.liability.first_liq_warn;
 
-    await trySetConfig('Second liquidation % should be > first liquidation %');
+    await trySetConfig('First liquidation % should be < second liquidation %');
   });
 
-  test('the business tries to set third liq warn % <= second liq warn % - should produce an error', async () => {
+  test('the wasm_admin tries to set third liq warn % <= second liq warn % - should produce an error', async () => {
     leaserConfigMsg.config.liability.third_liq_warn =
       leaserConfigMsg.config.liability.second_liq_warn - 1;
 
-    await trySetConfig('Third liquidation % should be > second liquidation %');
+    await trySetConfig('Second liquidation % should be < third liquidation %');
 
     leaserConfigMsg.config.liability.third_liq_warn =
       leaserConfigMsg.config.liability.second_liq_warn;
 
-    await trySetConfig('Third liquidation % should be > second liquidation %');
+    await trySetConfig('Second liquidation % should be < third liquidation %');
   });
 
-  test('the business tries to set third liq warn % >= max % - should produce an error', async () => {
+  test('the wasm_admin tries to set third liq warn % >= max % - should produce an error', async () => {
     leaserConfigMsg.config.liability.third_liq_warn =
-      leaserConfigMsg.config.liability.max_percent + 1;
+      leaserConfigMsg.config.liability.max + 1;
 
-    await trySetConfig('Max % should be > third liquidation %');
+    await trySetConfig('Third liquidation % should be < max %');
 
     leaserConfigMsg.config.liability.third_liq_warn =
-      leaserConfigMsg.config.liability.max_percent;
+      leaserConfigMsg.config.liability.max;
 
-    await trySetConfig('Max % should be > third liquidation %');
+    await trySetConfig('Third liquidation % should be < max %');
   });
 
-  test('the business tries to set grace period > interest period - should produce an error', async () => {
+  test('the wasm_admin tries to set grace period > interest period - should produce an error', async () => {
     leaserConfigMsg.config.repayment.grace_period =
       leaserConfigMsg.config.repayment.period + 1;
 
     await trySetConfig('Period length should be greater than grace period');
   });
 
-  test('the business tries to set recalc period < 1hour - should produce an error', async () => {
+  test('the wasm_admin tries to set recalc period < 1hour - should produce an error', async () => {
     // const oneHourNanoSec = ;
     leaserConfigMsg.config.liability.recalc_time = 1;
 

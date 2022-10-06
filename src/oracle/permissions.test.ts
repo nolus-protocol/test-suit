@@ -63,7 +63,7 @@ describe('Oracle tests - Permissions', () => {
   test('only the wasm admin should be able to change the currency paths', async () => {
     const currencyPath = ['A', 'B'];
     const result = () =>
-      oracleInstance.updateSupportPairs(
+      oracleInstance.updateCurrencyPaths(
         userWithBalance,
         [currencyPath],
         customFees.exec,

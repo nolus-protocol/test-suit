@@ -46,7 +46,7 @@ describe('Oracle tests - Prices', () => {
     );
 
     const newCurrencyPaths = [[testPairMember, BASE_ASSET]];
-    await oracleInstance.updateSupportPairs(
+    await oracleInstance.updateCurrencyPaths(
       wasmAdminWallet,
       newCurrencyPaths,
       customFees.exec,
@@ -280,7 +280,7 @@ describe('Oracle tests - Prices', () => {
     // change the currency path
     const newSupportedPairs = ['A', BASE_ASSET];
 
-    await oracleInstance.updateSupportPairs(
+    await oracleInstance.updateCurrencyPaths(
       wasmAdminWallet,
       [newSupportedPairs],
       customFees.exec,

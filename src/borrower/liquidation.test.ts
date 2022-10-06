@@ -76,7 +76,7 @@ describe('Borrower tests - Liquidation', () => {
       wasmAdminWallet.address as string,
     );
 
-    await oracleInstance.updateSupportPairs(
+    await oracleInstance.updateCurrencyPaths(
       wasmAdminWallet,
       newSupportedPairs,
       customFees.exec,
@@ -387,7 +387,7 @@ describe('Borrower tests - Liquidation', () => {
     const leaserConfigMsg: LeaserConfig = JSON.parse(
       JSON.stringify(leaserConfigBefore),
     );
-    leaserConfigMsg.config.lease_interest_rate_margin = 1000000000; //100000000%
+    leaserConfigMsg.config.lease_interest_rate_margin = 1000000000; // 100000000%
 
     await leaserInstance.setLeaserConfig(
       wasmAdminWallet,
@@ -496,15 +496,15 @@ describe('Borrower tests - Liquidation', () => {
   test('liquidation due to drop in price - should work as expected', async () => {
     const leaserConfig = await leaserInstance.getLeaserConfig();
     leaserConfig.config.lease_interest_rate_margin = 10000000; //1000000%
-    leaserConfig.config.liability.healthy_percent =
-      leaserConfig.config.liability.init_percent + 10; // +1%
+    leaserConfig.config.liability.healthy =
+      leaserConfig.config.liability.initial + 10; // +1%
     leaserConfig.config.liability.first_liq_warn =
-      leaserConfig.config.liability.healthy_percent + 10; // +1%
+      leaserConfig.config.liability.healthy + 10; // +1%
     leaserConfig.config.liability.second_liq_warn =
       leaserConfig.config.liability.first_liq_warn + 10; // +1%
     leaserConfig.config.liability.third_liq_warn =
       leaserConfig.config.liability.second_liq_warn + 10; // +1%
-    leaserConfig.config.liability.max_percent =
+    leaserConfig.config.liability.max =
       leaserConfig.config.liability.third_liq_warn + 10; // +1%
     leaserConfig.config.repayment.period = fiveHoursSec * nanosec;
 
@@ -578,7 +578,7 @@ describe('Borrower tests - Liquidation', () => {
       leaseInstance,
       mainLeaseAddress,
       stateBeforeMax,
-      BigInt(leaserConfig.config.liability.max_percent),
+      BigInt(leaserConfig.config.liability.max),
       4,
     );
   });

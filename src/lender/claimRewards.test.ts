@@ -233,7 +233,7 @@ describe('Lender tests - Claim rewards', () => {
       lppInstance.distributeRewards(feederWallet, customFees.exec, [rewards]);
 
     await expect(broadcastTx).rejects.toThrow(
-      `Found currency ${lppDenom} expecting ${NATIVE_MINIMAL_DENOM}`,
+      `Found currency '${lppDenom}' expecting '${NATIVE_MINIMAL_DENOM}'`,
     );
 
     const dispatcherBalanceAfter = await feederWallet.getBalance(
