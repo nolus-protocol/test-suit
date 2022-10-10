@@ -73,9 +73,11 @@ describe('Oracle tests - Prices', () => {
     amountAmount: string,
     amoutnQuoteAmount: string,
   ) {
-    await sendInitExecuteFeeTokens(
-      userWithBalance,
+    await userWithBalance.transferAmount(
       feederWallet.address as string,
+      customFees.feedPrice.amount,
+      customFees.transfer,
+      '',
     );
 
     const feedPrices = {
@@ -87,7 +89,11 @@ describe('Oracle tests - Prices', () => {
       ],
     };
 
-    await oracleInstance.feedPrices(feederWallet, feedPrices, customFees.exec);
+    await oracleInstance.feedPrices(
+      feederWallet,
+      feedPrices,
+      customFees.feedPrice,
+    );
   }
 
   async function setConfig(
@@ -134,7 +140,7 @@ describe('Oracle tests - Prices', () => {
   });
 
   test('a registered feeder tries to feed a price - should work as expected', async () => {
-    const priceFeedPeriodSec = 10;
+    const priceFeedPeriodSec = 30;
     await setConfig(priceFeedPeriodSec, 500);
 
     await removeAllFeeders(oracleInstance, wasmAdminWallet);
@@ -300,13 +306,15 @@ describe('Oracle tests - Prices', () => {
       ],
     };
 
-    await sendInitExecuteFeeTokens(
-      userWithBalance,
+    await userWithBalance.transferAmount(
       feederWallet.address as string,
+      customFees.feedPrice.amount,
+      customFees.transfer,
+      '',
     );
 
     const broadcastTx = () =>
-      oracleInstance.feedPrices(feederWallet, feedPrices, customFees.exec);
+      oracleInstance.feedPrices(feederWallet, feedPrices, customFees.feedPrice);
 
     await expect(broadcastTx).rejects.toThrow(/^.*Unsupported denom pairs.*/);
   });
@@ -321,9 +329,11 @@ describe('Oracle tests - Prices', () => {
       ],
     };
 
-    await sendInitExecuteFeeTokens(
-      userWithBalance,
+    await userWithBalance.transferAmount(
       feederWallet.address as string,
+      customFees.feedPrice.amount,
+      customFees.transfer,
+      '',
     );
 
     const broadcastTx = () =>

@@ -157,7 +157,7 @@ describe('Treasury tests - Request rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    const treasuryBalanceBefore = await feederWallet.getBalance(
+    const treasuryBalanceBefore = await cosm.getBalance(
       treasuryContractAddress,
       NATIVE_MINIMAL_DENOM,
     );
@@ -186,7 +186,7 @@ describe('Treasury tests - Request rewards', () => {
       NATIVE_MINIMAL_DENOM,
     );
 
-    const treasuryBalanceAfter = await feederWallet.getBalance(
+    const treasuryBalanceAfter = await cosm.getBalance(
       treasuryContractAddress,
       NATIVE_MINIMAL_DENOM,
     );

@@ -8,6 +8,7 @@ import {
   NATIVE_MINIMAL_DENOM,
   sleep,
   undefinedHandler,
+  NANOSEC,
 } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
@@ -39,9 +40,8 @@ describe('Borrower tests - Liquidation', () => {
 
   let leaserConfigMsg: LeaserConfig;
 
-  const newPeriodNanosec = 10000000000;
-  const newGracePeriodNanosec = 5000000000;
-  const nanosec = 1000000000;
+  const newPeriodNanosec = 15 * NANOSEC;
+  const newGracePeriodNanosec = 10 * NANOSEC;
   const downpayment = '1000000000';
   const fiveHoursSec = 18000;
 
@@ -91,16 +91,18 @@ describe('Borrower tests - Liquidation', () => {
       ],
     };
 
-    await sendInitExecuteFeeTokens(
-      feederWallet,
+    await feederWallet.transferAmount(
       priceFeederWallet.address as string,
+      customFees.feedPrice.amount,
+      customFees.transfer,
+      '',
     );
 
     console.log(
       await oracleInstance.feedPrices(
         priceFeederWallet,
         feedPrices,
-        customFees.exec,
+        customFees.feedPrice,
       ),
     );
 
@@ -171,7 +173,8 @@ describe('Borrower tests - Liquidation', () => {
     stateBefore: LeaseStatus,
   ) {
     // wait main period to expires
-    await sleep(newPeriodNanosec / nanosec + 1); //+1sec
+    await sleep(newPeriodNanosec / NANOSEC + 1); //+1sec
+    await pushPrice(priceFeederWallet);
 
     const stateAfterMainPeriod = (await leaseInstance.getLeaseStatus()).opened;
     if (!stateAfterMainPeriod) {
@@ -194,7 +197,7 @@ describe('Borrower tests - Liquidation', () => {
     );
 
     // wait grace period to expires
-    await sleep(newGracePeriodNanosec / nanosec + 1); //+1sec
+    await sleep(newGracePeriodNanosec / NANOSEC + 1); //+1sec
 
     // feed price - oracle will trigger a time alarm
     await pushPrice(priceFeederWallet);
@@ -206,7 +209,7 @@ describe('Borrower tests - Liquidation', () => {
       return;
     }
 
-    // it is liquidation time yet, so:
+    // it is liquidation time, so:
     expect(BigInt(stateAfterFirstGracePeriod.amount.amount)).toBe(
       BigInt(stateAfterMainPeriod.amount.amount) -
         (BigInt(PID_afterMainPeriod) + BigInt(PMD_afterMainPeriod)),
@@ -339,7 +342,7 @@ describe('Borrower tests - Liquidation', () => {
 
     // wait for several periods to expire
     await sleep(
-      ((newPeriodNanosec + newGracePeriodNanosec) / nanosec) * periodsCount,
+      ((newPeriodNanosec + newGracePeriodNanosec) / NANOSEC) * periodsCount,
     );
 
     const stateAfterSeveralPeriods = (await leaseInstance.getLeaseStatus())
@@ -423,7 +426,7 @@ describe('Borrower tests - Liquidation', () => {
     while (leaseAmount > BigInt(0)) {
       console.log('Waiting for a full liquidation...');
       // wait for the entire period to expire
-      await sleep((newPeriodNanosec + newGracePeriodNanosec) / nanosec + 1); //+1sec
+      await sleep((newPeriodNanosec + newGracePeriodNanosec) / NANOSEC + 1); //+1sec
 
       // feed price - oracle will trigger alarm
       await pushPrice(priceFeederWallet);
@@ -506,7 +509,7 @@ describe('Borrower tests - Liquidation', () => {
       leaserConfig.config.liability.second_liq_warn + 10; // +1%
     leaserConfig.config.liability.max =
       leaserConfig.config.liability.third_liq_warn + 10; // +1%
-    leaserConfig.config.repayment.period = fiveHoursSec * nanosec;
+    leaserConfig.config.repayment.period = fiveHoursSec * NANOSEC;
 
     await leaserInstance.setLeaserConfig(
       wasmAdminWallet,
