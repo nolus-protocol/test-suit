@@ -1,4 +1,8 @@
-import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
+import NODE_ENDPOINT, {
+  getUser1Wallet,
+  createWallet,
+  getWasmAdminWallet,
+} from '../util/clients';
 import { Coin } from '@cosmjs/amino';
 import { customFees, sleep, undefinedHandler } from '../util/utils';
 import {
@@ -25,12 +29,12 @@ import { PreciseDate } from '@google-cloud/precise-date';
 describe('Borrower tests - Repay lease', () => {
   let feederWallet: NolusWallet;
   let borrowerWallet: NolusWallet;
+  let wasmAdminWallet: NolusWallet;
   let lppLiquidity: Coin;
   let lppDenom: string;
   let lppInstance: NolusContracts.Lpp;
   let leaserInstance: NolusContracts.Leaser;
   let mainLeaseAddress: string;
-  let leaserRepaymentPeriod: number;
   let cosm: any;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
@@ -103,6 +107,7 @@ describe('Borrower tests - Repay lease', () => {
 
     feederWallet = await getUser1Wallet();
     borrowerWallet = await createWallet();
+    wasmAdminWallet = await getWasmAdminWallet();
 
     leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
     lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
@@ -111,9 +116,22 @@ describe('Borrower tests - Repay lease', () => {
     lppDenom = lppConfig.lpn_symbol;
 
     const leaserConfig = await leaserInstance.getLeaserConfig();
-    leaserRepaymentPeriod = leaserConfig.config.repayment.period;
-    const fiveMinsInNanosec = 300000000000;
-    expect(leaserRepaymentPeriod).toBeGreaterThan(fiveMinsInNanosec); // enough time for the whole test
+    const newPeriod = 5184000000000000;
+    const newGracePeriod = 864000000000000;
+    // enough time for the whole test
+    leaserConfig.config.repayment.period = newPeriod;
+    leaserConfig.config.repayment.grace_period = newGracePeriod;
+
+    await sendInitExecuteFeeTokens(
+      feederWallet,
+      wasmAdminWallet.address as string,
+    );
+
+    await leaserInstance.setLeaserConfig(
+      wasmAdminWallet,
+      leaserConfig,
+      customFees.exec,
+    );
 
     await lppInstance.deposit(feederWallet, customFees.exec, [
       {
@@ -301,10 +319,10 @@ describe('Borrower tests - Repay lease', () => {
       return;
     }
 
-    // the configured leaser repayment period is > 1min --> no previous period, so:
+    // the configured leaser repayment period is > --> no previous period, so:
     expect(PMD_afterFirstRepay).toBe('0');
     // TO DO - issue - https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/9
-    // expect(PID_afterFirstRepay).toBe('0');
+    //expect(PID_afterFirstRepay).toBe('0');
 
     expect(leasePrincipalAfterFirstRepay).toBe(leasePrincipalBeforeFirstRepay);
 
@@ -700,6 +718,8 @@ describe('Borrower tests - Repay lease', () => {
       feederWallet,
       borrowerWallet.address as string,
     );
+
+    console.log(repayWithExcess.amount);
 
     const repayTxReponse = await leaseInstance.repayLease(
       borrowerWallet,

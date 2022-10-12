@@ -87,11 +87,10 @@ describe('Oracle tests - Configurations', () => {
     );
 
     const supportedPairs = await oracleInstance.getSupportedPairs();
-    console.log(supportedPairs);
     expect(supportedPairs.length).toBe(3);
-    expect(supportedPairs[0]).toBe([currencyPath[0], currencyPath[1]]);
-    expect(supportedPairs[1]).toBe([currencyPath[1], currencyPath[2]]);
-    expect(supportedPairs[2]).toBe([currencyPath[2], currencyPath[3]]);
+    expect(supportedPairs[2]).toStrictEqual([currencyPath[0], currencyPath[1]]);
+    expect(supportedPairs[1]).toStrictEqual([currencyPath[1], currencyPath[2]]);
+    expect(supportedPairs[0]).toStrictEqual([currencyPath[2], currencyPath[3]]);
   });
 
   test('the wasm admin tries to setup an invalid config - should produce an error', async () => {
@@ -114,7 +113,7 @@ describe('Oracle tests - Configurations', () => {
       oracleInstance.setConfig(wasmAdminWallet, 1, 1001, customFees.exec); // any pricePeriod
 
     await expect(result3).rejects.toThrow(
-      'Percent of expected available feeders should be > 0 and <= 100',
+      'Percent of expected available feeders should be > 0 and <= 1000',
     );
   });
 

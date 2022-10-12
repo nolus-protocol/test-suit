@@ -8,6 +8,7 @@ export const NATIVE_MINIMAL_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
 
 export const gasPrice = 0.0025;
 export const validatorPart = 0.6; // 60%
+const alarmsOccurred = 100;
 
 export const customFees = {
   upload: {
@@ -56,10 +57,12 @@ export const customFees = {
     ],
   },
   feedPrice: {
-    gas: '60000000',
+    gas: '900000',
     amount: [
       {
-        amount: Math.floor((60000000 * gasPrice) / validatorPart).toString(),
+        amount: Math.floor(
+          (900000 * alarmsOccurred * gasPrice) / validatorPart,
+        ).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],

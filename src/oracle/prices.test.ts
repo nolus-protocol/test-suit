@@ -5,7 +5,10 @@ import NODE_ENDPOINT, {
   getWasmAdminWallet,
 } from '../util/clients';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
-import { sendInitExecuteFeeTokens } from '../util/transfer';
+import {
+  returnRestToMainAccount,
+  sendInitExecuteFeeTokens,
+} from '../util/transfer';
 import { removeAllFeeders } from '../util/smart-contracts';
 import { NANOSEC } from '../util/utils';
 
@@ -89,11 +92,8 @@ describe('Oracle tests - Prices', () => {
       ],
     };
 
-    await oracleInstance.feedPrices(
-      feederWallet,
-      feedPrices,
-      customFees.feedPrice,
-    );
+    await oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
+    await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
   }
 
   async function setConfig(
@@ -136,7 +136,9 @@ describe('Oracle tests - Prices', () => {
         customFees.exec,
       );
 
-    await expect(result).rejects.toThrow(/^.*TO DO.*/);
+    await expect(result).rejects.toThrow(
+      /^.*Given address already registered as a price feeder.*/,
+    );
   });
 
   test('a registered feeder tries to feed a price - should work as expected', async () => {
@@ -293,7 +295,9 @@ describe('Oracle tests - Prices', () => {
     );
     // the currency path was changed so now the pair doesn`t exist
     const resultAfterPeriod = () => oracleInstance.getPriceFor(testPairMember);
-    await expect(resultAfterPeriod).rejects.toThrow(/^.*Invalid denom pair.*/);
+    await expect(resultAfterPeriod).rejects.toThrow(
+      /^.*Unsupported currency 'UAT'.*/,
+    );
   });
 
   test('a registered feeder tries to feed a price for a base asset other than the init msg "base_asset" parameter - should produce an error', async () => {
@@ -314,7 +318,9 @@ describe('Oracle tests - Prices', () => {
     );
 
     const broadcastTx = () =>
-      oracleInstance.feedPrices(feederWallet, feedPrices, customFees.feedPrice);
+      oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
+
+    await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
 
     await expect(broadcastTx).rejects.toThrow(/^.*Unsupported denom pairs.*/);
   });
@@ -337,7 +343,9 @@ describe('Oracle tests - Prices', () => {
     );
 
     const broadcastTx = () =>
-      oracleInstance.feedPrices(feederWallet, feedPrices, customFees.exec);
+      oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
+
+    await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
 
     await expect(broadcastTx).rejects.toThrow(/^.*Unsupported denom pairs.*/);
   });

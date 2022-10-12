@@ -24,7 +24,7 @@ describe('Lender tests - Make deposit', () => {
   let cosm: any;
 
   const deposit = '100000';
-  const downpayment = '10000000000';
+  const downpayment = '1000000000';
 
   async function verifyLppBalance(lppLiquidityBefore: string) {
     const lppLiquidityAfter = await cosm.getBalance(

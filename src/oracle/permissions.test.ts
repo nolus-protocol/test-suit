@@ -46,11 +46,7 @@ describe('Oracle tests - Permissions', () => {
     }; // any
 
     const result = () =>
-      oracleInstance.feedPrices(
-        userWithBalance,
-        feedPrices,
-        customFees.feedPrice,
-      );
+      oracleInstance.feedPrices(userWithBalance, feedPrices, 1.3);
 
     await expect(result).rejects.toThrow(
       'No feeder data for the specified address',

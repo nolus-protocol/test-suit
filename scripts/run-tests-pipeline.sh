@@ -35,3 +35,8 @@ if [[ $TEST_LENDER == "true" ]] ; then
     yarn test src/lender
 fi
 
+if [[ $TEST_TREASURY == "true" ]] ; then
+    yarn test src/treasury
+fi
+
+

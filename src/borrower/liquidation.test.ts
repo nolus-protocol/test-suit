@@ -11,7 +11,10 @@ import {
   NANOSEC,
 } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { sendInitExecuteFeeTokens } from '../util/transfer';
+import {
+  returnRestToMainAccount,
+  sendInitExecuteFeeTokens,
+} from '../util/transfer';
 import { LeaserConfig, LeaseStatus } from '@nolus/nolusjs/build/contracts';
 import {
   getLeaseAddressFromOpenLeaseResponse,
@@ -40,7 +43,7 @@ describe('Borrower tests - Liquidation', () => {
 
   let leaserConfigMsg: LeaserConfig;
 
-  const newPeriodNanosec = 15 * NANOSEC;
+  const newPeriodNanosec = 40 * NANOSEC;
   const newGracePeriodNanosec = 10 * NANOSEC;
   const downpayment = '1000000000';
   const fiveHoursSec = 18000;
@@ -68,8 +71,7 @@ describe('Borrower tests - Liquidation', () => {
 
     const supportedPairsBefore = await oracleInstance.getSupportedPairs();
 
-    const newSupportedPairs = supportedPairsBefore.slice();
-    newSupportedPairs.push([NATIVE_MINIMAL_DENOM, lppDenom]);
+    const newSupportedPair = [NATIVE_MINIMAL_DENOM, lppDenom];
 
     await sendInitExecuteFeeTokens(
       feederWallet,
@@ -78,7 +80,7 @@ describe('Borrower tests - Liquidation', () => {
 
     await oracleInstance.updateCurrencyPaths(
       wasmAdminWallet,
-      newSupportedPairs,
+      [newSupportedPair],
       customFees.exec,
     );
 
@@ -99,12 +101,10 @@ describe('Borrower tests - Liquidation', () => {
     );
 
     console.log(
-      await oracleInstance.feedPrices(
-        priceFeederWallet,
-        feedPrices,
-        customFees.feedPrice,
-      ),
+      await oracleInstance.feedPrices(priceFeederWallet, feedPrices, 1.3),
     );
+
+    await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
 
     const priceResult = await oracleInstance.getPriceFor(NATIVE_MINIMAL_DENOM);
     expect(priceResult).toBeDefined();
@@ -272,6 +272,8 @@ describe('Borrower tests - Liquidation', () => {
         amount: deposit.toString(),
       },
     ]);
+
+    await removeAllFeeders(oracleInstance, wasmAdminWallet);
   });
 
   afterAll(async () => {
