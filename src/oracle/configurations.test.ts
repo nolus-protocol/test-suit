@@ -38,12 +38,25 @@ describe('Oracle tests - Configurations', () => {
   });
 
   test('the wasm admin tries to setup empty currency paths array', async () => {
-    const newSupportedPairs: any = [];
+    const newCurrencyPaths: any = [];
 
     const broadcastTx = () =>
       oracleInstance.updateCurrencyPaths(
         wasmAdminWallet,
-        [newSupportedPairs],
+        [newCurrencyPaths],
+        customFees.exec,
+      );
+
+    await expect(broadcastTx).rejects.toThrow(/^.*Invalid denom pair.*/);
+  });
+
+  test('the wasm admin tries to setup currency paths with one element', async () => {
+    const newCurrencyPaths = ['A'];
+
+    const broadcastTx = () =>
+      oracleInstance.updateCurrencyPaths(
+        wasmAdminWallet,
+        [newCurrencyPaths],
         customFees.exec,
       );
 

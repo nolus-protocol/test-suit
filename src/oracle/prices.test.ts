@@ -75,6 +75,8 @@ describe('Oracle tests - Prices', () => {
     feederWallet: NolusWallet,
     amountAmount: string,
     amoutnQuoteAmount: string,
+    amountSymbol: string,
+    amountQuoteSymbol: string,
   ) {
     await userWithBalance.transferAmount(
       feederWallet.address as string,
@@ -86,8 +88,11 @@ describe('Oracle tests - Prices', () => {
     const feedPrices = {
       prices: [
         {
-          amount: { amount: amountAmount, symbol: testPairMember },
-          amount_quote: { amount: amoutnQuoteAmount, symbol: BASE_ASSET },
+          amount: { amount: amountAmount, symbol: amountSymbol },
+          amount_quote: {
+            amount: amoutnQuoteAmount,
+            symbol: amountQuoteSymbol,
+          },
         },
       ],
     };
@@ -170,7 +175,7 @@ describe('Oracle tests - Prices', () => {
       customFees.exec,
     );
 
-    await feedPrice(firstFeederWallet, '11', '1');
+    await feedPrice(firstFeederWallet, '11', '1', testPairMember, BASE_ASSET);
     const priceAfterFirstFeederVote = () =>
       oracleInstance.getPriceFor(testPairMember);
 
@@ -180,7 +185,13 @@ describe('Oracle tests - Prices', () => {
     const EXPECTED_AMOUNT_QUOTE = '3';
     const EXPECTED_AMOUNT = '10';
 
-    await feedPrice(secondFeederWallet, EXPECTED_AMOUNT, EXPECTED_AMOUNT_QUOTE);
+    await feedPrice(
+      secondFeederWallet,
+      EXPECTED_AMOUNT,
+      EXPECTED_AMOUNT_QUOTE,
+      testPairMember,
+      BASE_ASSET,
+    );
     const priceAfterSecondFeederVote = await oracleInstance.getPriceFor(
       testPairMember,
     );
@@ -211,7 +222,7 @@ describe('Oracle tests - Prices', () => {
       customFees.exec,
     );
 
-    await feedPrice(feederWallet, '22', '33'); // any amounts
+    await feedPrice(feederWallet, '227', '337', testPairMember, BASE_ASSET); // any amounts
 
     const afterResult = await oracleInstance.getPriceFor(testPairMember);
     expect(afterResult.amount).toBeDefined();
@@ -222,6 +233,13 @@ describe('Oracle tests - Prices', () => {
     // the price feed period was changed so now the price should be expired
     const resultAfterPeriod = () => oracleInstance.getPriceFor(testPairMember);
     await expect(resultAfterPeriod).rejects.toThrow(/^.*No price.*/);
+
+    await setConfig(priceFeedPeriodSec, 500);
+
+    // the price feed period was changed but the price has already expired anyway -> 'No price'
+    const resultAfterPeriodUpdate = () =>
+      oracleInstance.getPriceFor(testPairMember);
+    await expect(resultAfterPeriodUpdate).rejects.toThrow(/^.*No price.*/);
   });
 
   test('the wasm admin changes the expected feeders % when a price is available - should work as expected', async () => {
@@ -254,8 +272,8 @@ describe('Oracle tests - Prices', () => {
       customFees.exec,
     );
 
-    await feedPrice(firstFeederWallet, '11', '1');
-    await feedPrice(secondFeederWallet, '11', '1');
+    await feedPrice(firstFeederWallet, '11', '1', testPairMember, BASE_ASSET);
+    await feedPrice(secondFeederWallet, '11', '1', testPairMember, BASE_ASSET);
 
     const afterResult = await oracleInstance.getPriceFor(testPairMember);
     expect(afterResult.amount).toBeDefined();
@@ -280,7 +298,7 @@ describe('Oracle tests - Prices', () => {
       customFees.exec,
     );
 
-    await feedPrice(feederWallet, '22', '33'); // any amounts
+    await feedPrice(feederWallet, '22', '33', testPairMember, BASE_ASSET); // any amounts
 
     const afterResult = await oracleInstance.getPriceFor(testPairMember);
     expect(afterResult.amount).toBeDefined();
@@ -298,6 +316,77 @@ describe('Oracle tests - Prices', () => {
     await expect(resultAfterPeriod).rejects.toThrow(
       /^.*Unsupported currency 'UAT'.*/,
     );
+  });
+
+  // TO DO:
+  test('shortening and extending of the currency path when a price is available', async () => {
+    // SHORTENING
+    // change the currency path
+    const newCurrencyPath = ['OSMO', 'WETH', BASE_ASSET];
+
+    await oracleInstance.updateCurrencyPaths(
+      wasmAdminWallet,
+      [newCurrencyPath],
+      customFees.exec,
+    );
+
+    await removeAllFeeders(oracleInstance, wasmAdminWallet);
+
+    await oracleInstance.addFeeder(
+      wasmAdminWallet,
+      feederWallet.address as string,
+      customFees.exec,
+    );
+
+    await feedPrice(
+      feederWallet,
+      '2',
+      '3',
+      newCurrencyPath[0],
+      newCurrencyPath[1],
+    ); // any amounts
+
+    await feedPrice(
+      feederWallet,
+      '22',
+      '33',
+      newCurrencyPath[1],
+      newCurrencyPath[2],
+    ); // any amounts
+
+    const price1BeforeChange = await oracleInstance.getPriceFor(
+      newCurrencyPath[0],
+    );
+    expect(price1BeforeChange.amount).toBeDefined();
+
+    const price2BeforeChange = await oracleInstance.getPriceFor(
+      newCurrencyPath[1],
+    );
+    expect(price2BeforeChange.amount).toBeDefined();
+
+    // TO DO
+    console.log(price1BeforeChange);
+    console.log(price2BeforeChange);
+
+    const shorteningCurrencyPath = [newCurrencyPath[1], BASE_ASSET];
+    await oracleInstance.updateCurrencyPaths(
+      wasmAdminWallet,
+      [shorteningCurrencyPath],
+      customFees.exec,
+    );
+
+    const price1AfterChange = await oracleInstance.getPriceFor(
+      newCurrencyPath[1],
+    );
+    expect(price1AfterChange.amount).toBeUndefined();
+
+    const price2AfterChange = await oracleInstance.getPriceFor(
+      newCurrencyPath[2],
+    );
+    expect(price2AfterChange.amount).toBeDefined();
+
+    // EXTENDING
+    // TO DO
   });
 
   test('a registered feeder tries to feed a price for a base asset other than the init msg "base_asset" parameter - should produce an error', async () => {
@@ -349,12 +438,4 @@ describe('Oracle tests - Prices', () => {
 
     await expect(broadcastTx).rejects.toThrow(/^.*Unsupported denom pairs.*/);
   });
-
-  // TO DO:
-
-  // test('shortening of the currency path when a price is available', async () => {
-  // });
-
-  // test('extending of the currency path when a price is available', async () => {
-  // });
 });
