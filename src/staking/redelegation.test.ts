@@ -21,8 +21,13 @@ import {
   undefinedHandler,
 } from '../util/utils';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { runOrSkip } from '../util/testingRules';
 
-const maybe = (process.env.ENV as string) === 'dev' ? describe : describe.skip;
+const maybe =
+  (process.env.ENV as string) === 'local' &&
+  (process.env.TEST_STAKING as string).toLocaleLowerCase() === 'false'
+    ? describe.skip
+    : describe;
 
 maybe('Staking Nolus tokens - Redelegation', () => {
   let user1Wallet: NolusWallet;

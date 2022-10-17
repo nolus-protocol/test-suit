@@ -30,8 +30,9 @@ import {
   validatorPart,
 } from '../util/utils';
 import { getProposal } from '../util/gov';
+import { runOrSkip } from '../util/testingRules';
 
-describe('Proposal submission tests', () => {
+runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
   let wallet: NolusWallet;
   let msg: any;
   let fee = customFees.exec;

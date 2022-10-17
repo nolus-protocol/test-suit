@@ -11,8 +11,9 @@ import {
 } from '../util/transfer';
 import { removeAllFeeders } from '../util/smart-contracts';
 import { NANOSEC } from '../util/utils';
+import { runOrSkip } from '../util/testingRules';
 
-describe('Oracle tests - Prices', () => {
+runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   let wasmAdminWallet: NolusWallet;
   let userWithBalance: NolusWallet;
   let feederWallet: NolusWallet;

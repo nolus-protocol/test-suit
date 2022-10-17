@@ -70,4 +70,5 @@ source "$SCRIPT_DIR"/verify.sh
 
 verify_mandatory "$CONTRACTS_INFO_PATH" "contracts info file path"
 
-prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "reserve" "$WASM_ADMIN_KEY"
+prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "reserve" "$WASM_ADMIN_KEY" \
+"" "" "" "" "" "" "" "" ""

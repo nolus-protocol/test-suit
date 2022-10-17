@@ -3,8 +3,9 @@ import { InstantiateResult } from '@cosmjs/cosmwasm-stargate';
 import NODE_ENDPOINT, { getUser2Wallet, getUser1Wallet } from '../util/clients';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 import { customFees, gasPrice, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import { runOrSkip } from '../util/testingRules';
 
-describe('CW20 transfer', () => {
+runOrSkip(process.env.TEST_CW20 as string)('CW20 transfer', () => {
   let user1Wallet: NolusWallet;
   let user2Wallet: NolusWallet;
   let contractAddress: string;

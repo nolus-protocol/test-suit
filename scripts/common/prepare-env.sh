@@ -38,6 +38,15 @@ local -r node_env=$4
 local -r accounts_dir=$5
 local -r main_accounts_key=$6
 local -r wasm_admin_key=$7
+local -r test_transfers=$8
+local -r test_oracle=$9
+local -r test_staking=${10}
+local -r test_cw20=${11}
+local -r test_borrower=${12}
+local -r test_lender=${13}
+local -r test_treasury=${14}
+local -r test_vesting=${15}
+local -r test_gov=${16}
 
 addKey "test-user-1" "$accounts_dir"
 addKey "test-user-2" "$accounts_dir"
@@ -65,12 +74,14 @@ DOT_ENV=$(cat <<-EOF
 NODE_URL=${node_url}
 ENV=${node_env}
 STABLE_DENOM=${stable_denom}
+
 USER_1_PRIV_KEY=${user_1_priv_key}
 USER_2_PRIV_KEY=${user_2_priv_key}
 USER_3_PRIV_KEY=${user_3_priv_key}
 WASM_ADMIN_KEY=${wasm_admin}
 VALIDATOR_1_ADDRESS=${validator_1_address}
 VALIDATOR_2_ADDRESS=${validator_2_address}
+
 TIMEALARMS_ADDRESS=${timealarms_address}
 ORACLE_ADDRESS=${oracle_address}
 LEASER_ADDRESS=${leaser_address}
@@ -78,6 +89,16 @@ LPP_ADDRESS=${lpp_address}
 TREASURY_ADDRESS=${treasury_address}
 DISPATCHER_ADDRESS=${dispatcher_address}
 PROFIT_ADDRESS=${profit_address}
+
+TEST_TRANSFER=${test_transfers}
+TEST_ORACLE=${test_oracle}
+TEST_STAKING=${test_staking}
+TEST_CW20=${test_cw20}
+TEST_BORROWER=${test_borrower}
+TEST_LENDER=${test_lender}
+TEST_TREASURY=${test_treasury}
+TEST_VESTING=${test_vesting}
+TEST_GOV=${test_gov}
 EOF
   )
    echo "$DOT_ENV" > "$HOME_DIR/.env"
