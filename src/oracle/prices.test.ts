@@ -35,7 +35,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
     const configBefore = await oracleInstance.getConfig();
     BASE_ASSET = configBefore.base_asset;
-    INIT_PRICE_FEED_PERIOD = configBefore.price_feed_period / NANOSEC; //nanosec to sec
+    INIT_PRICE_FEED_PERIOD = configBefore.price_feed_period / NANOSEC;
     INIT_PERMILLES_NEEDED = configBefore.expected_feeders;
 
     const adminBalance = {
@@ -153,7 +153,6 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
     await removeAllFeeders(oracleInstance, wasmAdminWallet);
 
-    // add feeders
     const firstFeederWallet = await createWallet();
     const secondFeederWallet = await createWallet();
     const thirdFeederWallet = await createWallet();
@@ -206,7 +205,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     expect(priceAfterSecondFeederVote.amount.symbol).toBe(testPairMember);
 
     // the price feed period has expired
-    await sleep(priceFeedPeriodSec + 1);
+    await sleep(priceFeedPeriodSec + 1); //+1sec
     const resultAfterPeriod = () =>
       oracleInstance.getPricesFor([testPairMember]);
     await expect(resultAfterPeriod).rejects.toThrow(/^.*No price.*/);
@@ -237,54 +236,11 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
     await setConfig(priceFeedPeriodSec, 500);
 
-    // the price feed period was changed but the price has already expired anyway -> 'No price'
-    const resultAfterPeriodUpdate = () =>
-      oracleInstance.getPriceFor(testPairMember);
-    await expect(resultAfterPeriodUpdate).rejects.toThrow(/^.*No price.*/);
-  });
-
-  test('the wasm admin changes the expected feeders % when a price is available - should work as expected', async () => {
-    const priceFeedPeriodSec = 100000;
-    const feedersNeededPermille = 500; // 50%
-    await setConfig(priceFeedPeriodSec, feedersNeededPermille);
-
-    await removeAllFeeders(oracleInstance, wasmAdminWallet);
-
-    // add feeders
-    const firstFeederWallet = await createWallet();
-    const secondFeederWallet = await createWallet();
-    const thirdFeederWallet = await createWallet();
-
-    await oracleInstance.addFeeder(
-      wasmAdminWallet,
-      firstFeederWallet.address as string,
-      customFees.exec,
+    // the price feed period was changed back - returns data that is valid with respect to the configuration
+    const afterSecondUpdateResult = await oracleInstance.getPriceFor(
+      testPairMember,
     );
-
-    await oracleInstance.addFeeder(
-      wasmAdminWallet,
-      secondFeederWallet.address as string,
-      customFees.exec,
-    );
-
-    await oracleInstance.addFeeder(
-      wasmAdminWallet,
-      thirdFeederWallet.address as string,
-      customFees.exec,
-    );
-
-    await feedPrice(firstFeederWallet, '11', '1', testPairMember, BASE_ASSET);
-    await feedPrice(secondFeederWallet, '11', '1', testPairMember, BASE_ASSET);
-
-    const afterResult = await oracleInstance.getPriceFor(testPairMember);
-    expect(afterResult.amount).toBeDefined();
-
-    // change the expected feeders % to > %
-    await setConfig(priceFeedPeriodSec, 1000); // 100%
-
-    // the expected feeders % was changed so now the price should be expired
-    const resultAfterPeriod = () => oracleInstance.getPriceFor(testPairMember);
-    await expect(resultAfterPeriod).rejects.toThrow(/^.*No price.*/);
+    expect(afterSecondUpdateResult.amount).toBeDefined();
   });
 
   test('the wasm admin removes the current currency path when a price is available - should work as expected', async () => {
@@ -364,10 +320,6 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
       newCurrencyPath[1],
     );
     expect(price2BeforeChange.amount).toBeDefined();
-
-    // TO DO
-    console.log(price1BeforeChange);
-    console.log(price2BeforeChange);
 
     const shorteningCurrencyPath = [newCurrencyPath[1], BASE_ASSET];
     await oracleInstance.updateCurrencyPaths(

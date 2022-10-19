@@ -731,8 +731,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
-      console.log(repayWithExcess.amount);
-
       const repayTxReponse = await leaseInstance.repayLease(
         borrowerWallet,
         customFees.exec,

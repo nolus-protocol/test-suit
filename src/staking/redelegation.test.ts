@@ -24,7 +24,7 @@ import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
 
 const maybe =
-  (process.env.ENV as string) === 'local' &&
+  (process.env.ENV as string) === 'local' ||
   (process.env.TEST_STAKING as string).toLocaleLowerCase() === 'false'
     ? describe.skip
     : describe;

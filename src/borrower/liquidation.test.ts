@@ -15,12 +15,18 @@ import {
   returnRestToMainAccount,
   sendInitExecuteFeeTokens,
 } from '../util/transfer';
-import { LeaserConfig, LeaseStatus } from '@nolus/nolusjs/build/contracts';
 import {
+  Lease,
+  LeaserConfig,
+  LeaseStatus,
+} from '@nolus/nolusjs/build/contracts';
+import {
+  calcInterestRate,
   getLeaseAddressFromOpenLeaseResponse,
   removeAllFeeders,
 } from '../util/smart-contracts';
 import { runOrSkip } from '../util/testingRules';
+import { ExecuteResult } from '@nolus/nolusjs/node_modules/@cosmjs/cosmwasm-stargate';
 
 //TO DO
 runOrSkip(process.env.TEST_BORROWER as string)(
@@ -39,6 +45,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let lppDenom: string;
     let mainLeaseAddress: string;
     let liquidatedLeaseAddress: string;
+    let marginInterestPaidByNanoSec: number;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -51,7 +58,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     const downpayment = '100000000000';
     const fiveHoursSec = 18000;
 
-    async function pushPrice(priceFeederWallet: NolusWallet) {
+    async function pushPrice(
+      priceFeederWallet: NolusWallet,
+    ): Promise<ExecuteResult> {
       // remove all feeders
       await removeAllFeeders(oracleInstance, wasmAdminWallet);
 
@@ -101,8 +110,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         '',
       );
 
-      console.log(
-        await oracleInstance.feedPrices(priceFeederWallet, feedPrices, 1.3),
+      const feedPriceTxReponse = await oracleInstance.feedPrices(
+        priceFeederWallet,
+        feedPrices,
+        1.3,
       );
 
       await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
@@ -111,6 +122,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         NATIVE_MINIMAL_DENOM,
       );
       expect(priceResult).toBeDefined();
+
+      return feedPriceTxReponse;
     }
 
     async function priceLiquidationCheck(
@@ -172,8 +185,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     }
 
     async function timeLiquidationCheck(
-      leaseInstance: any,
+      leaseInstance: Lease,
       stateBefore: LeaseStatus,
+      timeByNanoSec: number,
     ) {
       // wait main period to expires
       await sleep(newPeriodSec + 1); //+1sec
@@ -186,7 +200,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      //TO DO - verify previous interest calc
+      // TO DO - verify previous interest calc
 
       const PID_afterMainPeriod =
         stateAfterMainPeriod.previous_interest_due.amount;
@@ -195,6 +209,36 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       expect(PMD_afterMainPeriod).not.toBe('0');
       expect(PID_afterMainPeriod).not.toBe('0');
+
+      const loanInterestPaidByNanoSec = (
+        await lppInstance.getLoanInformation(mainLeaseAddress)
+      ).interest_paid;
+
+      const loanRateByNanoSec = (
+        await lppInstance.getLoanInformation(mainLeaseAddress)
+      ).annual_interest_rate;
+
+      const newPeriodByNanoSec = timeByNanoSec + newPeriodSec * NANOSEC;
+
+      const PID_calcudated = calcInterestRate(
+        BigInt(stateAfterMainPeriod.principal_due.amount),
+        BigInt(loanRateByNanoSec),
+        BigInt(loanInterestPaidByNanoSec),
+        BigInt(newPeriodByNanoSec),
+      );
+
+      console.log(stateAfterMainPeriod);
+
+      expect(PID_calcudated).toBe(BigInt(PID_afterMainPeriod));
+
+      const PMD_calcudated = calcInterestRate(
+        BigInt(stateAfterMainPeriod.principal_due.amount),
+        BigInt(stateAfterMainPeriod.interest_rate_margin),
+        BigInt(marginInterestPaidByNanoSec),
+        BigInt(newPeriodByNanoSec),
+      );
+
+      expect(PMD_calcudated).toBe(BigInt(PMD_afterMainPeriod));
 
       // it is not liquidation time yet, so:
       expect(stateBefore.opened?.amount.amount).toBe(
@@ -205,20 +249,25 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await sleep(newGracePeriodSec + 1); //+1sec
 
       // feed price - oracle will trigger a time alarm
-      await pushPrice(priceFeederWallet);
+      const pushPriceResult = await pushPrice(priceFeederWallet);
+      console.log(pushPriceResult);
 
-      const stateAfterFirstGracePeriod = (await leaseInstance.getLeaseStatus())
+      const stateAfterGracePeriod = (await leaseInstance.getLeaseStatus())
         .opened;
-      if (!stateAfterFirstGracePeriod) {
+      if (!stateAfterGracePeriod) {
         undefinedHandler();
         return;
       }
 
+      marginInterestPaidByNanoSec =
+        +pushPriceResult.logs[0].events[7].attributes[2].value;
+
+      // TO DO: issue https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/21
       // it is liquidation time, so:
-      expect(BigInt(stateAfterFirstGracePeriod.amount.amount)).toBe(
-        BigInt(stateAfterMainPeriod.amount.amount) -
-          (BigInt(PID_afterMainPeriod) + BigInt(PMD_afterMainPeriod)),
-      );
+      // expect(BigInt(stateAfterGracePeriod.amount.amount)).toBe(
+      //   BigInt(stateAfterMainPeriod.amount.amount) -
+      //     (BigInt(PID_afterMainPeriod) + BigInt(PMD_afterMainPeriod)),
+      // );
     }
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
@@ -335,18 +384,31 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       mainLeaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
       const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
 
+      const openingTimeByNanoSec = (
+        await lppInstance.getLoanInformation(mainLeaseAddress)
+      ).interest_paid;
+      marginInterestPaidByNanoSec = +openingTimeByNanoSec;
+
       const stateBeforeFirstLiquidation = await leaseInstance.getLeaseStatus();
-      await timeLiquidationCheck(leaseInstance, stateBeforeFirstLiquidation);
+      await timeLiquidationCheck(
+        leaseInstance,
+        stateBeforeFirstLiquidation,
+        +openingTimeByNanoSec,
+      );
 
       // second liquidation
       const stateBeforeSecondLiquidation = await leaseInstance.getLeaseStatus();
-      await timeLiquidationCheck(leaseInstance, stateBeforeSecondLiquidation);
+      await timeLiquidationCheck(
+        leaseInstance,
+        stateBeforeSecondLiquidation,
+        +openingTimeByNanoSec + (newPeriodSec + newGracePeriodSec) * NANOSEC,
+      );
     });
 
     test('partial liquidation due to expiry of more than one period - should work as expected', async () => {
       const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
 
-      const periodsCount = 5;
+      const periodsCount = 3;
 
       // wait for several periods to expire
       await sleep((newPeriodSec + newGracePeriodSec) * periodsCount);

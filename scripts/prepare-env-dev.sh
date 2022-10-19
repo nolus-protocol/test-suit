@@ -20,7 +20,6 @@ TOKEN_VALUE=""
 TEST_TRANSFER=""
 TEST_ORACLE=""
 TEST_STAKING=""
-TEST_CW20=""
 TEST_BORROWER=""
 TEST_LENDER=""
 TEST_TREASURY=""
@@ -93,12 +92,6 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  --test-cw20)
-    TEST_CW20="$2"
-    shift
-    shift
-    ;;
-
   --test-borrower)
     TEST_BORROWER="$2"
     shift
@@ -141,7 +134,6 @@ verify_mandatory "$TOKEN_VALUE" "gitlab auth token value"
 verify_mandatory "$TEST_TRANSFER" "test transfer flag"
 verify_mandatory "$TEST_ORACLE" "test oracle flag"
 verify_mandatory "$TEST_STAKING" "test staking flag"
-verify_mandatory "$TEST_CW20" "test cw20 flag"
 verify_mandatory "$TEST_BORROWER" "test borrower flag"
 verify_mandatory "$TEST_LENDER" "test lender flag"
 verify_mandatory "$TEST_TREASURY" "test treasury flag"
@@ -192,5 +184,5 @@ echo "$MNEMONIC_ADMIN" | run_cmd "$ACCOUNTS_DIR" keys add "$WASM_ADMIN_KEY" --re
 # Prepare .env
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" \
-"$WASM_ADMIN_KEY" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_CW20" "$TEST_BORROWER" \
+"$WASM_ADMIN_KEY" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
 "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV"

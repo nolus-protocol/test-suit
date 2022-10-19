@@ -1,9 +1,9 @@
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
 import { NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
-import { customFees } from './utils';
+import { customFees, NANOSEC } from './utils';
 
-const NANOSEC_YEAR = 365 * 24 * 60 * 60 * 1000000000;
+const NANOSEC_YEAR = 365 * 24 * 60 * 60 * NANOSEC;
 
 export function calcBorrow(downpayment: bigint, initPercent: bigint): bigint {
   return (downpayment * initPercent) / (BigInt(1000) - initPercent);

@@ -18,10 +18,9 @@ env-prep:
         --mnemonic-wasm-admin "$SMART_CONTRACTS_ADMIN_MNEMONIC"
         --token-type "JOB-TOKEN" --token-value "$CI_JOB_TOKEN" --tag "$COSMZONE_PREFERRED_TAG"
         --test-transfer "$TEST_TRANSFER_PIPELINE" --test-oracle "$TEST_ORACLE_PIPELINE"
-        --test-staking "$TEST_STAKING_PIPELINE" --test-cw20 "$TEST_CW20_PIPELINE"
-        --test-borrower "$TEST_BORROWER_PIPELINE" --test-lender "$TEST_LENDER_PIPELINE"
-        --test-treasury "$TEST_TREASURY_PIPELINE" --test-vesting "$TEST_VESTING_PIPELINE"
-        --test-gov "$TEST_GOV_PIPELINE"
+        --test-staking "$TEST_STAKING_PIPELINE" --test-borrower "$TEST_BORROWER_PIPELINE"
+        --test-lender "$TEST_LENDER_PIPELINE" --test-treasury "$TEST_TREASURY_PIPELINE"
+        --test-vesting "$TEST_VESTING_PIPELINE" --test-gov "$TEST_GOV_PIPELINE"
   artifacts:
     paths:
     - .env

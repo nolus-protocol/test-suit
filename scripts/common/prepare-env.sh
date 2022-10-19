@@ -41,12 +41,11 @@ local -r wasm_admin_key=$7
 local -r test_transfers=$8
 local -r test_oracle=$9
 local -r test_staking=${10}
-local -r test_cw20=${11}
-local -r test_borrower=${12}
-local -r test_lender=${13}
-local -r test_treasury=${14}
-local -r test_vesting=${15}
-local -r test_gov=${16}
+local -r test_borrower=${11}
+local -r test_lender=${12}
+local -r test_treasury=${13}
+local -r test_vesting=${14}
+local -r test_gov=${15}
 
 addKey "test-user-1" "$accounts_dir"
 addKey "test-user-2" "$accounts_dir"
@@ -93,7 +92,6 @@ PROFIT_ADDRESS=${profit_address}
 TEST_TRANSFER=${test_transfers}
 TEST_ORACLE=${test_oracle}
 TEST_STAKING=${test_staking}
-TEST_CW20=${test_cw20}
 TEST_BORROWER=${test_borrower}
 TEST_LENDER=${test_lender}
 TEST_TREASURY=${test_treasury}
