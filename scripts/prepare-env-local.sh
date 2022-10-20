@@ -3,7 +3,8 @@ set -euxo pipefail
 
 NOLUS_LOCAL_NET="http://localhost:26612"
 STABLE_DENOM="ibc/fj29fj0fj"
-WASM_ADMIN_KEY="wasm_admin"
+MAIN_KEY="reserve"
+WASM_ADMIN_KEY="contracts_owner"
 NOLUS_HOME_DIR="$HOME/.nolus"
 CONTRACTS_INFO_PATH=""
 
@@ -70,5 +71,5 @@ source "$SCRIPT_DIR"/verify.sh
 
 verify_mandatory "$CONTRACTS_INFO_PATH" "contracts info file path"
 
-prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "reserve" "$WASM_ADMIN_KEY" \
+prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" "$WASM_ADMIN_KEY" \
 "" "" "" "" "" "" "" "" ""

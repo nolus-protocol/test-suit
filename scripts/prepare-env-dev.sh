@@ -10,7 +10,7 @@ COSMZONE_PROJECT_ID="3"
 SETUP_DEV_NETWORK_ARTIFACT="setup-dev-network"
 NOLUS_BUILD_BINARY_ARTIFACT="build-binary"
 FAUCET_KEY="faucet"
-WASM_ADMIN_KEY="wasm_admin"
+WASM_ADMIN_KEY="contracts_owner"
 
 TAG=""
 MNEMONIC_FAUCET=""
