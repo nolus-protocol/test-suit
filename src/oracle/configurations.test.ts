@@ -6,6 +6,8 @@ import NODE_ENDPOINT, {
 } from '../util/clients';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
+import { Tree } from '@nolus/nolusjs/build/contracts/types/SwapTree';
+import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 
 runOrSkip(process.env.TEST_ORACLE as string)(
   'Oracle tests - Configurations',
@@ -14,7 +16,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     let userWithBalance: NolusWallet;
     let oracleInstance: NolusContracts.Oracle;
     let BASE_ASSET: string;
-    const testPairMember = 'UAT';
+    let leaseCurrencies: string[];
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
     beforeAll(async () => {
@@ -28,6 +30,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       const config = await oracleInstance.getConfig();
       BASE_ASSET = config.base_asset;
 
+      leaseCurrencies = getLeaseGroupCurrencies();
       const adminBalance = {
         amount: '10000000',
         denom: NATIVE_MINIMAL_DENOM,
@@ -40,109 +43,116 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       );
     });
 
-    test('the wasm admin tries to setup empty currency paths array', async () => {
-      const newCurrencyPaths: any = [];
+    test('the contract owner tries to setup empty swap paths', async () => {
+      const newSwapTree: Tree = [[]];
 
       const broadcastTx = () =>
-        oracleInstance.updateCurrencyPaths(
+        oracleInstance.updateSwapTree(
           wasmAdminWallet,
-          [newCurrencyPaths],
+          newSwapTree,
           customFees.exec,
         );
 
-      await expect(broadcastTx).rejects.toThrow(/^.*Invalid denom pair.*/);
+      await expect(broadcastTx).rejects.toThrow(/^.*invalid length 0.*/);
     });
 
-    test('the wasm admin tries to setup currency paths with one element', async () => {
-      const newCurrencyPaths = ['A'];
+    test('the contract owner tries to setup swap paths with unsupported Nolus currencies', async () => {
+      const newSwapTree: Tree = [[0, BASE_ASSET], [[1, 'A']]];
 
       const broadcastTx = () =>
-        oracleInstance.updateCurrencyPaths(
+        oracleInstance.updateSwapTree(
           wasmAdminWallet,
-          [newCurrencyPaths],
+          newSwapTree,
           customFees.exec,
         );
 
-      await expect(broadcastTx).rejects.toThrow(/^.*Invalid denom pair.*/);
+      await expect(broadcastTx).rejects.toThrow(
+        /^.*not defined in the payment currency group.*/,
+      );
     });
 
-    test('the wasm admin tries to update supported pairs with a base asset other than the init msg "base_asset" param', async () => {
-      const newSupportedPairs = [BASE_ASSET, testPairMember];
+    test('the contract owner tries to update swap paths with base currency other than the init base currency', async () => {
+      const leaseGroupCurrencies = getLeaseGroupCurrencies();
+      const newSwapTree: Tree = [[0, leaseGroupCurrencies[0]]];
 
       const broadcastTx = () =>
-        oracleInstance.updateCurrencyPaths(
+        oracleInstance.updateSwapTree(
           wasmAdminWallet,
-          [newSupportedPairs],
+          newSwapTree,
           customFees.exec,
         );
 
-      await expect(broadcastTx).rejects.toThrow(/^.*Invalid denom pair.*/);
+      await expect(broadcastTx).rejects.toThrow(/^.*Invalid base currency.*/);
     });
 
-    test('the wasm admin tries to configure a duplicate path', async () => {
-      const firstPath = [testPairMember, BASE_ASSET];
-      const dublicatePath = [testPairMember, 'B', BASE_ASSET];
+    test('the contract owner tries to configure a duplicate swap path', async () => {
+      const newSwapTree: Tree = [
+        [0, BASE_ASSET],
+        [[1, leaseCurrencies[0]], [[2, leaseCurrencies[1]]]],
+        [[3, leaseCurrencies[1]]],
+      ];
 
       const broadcastTx = () =>
-        oracleInstance.updateCurrencyPaths(
+        oracleInstance.updateSwapTree(
           wasmAdminWallet,
-          [firstPath, dublicatePath],
+          newSwapTree,
           customFees.exec,
         );
 
-      await expect(broadcastTx).rejects.toThrow(/^.*Invalid denom pair.*/);
+      await expect(broadcastTx).rejects.toThrow(
+        /^.*Duplicated nodes in the currency tree.*/,
+      );
     });
 
-    test('the supported pairs should match the configured currency paths', async () => {
-      const currencyPath = ['A', 'B', 'C', BASE_ASSET];
-
-      await oracleInstance.updateCurrencyPaths(
+    test('the supported pairs should match the configured swap tree', async () => {
+      const swapTree: Tree = [
+        [0, BASE_ASSET],
+        [[1, leaseCurrencies[0]], [[2, leaseCurrencies[1]]]],
+        [[3, leaseCurrencies[2]]],
+      ];
+      await oracleInstance.updateSwapTree(
         wasmAdminWallet,
-        [currencyPath],
+        swapTree,
         customFees.exec,
       );
 
-      const supportedPairs = await oracleInstance.getSupportedPairs();
+      const supportedPairs = await oracleInstance.getCurrencyPairs();
       expect(supportedPairs.length).toBe(3);
-      expect(supportedPairs[2]).toStrictEqual([
-        currencyPath[0],
-        currencyPath[1],
-      ]);
-      expect(supportedPairs[1]).toStrictEqual([
-        currencyPath[1],
-        currencyPath[2],
-      ]);
-      expect(supportedPairs[0]).toStrictEqual([
-        currencyPath[2],
-        currencyPath[3],
-      ]);
+      expect(supportedPairs[0].from).toBe(leaseCurrencies[0]);
+      expect(supportedPairs[0].to.target).toBe(BASE_ASSET);
+
+      expect(supportedPairs[1].from).toBe(leaseCurrencies[1]);
+      expect(supportedPairs[1].to.target).toBe(leaseCurrencies[0]);
+
+      expect(supportedPairs[2].from).toBe(leaseCurrencies[2]);
+      expect(supportedPairs[2].to.target).toBe(BASE_ASSET);
     });
 
-    test('the wasm admin tries to setup an invalid config - should produce an error', async () => {
+    test('the contract owner tries to setup an invalid config - should produce an error', async () => {
       // price feed period = 0
-      const result1 = () =>
+      let result = () =>
         oracleInstance.setConfig(wasmAdminWallet, 0, 1, customFees.exec); // any precentage needed
 
-      await expect(result1).rejects.toThrow('Price feed period can not be 0');
+      await expect(result).rejects.toThrow('Price feed period can not be 0');
 
-      // feeder precentage needed = 0
-      const result2 = () =>
+      // expected feeders = 0%
+      result = () =>
         oracleInstance.setConfig(wasmAdminWallet, 1, 0, customFees.exec); // any pricePeriod
 
-      await expect(result2).rejects.toThrow(
+      await expect(result).rejects.toThrow(
         'Percent of expected available feeders should be > 0 and <= 1000',
       );
 
-      // feeder precentage needed > 100%, 1000permille
-      const result3 = () =>
+      // expected feeders > 100%, 1000permille
+      result = () =>
         oracleInstance.setConfig(wasmAdminWallet, 1, 1001, customFees.exec); // any pricePeriod
 
-      await expect(result3).rejects.toThrow(
+      await expect(result).rejects.toThrow(
         'Percent of expected available feeders should be > 0 and <= 1000',
       );
     });
 
-    test('the wasm admin tries to add an invalid feeder address - should produce an error', async () => {
+    test('the contract owner tries to add an invalid feeder address - should produce an error', async () => {
       const invalidAddress = 'nolus1ta43kkqwmugfdrddvdy4ewcgyw2n9maaaaaaaa';
       const result = () =>
         oracleInstance.addFeeder(
@@ -154,7 +164,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       await expect(result).rejects.toThrow('invalid checksum');
     });
 
-    test('the wasm admin tries to remove a non-existent feeder - should produce an error', async () => {
+    test('the contract owner tries to remove a non-existent feeder - should produce an error', async () => {
       const newWallet = await createWallet();
 
       const result = () =>

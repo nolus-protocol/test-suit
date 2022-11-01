@@ -68,8 +68,9 @@ export const customFees = {
     ],
   },
 };
-export async function sleep(s: number): Promise<void> {
-  await new Promise((r) => setTimeout(r, s * 1000));
+
+export async function sleep(secs: number): Promise<void> {
+  await new Promise((r) => setTimeout(r, secs * 1000));
 }
 
 export function undefinedHandler() {

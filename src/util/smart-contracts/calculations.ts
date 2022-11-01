@@ -1,12 +1,11 @@
-import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
-import { NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import { NolusContracts, NolusWallet, AssetUtils } from '@nolus/nolusjs';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
-import { customFees, NANOSEC } from './utils';
+import { customFees, NANOSEC } from '../utils';
 
 const NANOSEC_YEAR = 365 * 24 * 60 * 60 * NANOSEC;
 
-export function calcBorrow(downpayment: bigint, initPercent: bigint): bigint {
-  return (downpayment * initPercent) / (BigInt(1000) - initPercent);
+export function calcBorrow(downpayment: number, initPercent: number): number {
+  return (downpayment * initPercent) / (1000 - initPercent);
 }
 
 export function calcUtilization( // %
@@ -68,42 +67,8 @@ export function NLPNS_To_LPNS(nlpns: number, price: Price): bigint {
   return BigInt(result);
 }
 
-export function getLeaseAddressFromOpenLeaseResponse(
-  response: ExecuteResult,
-): string {
-  return response.logs[0].events[7].attributes[3].value;
-}
-
-export function getMarginInterestPaidFromRepayResponse(
-  response: ExecuteResult,
-): bigint {
-  return BigInt(response.logs[0].events[6].attributes[10].value);
-}
-
-export function getLoanInterestPaidFromRepayResponse(
-  response: ExecuteResult,
-): bigint {
-  return BigInt(response.logs[0].events[6].attributes[11].value);
-}
-
-export function getPrincipalPaidFromRepayResponse(
-  response: ExecuteResult,
-): bigint {
-  return BigInt(response.logs[0].events[6].attributes[12].value);
-}
-
-export function getChangeFromRepayResponse(response: ExecuteResult): bigint {
-  return BigInt(response.logs[0].events[6].attributes[13].value);
-}
-
-export function getTotalPaidFromRepayResponse(response: ExecuteResult): bigint {
-  return BigInt(response.logs[0].events[6].attributes[6].value);
-}
-
-export function getMarginPaidTimeFromRepayResponse(
-  response: ExecuteResult,
-): bigint {
-  return BigInt(response.logs[0].events[6].attributes[2].value);
+export function currencyTicker_To_IBC(ticker: string): string {
+  return AssetUtils.makeIBCMinimalDenom(ticker);
 }
 
 export async function removeAllFeeders(

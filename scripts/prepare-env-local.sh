@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 NOLUS_LOCAL_NET="http://localhost:26612"
-STABLE_DENOM="ibc/fj29fj0fj"
+STABLE_DENOM="USDC"
 MAIN_KEY="reserve"
 WASM_ADMIN_KEY="contracts_owner"
 NOLUS_HOME_DIR="$HOME/.nolus"

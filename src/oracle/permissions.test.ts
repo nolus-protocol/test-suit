@@ -6,6 +6,7 @@ import NODE_ENDPOINT, {
 } from '../util/clients';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
+import { Tree } from '@nolus/nolusjs/build/contracts/types/SwapTree';
 
 runOrSkip(process.env.TEST_ORACLE as string)(
   'Oracle tests - Permissions',
@@ -42,8 +43,8 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       const feedPrices = {
         prices: [
           {
-            amount: { amount: '10', symbol: 'A' },
-            amount_quote: { amount: '10', symbol: 'B' },
+            amount: { amount: '10', ticker: 'A' },
+            amount_quote: { amount: '10', ticker: 'B' },
           },
         ],
       }; // any
@@ -56,26 +57,26 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       );
     });
 
-    test('only the wasm admin should be able to change the config', async () => {
+    test('only the contract owner should be able to change the config', async () => {
       const result = () =>
         oracleInstance.setConfig(userWithBalance, 10, 10, customFees.exec); // any feederPercentage and pricePeriod
 
       await expect(result).rejects.toThrow('Unauthorized');
     });
 
-    test('only the wasm admin should be able to change the currency paths', async () => {
-      const currencyPath = ['A', 'B'];
+    test('only the contract owner should be able to change the currency paths', async () => {
+      const swapTree: Tree = [[0, 'A']]; //any
       const result = () =>
-        oracleInstance.updateCurrencyPaths(
+        oracleInstance.updateSwapTree(
           userWithBalance,
-          [currencyPath],
+          swapTree,
           customFees.exec,
         );
 
       await expect(result).rejects.toThrow('Unauthorized');
     });
 
-    test('only the wasm admin should be able to add a feeder', async () => {
+    test('only the contract owner should be able to add a feeder', async () => {
       const result = () =>
         oracleInstance.addFeeder(
           userWithBalance,
@@ -86,8 +87,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       await expect(result).rejects.toThrow('Unauthorized');
     });
 
-    test('only the wasm admin should be able to remove a feeder', async () => {
-      // first add feeder
+    test('only the contract owner should be able to remove a feeder', async () => {
       await oracleInstance.addFeeder(
         wasmAdminWallet,
         feederWallet.address as string,
@@ -109,10 +109,9 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         add_price_alarm: {
           alarm: {
             below: {
-              amount: { amount: '5', symbol: testPairMember }, // any
-              amount_quote: { amount: '5', symbol: testPairMember }, // any
+              amount: { amount: '5', ticker: testPairMember }, // any
+              amount_quote: { amount: '5', ticker: testPairMember }, // any
             },
-            currency: 'B', // any
           },
         },
       };
