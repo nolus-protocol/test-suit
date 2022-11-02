@@ -423,6 +423,6 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
 
     // TO DO: issue - https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/22
-    await expect(broadcastTx).rejects.toThrow(/^.*TO DO.*/);
+    await expect(broadcastTx).rejects.toThrow(/^.*Invalid price.*/);
   });
 });
