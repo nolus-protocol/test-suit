@@ -1,16 +1,18 @@
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import { customFees, NATIVE_MINIMAL_DENOM, NATIVE_TICKER } from '../util/utils';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { Coin } from '@cosmjs/proto-signing';
 import { runOrSkip } from '../util/testingRules';
+import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
 
 runOrSkip(process.env.TEST_LENDER as string)(
   'Lender tests - Claim rewards',
   () => {
     let feederWallet: NolusWallet;
     let lenderWallet: NolusWallet;
-    let lppDenom: string;
+    let lppCurrency: string;
+    let lppCurrencyToIBC: string;
     let lppInstance: NolusContracts.Lpp;
     let rewards: Coin;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -26,7 +28,8 @@ runOrSkip(process.env.TEST_LENDER as string)(
       lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
 
       const lppConfig = await lppInstance.getLppConfig();
-      lppDenom = lppConfig.lpn_symbol;
+      lppCurrency = lppConfig.lpn_ticker;
+      lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
 
       rewards = { amount: '20000000000', denom: NATIVE_MINIMAL_DENOM };
     });
@@ -39,7 +42,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       await feederWallet.transferAmount(
         lenderWallet.address as string,
-        [{ denom: lppDenom, amount: deposit }],
+        [{ denom: lppCurrencyToIBC, amount: deposit }],
         customFees.transfer,
       );
 
@@ -50,7 +53,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       // provide rewards
       await lppInstance.deposit(lenderWallet, customFees.exec, [
-        { denom: lppDenom, amount: deposit },
+        { denom: lppCurrencyToIBC, amount: deposit },
       ]);
 
       const lppBalanceAfter = await lppInstance.getLppBalance();
@@ -121,7 +124,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
       );
     });
 
-    test('the lender tries to receive rewards to another account - should work as expected', async () => {
+    test('the lender tries to receive rewards on another account - should work as expected', async () => {
       const recipientWallet = await createWallet();
 
       const lenderRewardsBefore = await lppInstance.getLenderRewards(
@@ -213,7 +216,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
         lppInstance.distributeRewards(feederWallet, customFees.exec);
 
       await expect(broadcastTx).rejects.toThrow(
-        `Expecting funds of ${NATIVE_MINIMAL_DENOM} but found none`,
+        `Expecting funds of ${NATIVE_TICKER} but found none`,
       );
 
       const dispatcherBalanceAfter = await feederWallet.getBalance(
@@ -233,13 +236,13 @@ runOrSkip(process.env.TEST_LENDER as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      const rewards = { amount: '10', denom: lppDenom };
+      const rewards = { amount: '10', denom: lppCurrencyToIBC };
 
       const broadcastTx = () =>
         lppInstance.distributeRewards(feederWallet, customFees.exec, [rewards]);
 
       await expect(broadcastTx).rejects.toThrow(
-        `Found currency '${lppDenom}' expecting '${NATIVE_MINIMAL_DENOM}'`,
+        `Found bank symbol '${lppCurrencyToIBC}' expecting '${NATIVE_MINIMAL_DENOM}'`,
       );
 
       const dispatcherBalanceAfter = await feederWallet.getBalance(
@@ -253,7 +256,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
       );
     });
 
-    test('the lender tries to claim 0 amount rewards - should produce an error', async () => {
+    test('the lender tries to claim 0 rewards - should produce an error', async () => {
       const newLenderWallet = await createWallet();
       const lenderRewardsTx = () =>
         lppInstance.getLenderRewards(newLenderWallet.address as string);

@@ -3,7 +3,12 @@ import NODE_ENDPOINT, {
   createWallet,
   getWasmAdminWallet,
 } from '../util/clients';
-import { customFees, gasPrice, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import {
+  customFees,
+  gasPrice,
+  NATIVE_MINIMAL_DENOM,
+  NATIVE_TICKER,
+} from '../util/utils';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { Asset } from '@nolus/nolusjs/build/contracts';
@@ -12,7 +17,7 @@ import { runOrSkip } from '../util/testingRules';
 runOrSkip(process.env.TEST_TREASURY as string)(
   'Treasury tests - Request rewards',
   () => {
-    let feederWallet: NolusWallet;
+    let userWithBalanceWallet: NolusWallet;
     let wasmAdminWallet: NolusWallet;
     let newDispatcherWallet: NolusWallet;
     let treasuryInstance: NolusContracts.Treasury;
@@ -27,7 +32,7 @@ runOrSkip(process.env.TEST_TREASURY as string)(
       NolusClient.setInstance(NODE_ENDPOINT);
       cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-      feederWallet = await getUser1Wallet();
+      userWithBalanceWallet = await getUser1Wallet();
       newDispatcherWallet = await createWallet();
       wasmAdminWallet = await getWasmAdminWallet();
 
@@ -36,17 +41,18 @@ runOrSkip(process.env.TEST_TREASURY as string)(
         treasuryContractAddress,
       );
 
-      rewards = { symbol: NATIVE_MINIMAL_DENOM, amount: '100000' };
+      rewards = { ticker: NATIVE_TICKER, amount: '100000' };
     });
 
     test('the configured dispatcher account tries to request rewards from the treasury - should work as expected', async () => {
-      const dispatcherBalanceBeforeFirstReward = await feederWallet.getBalance(
-        newDispatcherWallet.address as string,
-        NATIVE_MINIMAL_DENOM,
-      );
+      const dispatcherBalanceBeforeFirstReward =
+        await userWithBalanceWallet.getBalance(
+          newDispatcherWallet.address as string,
+          NATIVE_MINIMAL_DENOM,
+        );
 
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         wasmAdminWallet.address as string,
       );
 
@@ -57,7 +63,7 @@ runOrSkip(process.env.TEST_TREASURY as string)(
       );
 
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         newDispatcherWallet.address as string,
       );
 
@@ -77,10 +83,11 @@ runOrSkip(process.env.TEST_TREASURY as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      const dispatcherBalanceAfterFirstReward = await feederWallet.getBalance(
-        newDispatcherWallet.address as string,
-        NATIVE_MINIMAL_DENOM,
-      );
+      const dispatcherBalanceAfterFirstReward =
+        await userWithBalanceWallet.getBalance(
+          newDispatcherWallet.address as string,
+          NATIVE_MINIMAL_DENOM,
+        );
 
       expect(BigInt(dispatcherBalanceAfterFirstReward.amount)).toBe(
         BigInt(dispatcherBalanceBeforeFirstReward.amount) +
@@ -96,9 +103,9 @@ runOrSkip(process.env.TEST_TREASURY as string)(
             BigInt(percision),
       );
 
-      //send more than once
+      // send rewards more than once
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         newDispatcherWallet.address as string,
       );
 
@@ -108,10 +115,11 @@ runOrSkip(process.env.TEST_TREASURY as string)(
         customFees.exec,
       );
 
-      const dispatcherBalanceAfterSecondReward = await feederWallet.getBalance(
-        newDispatcherWallet.address as string,
-        NATIVE_MINIMAL_DENOM,
-      );
+      const dispatcherBalanceAfterSecondReward =
+        await userWithBalanceWallet.getBalance(
+          newDispatcherWallet.address as string,
+          NATIVE_MINIMAL_DENOM,
+        );
 
       expect(BigInt(dispatcherBalanceAfterSecondReward.amount)).toBe(
         BigInt(dispatcherBalanceAfterFirstReward.amount) +
@@ -121,7 +129,11 @@ runOrSkip(process.env.TEST_TREASURY as string)(
 
     test('an unauthorized user tries to request rewards from the treasury - should produce an error', async () => {
       const broadcastTx = () =>
-        treasuryInstance.sendRewards(feederWallet, rewards, customFees.exec);
+        treasuryInstance.sendRewards(
+          userWithBalanceWallet,
+          rewards,
+          customFees.exec,
+        );
 
       await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized.*/);
     });
@@ -129,8 +141,8 @@ runOrSkip(process.env.TEST_TREASURY as string)(
     test('an unauthorized user tries to change dispatcher address - should produce an error', async () => {
       const broadcastTx = () =>
         treasuryInstance.configRewardsTransfer(
-          feederWallet,
-          feederWallet.address as string as string,
+          userWithBalanceWallet,
+          userWithBalanceWallet.address as string as string,
           customFees.exec,
         );
 
@@ -139,7 +151,7 @@ runOrSkip(process.env.TEST_TREASURY as string)(
 
     test('the configured dispatcher account tries to request 0 rewards from the treasury - should produce an error', async () => {
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         newDispatcherWallet.address as string,
       );
 
@@ -156,7 +168,7 @@ runOrSkip(process.env.TEST_TREASURY as string)(
     });
 
     test('the configured dispatcher account tries to request more rewards than the treasury has - should produce an error', async () => {
-      const dispatcherBalanceBefore = await feederWallet.getBalance(
+      const dispatcherBalanceBefore = await userWithBalanceWallet.getBalance(
         newDispatcherWallet.address as string,
         NATIVE_MINIMAL_DENOM,
       );
@@ -185,7 +197,7 @@ runOrSkip(process.env.TEST_TREASURY as string)(
 
       await expect(broadcastTx).rejects.toThrow(/^.*insufficient funds.*/);
 
-      const dispatcherBalanceAfter = await feederWallet.getBalance(
+      const dispatcherBalanceAfter = await userWithBalanceWallet.getBalance(
         newDispatcherWallet.address as string,
         NATIVE_MINIMAL_DENOM,
       );

@@ -2,7 +2,10 @@ import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
-import { NLPNS_To_LPNS } from '../util/smart-contracts';
+import {
+  currencyTicker_To_IBC,
+  NLPNS_To_LPNS,
+} from '../util/smart-contracts/calculations';
 import { runOrSkip } from '../util/testingRules';
 
 runOrSkip(process.env.TEST_LENDER as string)(
@@ -10,7 +13,8 @@ runOrSkip(process.env.TEST_LENDER as string)(
   () => {
     let feederWallet: NolusWallet;
     let lenderWallet: NolusWallet;
-    let lppDenom: string;
+    let lppCurrency: string;
+    let lppCurrencyToIBC: string;
     let lppInstance: NolusContracts.Lpp;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
 
@@ -25,7 +29,8 @@ runOrSkip(process.env.TEST_LENDER as string)(
       lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
 
       const lppConfig = await lppInstance.getLppConfig();
-      lppDenom = lppConfig.lpn_symbol;
+      lppCurrency = lppConfig.lpn_ticker;
+      lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
     });
 
     test('the successful burn rewards scenario - should work as expected', async () => {
@@ -33,7 +38,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       await feederWallet.transferAmount(
         lenderWallet.address as string,
-        [{ denom: lppDenom, amount: deposit }],
+        [{ denom: lppCurrencyToIBC, amount: deposit }],
         customFees.transfer,
       );
 
@@ -58,12 +63,12 @@ runOrSkip(process.env.TEST_LENDER as string)(
       }
 
       await lppInstance.deposit(lenderWallet, customFees.exec, [
-        { denom: lppDenom, amount: deposit },
+        { denom: lppCurrencyToIBC, amount: deposit },
       ]);
 
       const lenderBalanceBeforeFirstBurn = await lenderWallet.getBalance(
         lenderWallet.address as string,
-        lppDenom,
+        lppCurrencyToIBC,
       );
 
       const lenderNativeBalanceBeforeFirstBurn = await lenderWallet.getBalance(
@@ -76,8 +81,6 @@ runOrSkip(process.env.TEST_LENDER as string)(
       );
 
       // burn part of the deposit amount
-
-      // provide rewards
       await lppInstance.distributeRewards(feederWallet, customFees.exec, [
         rewards,
       ]);
@@ -106,7 +109,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       const lenderBalanceAfterFirstBurn = await lenderWallet.getBalance(
         lenderWallet.address as string,
-        lppDenom,
+        lppCurrencyToIBC,
       );
 
       const lenderNativeBalanceAfterFirstBurn = await lenderWallet.getBalance(
@@ -137,7 +140,6 @@ runOrSkip(process.env.TEST_LENDER as string)(
       );
 
       // burn all deposit
-
       await sendInitExecuteFeeTokens(
         feederWallet,
         lenderWallet.address as string,
@@ -156,7 +158,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       const lenderBalanceAfterSecondBurn = await lenderWallet.getBalance(
         lenderWallet.address as string,
-        lppDenom,
+        lppCurrencyToIBC,
       );
 
       const lenderNativeBalanceAfterSecondBurn = await lenderWallet.getBalance(
@@ -189,7 +191,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
     test('the non-lender user tries to burn deposit - should produce an error', async () => {
       await lppInstance.deposit(feederWallet, customFees.exec, [
-        { denom: lppDenom, amount: deposit },
+        { denom: lppCurrencyToIBC, amount: deposit },
       ]);
 
       const newLenderWallet = await createWallet();
@@ -216,7 +218,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       await feederWallet.transferAmount(
         newLenderWallet.address as string,
-        [{ denom: lppDenom, amount: deposit }],
+        [{ denom: lppCurrencyToIBC, amount: deposit }],
         customFees.transfer,
       );
 
@@ -226,7 +228,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
       );
 
       await lppInstance.deposit(newLenderWallet, customFees.exec, [
-        { denom: lppDenom, amount: deposit },
+        { denom: lppCurrencyToIBC, amount: deposit },
       ]);
 
       await sendInitExecuteFeeTokens(
@@ -248,13 +250,14 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       await feederWallet.transferAmount(
         lenderWallet.address as string,
-        [{ denom: lppDenom, amount: deposit }],
+        [{ denom: lppCurrencyToIBC, amount: deposit }],
         customFees.transfer,
       );
 
       await lppInstance.deposit(lenderWallet, customFees.exec, [
-        { denom: lppDenom, amount: deposit },
+        { denom: lppCurrencyToIBC, amount: deposit },
       ]);
+
       await sendInitExecuteFeeTokens(
         feederWallet,
         lenderWallet.address as string,

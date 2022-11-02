@@ -8,18 +8,20 @@ import {
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
-  getLeaseAddressFromOpenLeaseResponse,
+  currencyTicker_To_IBC,
   LPNS_To_NLPNS,
-} from '../util/smart-contracts';
+} from '../util/smart-contracts/calculations';
 import { LppBalance, Price } from '@nolus/nolusjs/build/contracts/types';
 import { runOrSkip } from '../util/testingRules';
+import { getLeaseAddressFromOpenLeaseResponse } from '../util/smart-contracts/getters';
 
 runOrSkip(process.env.TEST_LENDER as string)(
   'Lender tests - Make deposit',
   () => {
     let feederWallet: NolusWallet;
     let lenderWallet: NolusWallet;
-    let lppDenom: string;
+    let lppCurrency: string;
+    let lppCurrencyToIBC: string;
     let lppInstance: NolusContracts.Lpp;
     let leaserInstance: NolusContracts.Leaser;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -32,7 +34,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
     async function verifyLppBalance(lppLiquidityBefore: string) {
       const lppLiquidityAfter = await cosm.getBalance(
         lppContractAddress,
-        lppDenom,
+        lppCurrency,
       );
 
       expect(lppLiquidityAfter.amount).toBe(lppLiquidityBefore);
@@ -80,16 +82,17 @@ runOrSkip(process.env.TEST_LENDER as string)(
       const customPriceAfterDeposit: Price = {
         amount: {
           amount: lppBalanceBeforeDeposit.balance_nlpn.amount,
-          symbol: symbol,
+          ticker: symbol,
         },
         amount_quote: {
           amount: totalLPNinLPP.toString(),
-          symbol: lppDenom,
+          ticker: lppCurrency,
         },
       };
 
       return customPriceAfterDeposit;
     }
+
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
       cosm = await NolusClient.getInstance().getCosmWasmClient();
@@ -101,13 +104,14 @@ runOrSkip(process.env.TEST_LENDER as string)(
       leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
 
       const lppConfig = await lppInstance.getLppConfig();
-      lppDenom = lppConfig.lpn_symbol;
+      lppCurrency = lppConfig.lpn_ticker;
+      lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
     });
 
     test('the successful provide liquidity scenario - should work as expected', async () => {
       const lppLiquidityBefore = await cosm.getBalance(
         lppContractAddress,
-        lppDenom,
+        lppCurrencyToIBC,
       );
 
       const lppBalanceBeginning = await lppInstance.getLppBalance();
@@ -129,13 +133,13 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       await feederWallet.transferAmount(
         lenderWallet.address as string,
-        [{ denom: lppDenom, amount: deposit.toString() }],
+        [{ denom: lppCurrencyToIBC, amount: deposit.toString() }],
         customFees.transfer,
       );
 
       const lenderBalanceBefore = await lenderWallet.getBalance(
         lenderWallet.address as string,
-        lppDenom,
+        lppCurrencyToIBC,
       );
 
       await sendInitExecuteFeeTokens(
@@ -148,7 +152,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
       const priceImmediatlyBeforeDeposit = await lppInstance.getPrice();
 
       await lppInstance.deposit(lenderWallet, customFees.exec, [
-        { denom: lppDenom, amount: deposit.toString() },
+        { denom: lppCurrencyToIBC, amount: deposit.toString() },
       ]);
 
       const lppBalanceImmediatlyAfterDeposit =
@@ -158,19 +162,19 @@ runOrSkip(process.env.TEST_LENDER as string)(
       const customPriceAfterDeposit = getCustomPrice(
         lppBalanceImmediatlyBeforeDeposit,
         lppBalanceImmediatlyAfterDeposit,
-        priceImmediatlyBeforeDeposit.amount.symbol,
+        priceImmediatlyBeforeDeposit.amount.ticker,
       );
 
       const lppLiquidityAfterDeposit = await cosm.getBalance(
         lppContractAddress,
-        lppDenom,
+        lppCurrencyToIBC,
       );
 
       const lppBalanceResponse = await lppInstance.getLppBalance();
 
       const lenderBalanceAfter = await lenderWallet.getBalance(
         lenderWallet.address as string,
-        lppDenom,
+        lppCurrencyToIBC,
       );
 
       const lenderDepositAfter = await lppInstance.getLenderDeposit(
@@ -198,11 +202,13 @@ runOrSkip(process.env.TEST_LENDER as string)(
       );
 
       // try again if there is open leases and respectively interest
+      // TO DO: multicurrency- choose from getLeaseCurrencies()
+      const leaseCurrency = lppCurrency;
       const result = await leaserInstance.openLease(
         feederWallet,
-        lppDenom,
+        leaseCurrency,
         customFees.exec,
-        [{ denom: lppDenom, amount: downpayment }],
+        [{ denom: lppCurrencyToIBC, amount: downpayment }],
       );
 
       const leaseAddr = getLeaseAddressFromOpenLeaseResponse(result);
@@ -217,7 +223,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       await feederWallet.transferAmount(
         lenderWallet.address as string,
-        [{ denom: lppDenom, amount: deposit.toString() }],
+        [{ denom: lppCurrencyToIBC, amount: deposit.toString() }],
         customFees.transfer,
       );
 
@@ -231,7 +237,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
       const priceImmediatlyBeforeSecondDeposit = await lppInstance.getPrice();
 
       await lppInstance.deposit(lenderWallet, customFees.exec, [
-        { denom: lppDenom, amount: deposit.toString() },
+        { denom: lppCurrencyToIBC, amount: deposit.toString() },
       ]);
 
       const lppBalanceImmediatlyAfterSecondDeposit =
@@ -240,12 +246,12 @@ runOrSkip(process.env.TEST_LENDER as string)(
       const customPriceAfterSecondDeposit = getCustomPrice(
         lppBalanceImmediatlyBeforeSecondDeposit,
         lppBalanceImmediatlyAfterSecondDeposit,
-        priceImmediatlyBeforeDeposit.amount.symbol,
+        priceImmediatlyBeforeDeposit.amount.ticker,
       );
 
       const lppLiquidityAfterLeaseOpening = await cosm.getBalance(
         lppContractAddress,
-        lppDenom,
+        lppCurrencyToIBC,
       );
 
       const borrowAmount = currentLeaseState.opened?.amount.amount;
@@ -274,16 +280,16 @@ runOrSkip(process.env.TEST_LENDER as string)(
       );
     });
 
-    test('the lender tries to deposit unsuported lpp currency - should produce an error', async () => {
+    test('the lender tries to deposit unsupported lpp currency - should produce an error', async () => {
       const lppLiquidityBefore = await cosm.getBalance(
         lppContractAddress,
-        lppDenom,
+        lppCurrency,
       );
-      const invalidLppDenom = NATIVE_MINIMAL_DENOM;
+      const invalidlppCurrency = NATIVE_MINIMAL_DENOM;
 
       await feederWallet.transferAmount(
         lenderWallet.address as string,
-        [{ denom: invalidLppDenom, amount: deposit }],
+        [{ denom: invalidlppCurrency, amount: deposit }],
         customFees.transfer,
       );
 
@@ -298,7 +304,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
         ]);
 
       await expect(depositResult).rejects.toThrow(
-        `Found currency '${invalidLppDenom}' expecting '${lppDenom}'`,
+        `Found bank symbol '${invalidlppCurrency}' expecting '${lppCurrencyToIBC}'`,
       );
 
       await verifyLppBalance(lppLiquidityBefore.amount);
@@ -307,12 +313,12 @@ runOrSkip(process.env.TEST_LENDER as string)(
     test('the lender tries to deposit more amount than he owns - should produce an error', async () => {
       const lppLiquidityBefore = await cosm.getBalance(
         lppContractAddress,
-        lppDenom,
+        lppCurrency,
       );
 
       await feederWallet.transferAmount(
         lenderWallet.address as string,
-        [{ denom: lppDenom, amount: deposit }],
+        [{ denom: lppCurrency, amount: deposit }],
         customFees.transfer,
       );
 
@@ -323,13 +329,13 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       const lenderBalanceBefore = await lenderWallet.getBalance(
         lenderWallet.address as string,
-        lppDenom,
+        lppCurrency,
       );
 
       const depositResult = () =>
         lppInstance.deposit(lenderWallet, customFees.exec, [
           {
-            denom: lppDenom,
+            denom: lppCurrency,
             amount: (BigInt(lenderBalanceBefore.amount) + BigInt(1)).toString(),
           },
         ]);
@@ -337,7 +343,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       const lenderBalanceAfter = await lenderWallet.getBalance(
         lenderWallet.address as string,
-        lppDenom,
+        lppCurrency,
       );
 
       expect(lenderBalanceBefore.amount).toBe(lenderBalanceAfter.amount);
@@ -348,7 +354,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
     test('the lender tries to deposit 0 amount - should produce an error', async () => {
       const lppLiquidityBefore = await cosm.getBalance(
         lppContractAddress,
-        lppDenom,
+        lppCurrency,
       );
 
       await sendInitExecuteFeeTokens(
@@ -358,17 +364,17 @@ runOrSkip(process.env.TEST_LENDER as string)(
 
       const depositResult = () =>
         lppInstance.deposit(lenderWallet, customFees.exec, [
-          { denom: lppDenom, amount: '0' },
+          { denom: lppCurrency, amount: '0' },
         ]);
       await expect(depositResult).rejects.toThrow(/^.*invalid coins.*/);
 
       await verifyLppBalance(lppLiquidityBefore.amount);
     });
 
-    test('the lender tries not to send funds when calling "deposit" - should produce an error', async () => {
+    test('the lender tries not to send funds when calling "deposit" msg - should produce an error', async () => {
       const lppLiquidityBefore = await cosm.getBalance(
         lppContractAddress,
-        lppDenom,
+        lppCurrency,
       );
 
       await sendInitExecuteFeeTokens(
@@ -379,7 +385,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
       const depositResult = () =>
         lppInstance.deposit(lenderWallet, customFees.exec);
       await expect(depositResult).rejects.toThrow(
-        `Expecting funds of ${lppDenom} but found none`,
+        `Expecting funds of ${lppCurrency} but found none`,
       );
 
       await verifyLppBalance(lppLiquidityBefore.amount);
