@@ -5,6 +5,7 @@ export const BLOCK_CREATION_TIME_DEV_SEC = 5;
 export const NANOSEC = 1000000000;
 
 export const NATIVE_MINIMAL_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
+export const NATIVE_TICKER = ChainConstants.COIN_DENOM.toUpperCase();
 
 export const gasPrice = 0.0025;
 export const validatorPart = 0.6; // 60%

@@ -21,10 +21,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     let leaserConfigMsg: LeaserConfig;
 
-    async function trySetConfig(expectedMsg: string): Promise<void> {
+    async function trySetConfig(
+      expectedMsg: string,
+      wallet: NolusWallet,
+    ): Promise<void> {
       const result = () =>
         leaserInstance.setLeaserConfig(
-          wasmAdminWallet,
+          wallet,
           leaserConfigMsg,
           customFees.exec,
         );
@@ -44,7 +47,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       configBefore = await leaserInstance.getLeaserConfig();
       leaserConfigMsg = JSON.parse(JSON.stringify(configBefore));
 
-      // feed the wasm admin
+      // feed the contract owner
       const userWithBalance = await getUser1Wallet();
 
       const adminBalanceAmount = '10000000';
@@ -70,47 +73,49 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     test('an unauthorized user tries to change the configuration - should produce an error', async () => {
       await sendInitExecuteFeeTokens(wasmAdminWallet, wallet.address as string);
 
-      const result = () =>
-        leaserInstance.setLeaserConfig(
-          wallet,
-          leaserConfigMsg,
-          customFees.exec,
-        );
-
-      await expect(result).rejects.toThrow(/^.*Unauthorized.*/);
+      await trySetConfig('Unauthorized', wallet);
     });
 
     test('the wasm_admin tries to set initial liability % > healthy liability % - should produce an error', async () => {
       leaserConfigMsg.config.liability.initial =
         leaserConfigMsg.config.liability.healthy + 1;
 
-      await trySetConfig('Initial % should be <= healthy %');
+      await trySetConfig('Initial % should be <= healthy %', wasmAdminWallet);
     });
 
     test('the wasm_admin tries to set initial liability % > max liability % - should produce an error', async () => {
       leaserConfigMsg.config.liability.initial =
         leaserConfigMsg.config.liability.max + 1;
 
-      await trySetConfig('Initial % should be <= healthy %');
+      await trySetConfig('Initial % should be <= healthy %', wasmAdminWallet);
     });
 
     test('the wasm_admin tries to set healthy liability % > max liability % - should produce an error', async () => {
       leaserConfigMsg.config.liability.healthy =
         leaserConfigMsg.config.liability.max + 1;
 
-      await trySetConfig('Healthy % should be < first liquidation %');
+      await trySetConfig(
+        'Healthy % should be < first liquidation %',
+        wasmAdminWallet,
+      );
     });
 
     test('the wasm_admin tries to set first liq warn % <= healthy liability % - should produce an error', async () => {
       leaserConfigMsg.config.liability.first_liq_warn =
         leaserConfigMsg.config.liability.healthy - 1;
 
-      await trySetConfig('Healthy % should be < first liquidation %');
+      await trySetConfig(
+        'Healthy % should be < first liquidation %',
+        wasmAdminWallet,
+      );
 
       leaserConfigMsg.config.liability.first_liq_warn =
         leaserConfigMsg.config.liability.healthy;
 
-      await trySetConfig('Healthy % should be < first liquidation %');
+      await trySetConfig(
+        'Healthy % should be < first liquidation %',
+        wasmAdminWallet,
+      );
     });
 
     test('the wasm_admin tries to set second liq warn % <= first liq warn % - should produce an error', async () => {
@@ -119,6 +124,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'First liquidation % should be < second liquidation %',
+        wasmAdminWallet,
       );
 
       leaserConfigMsg.config.liability.second_liq_warn =
@@ -126,6 +132,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'First liquidation % should be < second liquidation %',
+        wasmAdminWallet,
       );
     });
 
@@ -135,6 +142,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Second liquidation % should be < third liquidation %',
+        wasmAdminWallet,
       );
 
       leaserConfigMsg.config.liability.third_liq_warn =
@@ -142,6 +150,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Second liquidation % should be < third liquidation %',
+        wasmAdminWallet,
       );
     });
 
@@ -149,26 +158,38 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaserConfigMsg.config.liability.third_liq_warn =
         leaserConfigMsg.config.liability.max + 1;
 
-      await trySetConfig('Third liquidation % should be < max %');
+      await trySetConfig(
+        'Third liquidation % should be < max %',
+        wasmAdminWallet,
+      );
 
       leaserConfigMsg.config.liability.third_liq_warn =
         leaserConfigMsg.config.liability.max;
 
-      await trySetConfig('Third liquidation % should be < max %');
+      await trySetConfig(
+        'Third liquidation % should be < max %',
+        wasmAdminWallet,
+      );
     });
 
     test('the wasm_admin tries to set grace period > interest period - should produce an error', async () => {
       leaserConfigMsg.config.repayment.grace_period =
         leaserConfigMsg.config.repayment.period + 1;
 
-      await trySetConfig('Period length should be greater than grace period');
+      await trySetConfig(
+        'Period length should be greater than grace period',
+        wasmAdminWallet,
+      );
     });
 
     test('the wasm_admin tries to set recalc period < 1hour - should produce an error', async () => {
-      // const oneHourNanoSec = ;
-      leaserConfigMsg.config.liability.recalc_time = 1;
+      const oneHourToNanosec = 3600000000000;
+      leaserConfigMsg.config.liability.recalc_time = oneHourToNanosec - 1;
 
-      await trySetConfig('Recalculate cadence in seconds should be >= 1h');
+      await trySetConfig(
+        'Recalculate cadence in seconds should be >= 1h',
+        wasmAdminWallet,
+      );
     });
   },
 );
