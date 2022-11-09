@@ -330,9 +330,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     test('the borrower tries to open a lease with unsupported payment currency - should produce an error', async () => {
       await testOpeningWithInvalidParams(
         leaseCurrency,
-        'INVALID',
+        'unsupported',
         '10',
-        'Found currency INVALID which is not defined in the payment currency group',
+        'Found currency unsupported which is not defined in the payment currency group',
       );
     });
 

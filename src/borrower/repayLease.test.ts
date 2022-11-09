@@ -4,48 +4,65 @@ import NODE_ENDPOINT, {
   getWasmAdminWallet,
 } from '../util/clients';
 import { Coin } from '@cosmjs/amino';
-import { customFees, sleep, undefinedHandler } from '../util/utils';
 import {
-  NolusClient,
-  NolusWallet,
-  NolusContracts,
-  ChainConstants,
-} from '@nolus/nolusjs';
+  customFees,
+  NATIVE_TICKER,
+  sleep,
+  undefinedHandler,
+} from '../util/utils';
+import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import {
   sendInitExecuteFeeTokens,
   sendInitTransferFeeTokens,
 } from '../util/transfer';
 import {
   calcInterestRate,
+  currencyTicker_To_IBC,
+} from '../util/smart-contracts/calculations';
+import { PreciseDate } from '@google-cloud/precise-date';
+import { runOrSkip } from '../util/testingRules';
+import {
   getChangeFromRepayResponse,
   getLeaseAddressFromOpenLeaseResponse,
+  getLeaseGroupCurrencies,
   getLoanInterestPaidFromRepayResponse,
   getMarginInterestPaidFromRepayResponse,
   getMarginPaidTimeFromRepayResponse,
   getPrincipalPaidFromRepayResponse,
-} from '../util/smart-contracts';
-import { PreciseDate } from '@google-cloud/precise-date';
-import { runOrSkip } from '../util/testingRules';
+} from '../util/smart-contracts/getters';
+import {
+  checkLeaseBalance,
+  provideEnoughLiquidity,
+} from '../util/smart-contracts/actions';
+import { LeaseInfo } from '@nolus/nolusjs/build/contracts';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Repay lease',
   () => {
-    let feederWallet: NolusWallet;
+    let userWithBalanceWallet: NolusWallet;
     let borrowerWallet: NolusWallet;
     let wasmAdminWallet: NolusWallet;
-    let lppLiquidity: Coin;
-    let lppDenom: string;
+    let lppCurrency: string;
+    let lppCurrencyToIBC: string;
+    let leaseCurrency: string;
+    let downpaymentCurrency: string;
+    let downpaymentCurrencyToIBC: string;
+    let paymentCurrency: string;
+    let paymentCurrencyToIBC: string;
     let lppInstance: NolusContracts.Lpp;
+    let oracleInstance: NolusContracts.Oracle;
     let leaserInstance: NolusContracts.Leaser;
     let mainLeaseAddress: string;
+    let marginInterestPaidTo: bigint;
     let cosm: any;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
     const profitContractAddress = process.env.PROFIT_ADDRESS as string;
+    const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
     const downpayment = '10000000000';
-    const outstandingBySec = 15; // good to be >= 10
+    const outstandingBySec = 15;
 
     function verifyInterestDueCalc(
       principalDue: bigint,
@@ -67,36 +84,74 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       return calcInterest;
     }
 
+    async function verifyLeaseState(leaseState: LeaseInfo) {
+      const loan = await lppInstance.getLoanInformation(mainLeaseAddress);
+
+      if (!leaseState) {
+        undefinedHandler();
+        return;
+      }
+
+      const annualInterest = BigInt(leaseState.interest_rate);
+      const interestRateMargin = BigInt(leaseState.interest_rate_margin);
+      const PID_beforeRepay = leaseState.previous_interest_due.amount;
+      const PMD_beforeRepay = leaseState.previous_margin_due.amount;
+      const CID_beforeRepay = leaseState.current_interest_due.amount;
+      const CMD_beforeRepay = leaseState.current_margin_due.amount;
+
+      const leasePrincipalBeforeRepay = BigInt(leaseState.principal_due.amount);
+
+      const outstandingInterest = await lppInstance.getOutstandingInterest(
+        mainLeaseAddress,
+        leaseState.validity,
+      );
+
+      // verify interest calc
+      // loan interest due
+      const calcLoanInterestDue = verifyInterestDueCalc(
+        leasePrincipalBeforeRepay,
+        annualInterest,
+        BigInt(loan.interest_paid),
+        BigInt(leaseState.validity),
+        BigInt(CID_beforeRepay),
+      );
+
+      expect(BigInt(outstandingInterest.amount)).toBe(calcLoanInterestDue);
+
+      // margin interest due
+      verifyInterestDueCalc(
+        leasePrincipalBeforeRepay,
+        interestRateMargin,
+        BigInt(marginInterestPaidTo),
+        BigInt(leaseState.validity),
+        BigInt(CMD_beforeRepay),
+      );
+
+      // period is still active
+      expect(PID_beforeRepay).toBe('0');
+      expect(PMD_beforeRepay).toBe('0');
+    }
+
     async function verifyTransferAfterRepay(
-      lppLiquidityBefore: bigint,
-      borrowerBalanceBefore: bigint,
+      payerWallet: NolusWallet,
+      payerBalanceBefore: bigint,
       profitBalanceBefore: bigint,
-      borrowerAddress: string,
-      payment: bigint,
+      paymentCurrencyToIBC: string,
+      payment: Coin,
       exactMarginPaid: bigint,
     ): Promise<void> {
-      const borrowerBalanceAfter = await borrowerWallet.getBalance(
-        borrowerAddress,
-        lppDenom,
+      const payerBalanceAfter = await payerWallet.getBalance(
+        payerWallet.address as string,
+        paymentCurrencyToIBC,
       );
 
       const profitBalanceAfter = await cosm.getBalance(
         profitContractAddress,
-        lppDenom,
+        lppCurrencyToIBC,
       );
 
-      const lppLiquidityAfter = await feederWallet.getBalance(
-        lppContractAddress,
-        lppDenom,
-      );
-
-      if (process.env.NODE_URL?.includes('localhost')) {
-        expect(+lppLiquidityAfter.amount).toBeGreaterThan(
-          BigInt(lppLiquidityBefore) - payment,
-        );
-      }
-      expect(BigInt(borrowerBalanceAfter.amount)).toBe(
-        borrowerBalanceBefore - payment,
+      expect(BigInt(payerBalanceAfter.amount)).toBe(
+        payerBalanceBefore - BigInt(payment.amount),
       );
 
       expect(BigInt(profitBalanceAfter.amount)).toBe(
@@ -104,29 +159,220 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     }
 
+    function getTotalInterest(leaseState: LeaseInfo): bigint {
+      return (
+        BigInt(leaseState.previous_margin_due.amount) +
+        BigInt(leaseState.previous_interest_due.amount) +
+        BigInt(leaseState.current_interest_due.amount) +
+        BigInt(leaseState.current_margin_due.amount)
+      );
+    }
+
+    async function testRepayment(
+      payerWallet: NolusWallet,
+      leaseAddress: string,
+      leaseStateBeforeRepay: LeaseInfo,
+      payment: Coin,
+    ) {
+      const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
+
+      // get the annual_interest before
+      const leaseAnnualInterestBefore = leaseStateBeforeRepay.interest_rate;
+      const interestRateMargin = BigInt(
+        leaseStateBeforeRepay.interest_rate_margin,
+      );
+
+      const leaseInterestBeforeRepay = getTotalInterest(leaseStateBeforeRepay);
+      const paymentCurrency = payment.denom;
+      const paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
+
+      // let paymentToLPN = +payment.amount;
+      // if (payment.denom !== lppCurrency) {
+      //   const paymentCurrencyPriceObj = await oracleInstance.getPriceFor(
+      //     payment.denom,
+      //   );
+      //   const paymentPrice =
+      //     +paymentCurrencyPriceObj.amount.amount /
+      //     +paymentCurrencyPriceObj.amount_quote.amount;
+      //   // paymentToLPN = +payment.amount / paymentPrice;
+      // }
+
+      await userWithBalanceWallet.transferAmount(
+        payerWallet.address as string,
+        [payment],
+        customFees.transfer,
+      );
+      await sendInitExecuteFeeTokens(
+        userWithBalanceWallet,
+        payerWallet.address as string,
+      );
+      const payerBalanceBeforeRepay = await payerWallet.getBalance(
+        payerWallet.address as string,
+        paymentCurrencyToIBC,
+      );
+      const profitBalanceBeforeRepay = await cosm.getBalance(
+        profitContractAddress,
+        lppCurrencyToIBC,
+      );
+
+      const repayTxResponse = await leaseInstance.repayLease(
+        payerWallet,
+        customFees.exec,
+        [payment],
+      );
+      // check lease address balance - there shouldn't be any
+      const leaseBalances = await checkLeaseBalance(leaseAddress, [
+        NATIVE_TICKER,
+        leaseCurrency,
+        paymentCurrency,
+        downpaymentCurrency,
+      ]);
+      expect(leaseBalances).toBe(false);
+
+      marginInterestPaidTo =
+        getMarginPaidTimeFromRepayResponse(repayTxResponse);
+      const marginInterestPaid =
+        getMarginInterestPaidFromRepayResponse(repayTxResponse);
+      const loanInterestPaid =
+        getLoanInterestPaidFromRepayResponse(repayTxResponse);
+      const principalPaid = getPrincipalPaidFromRepayResponse(repayTxResponse);
+      // TO DO: get previous interest from the response, and expect =0
+
+      const loan = await lppInstance.getLoanInformation(mainLeaseAddress);
+
+      const leaseStateAfterRepay = (await leaseInstance.getLeaseStatus())
+        .opened;
+
+      if (!leaseStateAfterRepay) {
+        undefinedHandler();
+        return;
+      }
+
+      const PID_afterRepay = leaseStateAfterRepay.previous_interest_due.amount;
+      const PMD_afterRepay = leaseStateAfterRepay.previous_margin_due.amount;
+      const CID_afterRepay = leaseStateAfterRepay.current_interest_due.amount;
+      const CMD_afterRepay = leaseStateAfterRepay.current_margin_due.amount;
+
+      const leasePrincipalAfterRepay = BigInt(
+        leaseStateAfterRepay.principal_due.amount,
+      );
+      const leaseInterestAfterRepay =
+        BigInt(PID_afterRepay) +
+        BigInt(PMD_afterRepay) +
+        BigInt(CID_afterRepay) +
+        BigInt(CMD_afterRepay);
+
+      if (!leasePrincipalAfterRepay) {
+        undefinedHandler();
+        return;
+      }
+
+      // the configured leaser repayment period is > --> no previous period, so:
+      expect(PMD_afterRepay).toBe('0');
+      // TO DO - issue - https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/9
+      expect(PID_afterRepay).toBe('0');
+
+      expect(leasePrincipalAfterRepay).toBe(
+        BigInt(leaseStateBeforeRepay.principal_due.amount) - principalPaid,
+      );
+
+      // verify loan interest due calc
+      const loanInterestDueImmediatelyBeforeCheck = verifyInterestDueCalc(
+        leasePrincipalAfterRepay,
+        BigInt(leaseAnnualInterestBefore),
+        BigInt(loan.interest_paid),
+        BigInt(leaseStateAfterRepay.validity),
+        BigInt(CID_afterRepay) + BigInt(PID_afterRepay),
+      );
+
+      // verify margin interest due calc
+      const marginInterestDueImmediatelyBeforeCheck = verifyInterestDueCalc(
+        leasePrincipalAfterRepay,
+        interestRateMargin,
+        marginInterestPaidTo,
+        BigInt(leaseStateAfterRepay.validity),
+        BigInt(CMD_afterRepay),
+      );
+
+      expect(BigInt(leaseInterestAfterRepay)).toBe(
+        BigInt(leaseInterestBeforeRepay) -
+          (loanInterestPaid +
+            marginInterestPaid +
+            loanInterestDueImmediatelyBeforeCheck +
+            marginInterestDueImmediatelyBeforeCheck),
+      );
+
+      await verifyTransferAfterRepay(
+        payerWallet,
+        BigInt(payerBalanceBeforeRepay.amount),
+        BigInt(profitBalanceBeforeRepay.amount),
+        paymentCurrencyToIBC,
+        payment,
+        BigInt(marginInterestPaid),
+      );
+
+      // get the annual_interest after payment
+      const leaseAnnualInterestAfter = leaseStateAfterRepay.interest_rate;
+      expect(leaseAnnualInterestBefore).toBe(leaseAnnualInterestAfter);
+    }
+
+    async function testRepaymentWithInvalidParams(
+      leaseAddress: string,
+      paymentCurrency: string,
+      paymentAmount: string,
+      message: string,
+    ) {
+      const payment = {
+        denom: currencyTicker_To_IBC(paymentCurrency),
+        amount: paymentAmount,
+      };
+      await sendInitExecuteFeeTokens(
+        userWithBalanceWallet,
+        borrowerWallet.address as string,
+      );
+
+      await userWithBalanceWallet.transferAmount(
+        borrowerWallet.address as string,
+        [payment],
+        customFees.transfer,
+      );
+
+      const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
+      const result = () =>
+        leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
+
+      await expect(result).rejects.toThrow(message);
+    }
+
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
       cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-      feederWallet = await getUser1Wallet();
+      userWithBalanceWallet = await getUser1Wallet();
       borrowerWallet = await createWallet();
       wasmAdminWallet = await getWasmAdminWallet();
 
       leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
       lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
 
+      oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
+
       const lppConfig = await lppInstance.getLppConfig();
-      lppDenom = lppConfig.lpn_symbol;
+      lppCurrency = lppConfig.lpn_ticker;
+      lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
+      downpaymentCurrency = lppCurrency;
+      downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
+      leaseCurrency = getLeaseGroupCurrencies()[0];
 
       const leaserConfig = await leaserInstance.getLeaserConfig();
       const newPeriod = 5184000000000000;
       const newGracePeriod = 864000000000000;
-      // enough time for the whole test
+      // provide enough time for the repay testing
       leaserConfig.config.repayment.period = newPeriod;
       leaserConfig.config.repayment.grace_period = newGracePeriod;
 
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         wasmAdminWallet.address as string,
       );
 
@@ -136,53 +382,42 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         customFees.exec,
       );
 
-      await lppInstance.deposit(feederWallet, customFees.exec, [
-        {
-          denom: lppDenom,
-          amount: (+downpayment * 2).toString(),
-        },
-      ]);
-
-      // get the liquidity
-      lppLiquidity = await cosm.getBalance(lppContractAddress, lppDenom);
-      expect(lppLiquidity.amount).not.toBe('0');
+      await provideEnoughLiquidity(
+        leaserInstance,
+        lppInstance,
+        (+downpayment * 2).toString(),
+        downpaymentCurrency,
+        leaseCurrency,
+      );
     });
 
     test('the successful lease repayment scenario - should work as expected', async () => {
-      // send some tokens to the borrower
-      // for the downpayment and fees
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [{ denom: lppDenom, amount: downpayment }],
+        [{ denom: lppCurrencyToIBC, amount: downpayment }],
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
 
-      const quote = await leaserInstance.leaseQuote(downpayment, lppDenom);
-
-      expect(quote.borrow).toBeDefined();
-      // ensure that the LPP has liquidity to open a current loan
-      expect(BigInt(lppLiquidity.amount)).toBeGreaterThanOrEqual(
-        BigInt(quote.borrow.amount),
+      const quote = await leaserInstance.leaseQuote(
+        downpayment,
+        downpaymentCurrency,
+        leaseCurrency,
       );
+      expect(quote.borrow).toBeDefined();
 
       const result = await leaserInstance.openLease(
         borrowerWallet,
-        lppDenom,
+        lppCurrency,
         customFees.exec,
-        [{ denom: lppDenom, amount: downpayment }],
+        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }],
       );
 
       mainLeaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
       expect(mainLeaseAddress).not.toBe('');
-
-      // wait for >0 interest
-      await sleep(outstandingBySec);
-
-      let loan = await lppInstance.getLoanInformation(mainLeaseAddress);
 
       const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
       const leaseStateBeforeFirstRepay = (await leaseInstance.getLeaseStatus())
@@ -193,185 +428,35 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const annualInterest = BigInt(leaseStateBeforeFirstRepay.interest_rate);
-      const interestRateMargin = BigInt(
-        leaseStateBeforeFirstRepay.interest_rate_margin,
-      );
-      const PID_beforeFirstRepay =
-        leaseStateBeforeFirstRepay.previous_interest_due.amount;
-      const PMD_beforeFirstRepay =
-        leaseStateBeforeFirstRepay.previous_margin_due.amount;
-      const CID_beforeFirstRepay =
-        leaseStateBeforeFirstRepay.current_interest_due.amount;
-      const CMD_beforeFirstRepay =
-        leaseStateBeforeFirstRepay.current_margin_due.amount;
+      const loan = await lppInstance.getLoanInformation(mainLeaseAddress);
+      marginInterestPaidTo = BigInt(loan.interest_paid);
 
-      const leasePrincipalBeforeFirstRepay = BigInt(
-        leaseStateBeforeFirstRepay.principal_due.amount,
-      );
-      const leaseInterestBeforeFirstRepay =
-        BigInt(PID_beforeFirstRepay) +
-        BigInt(PMD_beforeFirstRepay) +
-        BigInt(CID_beforeFirstRepay) +
-        BigInt(CMD_beforeFirstRepay);
+      verifyLeaseState(leaseStateBeforeFirstRepay);
 
-      const outstandingInterest = await lppInstance.getOutstandingInterest(
-        mainLeaseAddress,
-        leaseStateBeforeFirstRepay.validity,
+      // FIRST PAYMENT - interest only,  paymentCurrency == lppCurrency
+      // wait for >0 interest
+      await sleep(outstandingBySec);
+
+      paymentCurrency = lppCurrency;
+      paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
+
+      const leaseInterestBeforeFirstRepay = getTotalInterest(
+        leaseStateBeforeFirstRepay,
       );
 
-      // verify interest calc
-
-      // loan interest due
-      const calcLoanInterestDue = verifyInterestDueCalc(
-        leasePrincipalBeforeFirstRepay,
-        annualInterest,
-        BigInt(loan.interest_paid),
-        BigInt(leaseStateBeforeFirstRepay.validity),
-        BigInt(CID_beforeFirstRepay),
-      );
-
-      expect(BigInt(outstandingInterest.amount)).toBe(calcLoanInterestDue);
-
-      // margin interest due
-      verifyInterestDueCalc(
-        leasePrincipalBeforeFirstRepay,
-        interestRateMargin,
-        BigInt(loan.interest_paid),
-        BigInt(leaseStateBeforeFirstRepay.validity),
-        BigInt(CMD_beforeFirstRepay),
-      );
-
-      expect(PID_beforeFirstRepay).toBe('0');
-      expect(PMD_beforeFirstRepay).toBe('0');
-
-      // get the annual_interest before all payments
-      const leaseAnnualInterestBeforeAll =
-        leaseStateBeforeFirstRepay.interest_rate;
-
-      const firstPayment = {
-        denom: lppDenom,
+      const payment = {
+        denom: paymentCurrencyToIBC,
         amount: leaseInterestBeforeFirstRepay.toString(),
       };
 
-      // send some tokens to the borrower
-      // for the payment and fees
-      await feederWallet.transferAmount(
-        borrowerWallet.address as string,
-        [firstPayment],
-        customFees.transfer,
-      );
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        borrowerWallet.address as string,
-      );
-      const borrowerBalanceBeforeFirstRepay = await borrowerWallet.getBalance(
-        borrowerWallet.address as string,
-        lppDenom,
-      );
-      const profitBalanceBeforeFirstRepay = await cosm.getBalance(
-        profitContractAddress,
-        lppDenom,
-      );
-
-      const lppLiquidityBeforeFirstRepay = await feederWallet.getBalance(
-        lppContractAddress,
-        lppDenom,
-      );
-
-      let repayTxResponse = await leaseInstance.repayLease(
+      await testRepayment(
         borrowerWallet,
-        customFees.exec,
-        [firstPayment],
-      );
-      const marginInterestPaidTo =
-        getMarginPaidTimeFromRepayResponse(repayTxResponse);
-      let marginInterestPaid =
-        getMarginInterestPaidFromRepayResponse(repayTxResponse);
-
-      loan = await lppInstance.getLoanInformation(mainLeaseAddress);
-
-      const leaseStateAfterFirstRepay = (await leaseInstance.getLeaseStatus())
-        .opened;
-
-      if (!leaseStateAfterFirstRepay) {
-        undefinedHandler();
-        return;
-      }
-
-      const PID_afterFirstRepay =
-        leaseStateAfterFirstRepay.previous_interest_due.amount;
-      const PMD_afterFirstRepay =
-        leaseStateAfterFirstRepay.previous_margin_due.amount;
-      const CID_afterFirstRepay =
-        leaseStateAfterFirstRepay.current_interest_due.amount;
-      const CMD_afterFirstRepay =
-        leaseStateAfterFirstRepay.current_margin_due.amount;
-
-      const leasePrincipalAfterFirstRepay = BigInt(
-        leaseStateAfterFirstRepay.principal_due.amount,
-      );
-      const leaseInterestAfterFirstRepay =
-        BigInt(PID_afterFirstRepay) +
-        BigInt(PMD_afterFirstRepay) +
-        BigInt(CID_afterFirstRepay) +
-        BigInt(CMD_afterFirstRepay);
-
-      if (!leasePrincipalAfterFirstRepay) {
-        undefinedHandler();
-        return;
-      }
-
-      // the configured leaser repayment period is > --> no previous period, so:
-      expect(PMD_afterFirstRepay).toBe('0');
-      // TO DO - issue - https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/9
-      //expect(PID_afterFirstRepay).toBe('0');
-
-      expect(leasePrincipalAfterFirstRepay).toBe(
-        leasePrincipalBeforeFirstRepay,
+        mainLeaseAddress,
+        leaseStateBeforeFirstRepay,
+        payment,
       );
 
-      // verify loan interest due calc
-      const loanInterestDueImmediatelyBeforeFirstCheck = verifyInterestDueCalc(
-        leasePrincipalAfterFirstRepay,
-        annualInterest,
-        BigInt(loan.interest_paid),
-        BigInt(leaseStateAfterFirstRepay.validity),
-        BigInt(CID_afterFirstRepay) + BigInt(PID_afterFirstRepay),
-      );
-
-      // verify margin interest due calc
-      const marginInterestDueImmediatelyBeforeFirstCheck =
-        verifyInterestDueCalc(
-          leasePrincipalAfterFirstRepay,
-          interestRateMargin,
-          marginInterestPaidTo,
-          BigInt(leaseStateAfterFirstRepay.validity),
-          BigInt(CMD_afterFirstRepay),
-        );
-
-      expect(BigInt(leaseInterestAfterFirstRepay)).toBe(
-        BigInt(leaseInterestBeforeFirstRepay) -
-          BigInt(firstPayment.amount) +
-          loanInterestDueImmediatelyBeforeFirstCheck +
-          marginInterestDueImmediatelyBeforeFirstCheck,
-      );
-
-      await verifyTransferAfterRepay(
-        BigInt(lppLiquidityBeforeFirstRepay.amount),
-        BigInt(borrowerBalanceBeforeFirstRepay.amount),
-        BigInt(profitBalanceBeforeFirstRepay.amount),
-        borrowerWallet.address as string,
-        BigInt(firstPayment.amount),
-        BigInt(marginInterestPaid),
-      );
-
-      // get the annual_interest before the second payment
-      const leaseAnnualInterestAfterFirstRepay =
-        leaseStateAfterFirstRepay.interest_rate;
-
-      // pay interest+principal
-      // wait for >0 interest
+      // SECOND PAYMENT - principal + interest, paymentCurrency !== lppCurrency
       await sleep(outstandingBySec);
 
       const leaseStateBeforeSecondRepay = (await leaseInstance.getLeaseStatus())
@@ -382,190 +467,78 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const PID_beforeSecondRepay =
-        leaseStateBeforeSecondRepay.previous_interest_due.amount;
-      const PMD_beforeSecondRepay =
-        leaseStateBeforeSecondRepay.previous_margin_due.amount;
-      const CID_beforeSecondRepay =
-        leaseStateBeforeSecondRepay.current_interest_due.amount;
-      const CMD_beforeSecondRepay =
-        leaseStateBeforeSecondRepay.current_margin_due.amount;
+      verifyLeaseState(leaseStateBeforeSecondRepay);
 
-      const leaseInterestBeforeSecondRepay =
-        BigInt(PID_beforeSecondRepay) +
-        BigInt(PMD_beforeSecondRepay) +
-        BigInt(CID_beforeSecondRepay) +
-        BigInt(CMD_beforeSecondRepay);
+      const leaseInterestBeforeSecondRepay = getTotalInterest(
+        leaseStateBeforeSecondRepay,
+      );
+
       const leasePrincipalBeforeSecondRepay = BigInt(
         leaseStateBeforeSecondRepay.principal_due.amount,
       );
 
-      if (!leasePrincipalBeforeSecondRepay) {
-        undefinedHandler();
-        return;
-      }
+      paymentCurrency = leaseCurrency;
+      paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
 
-      // pay half of the principal + all interest
+      const paymentAmountInLPN =
+        BigInt(leaseInterestBeforeSecondRepay) +
+        BigInt(leasePrincipalBeforeSecondRepay) / BigInt(2);
+      const paymentCurrencyPrice = await oracleInstance.getPriceFor(
+        paymentCurrency,
+      );
+      const paymentAmountInPaymentCurrency =
+        (paymentAmountInLPN * BigInt(paymentCurrencyPrice.amount.amount)) /
+        BigInt(paymentCurrencyPrice.amount_quote.amount);
+
       const secondPayment = {
-        denom: lppDenom,
-        amount: (
-          BigInt(leaseInterestBeforeSecondRepay) +
-          BigInt(leasePrincipalBeforeSecondRepay) / BigInt(2)
-        ).toString(),
+        denom: paymentCurrencyToIBC,
+        amount: paymentAmountInPaymentCurrency.toString(),
       };
 
-      await feederWallet.transferAmount(
-        borrowerWallet.address as string,
-        [secondPayment],
-        customFees.transfer,
-      );
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        borrowerWallet.address as string,
-      );
-      const borrowerBalanceBeforeSecondRepay = await borrowerWallet.getBalance(
-        borrowerWallet.address as string,
-        lppDenom,
-      );
-      const profitBalanceBeforeSecondRepay = await borrowerWallet.getBalance(
-        profitContractAddress,
-        lppDenom,
-      );
-      const lppLiquidityBeforeSecondRepay = await feederWallet.getBalance(
-        lppContractAddress,
-        lppDenom,
-      );
-
-      repayTxResponse = await leaseInstance.repayLease(
+      await testRepayment(
         borrowerWallet,
-        customFees.exec,
-        [secondPayment],
-      );
-      const loanInterestPaid =
-        getLoanInterestPaidFromRepayResponse(repayTxResponse);
-      marginInterestPaid =
-        getMarginInterestPaidFromRepayResponse(repayTxResponse);
-      const principalPaid = getPrincipalPaidFromRepayResponse(repayTxResponse);
-
-      loan = await lppInstance.getLoanInformation(mainLeaseAddress);
-
-      const leaseStateAfterSecondRepay = (await leaseInstance.getLeaseStatus())
-        .opened;
-
-      if (!leaseStateAfterSecondRepay) {
-        undefinedHandler();
-        return;
-      }
-
-      const PID_afterSecondRepay =
-        leaseStateAfterSecondRepay.previous_interest_due.amount;
-      const PMD_afterSecondRepay =
-        leaseStateAfterSecondRepay.previous_margin_due.amount;
-      const CID_afterSecondRepay =
-        leaseStateAfterSecondRepay.current_interest_due.amount;
-      const CMD_afterSecondRepay =
-        leaseStateAfterSecondRepay.current_margin_due.amount;
-
-      const leaseInterestAfterSecondRepay =
-        BigInt(PID_afterSecondRepay) +
-        BigInt(PMD_afterSecondRepay) +
-        BigInt(CID_afterSecondRepay) +
-        BigInt(CMD_afterSecondRepay);
-      const leasePrincipalAfterSecondRepay =
-        leaseStateAfterSecondRepay.principal_due.amount;
-
-      if (!leasePrincipalAfterSecondRepay) {
-        undefinedHandler();
-        return;
-      }
-
-      // check that the repayment sequence is correct
-      expect(BigInt(leasePrincipalAfterSecondRepay)).toBeGreaterThanOrEqual(
-        BigInt(leasePrincipalBeforeSecondRepay) - BigInt(principalPaid),
+        mainLeaseAddress,
+        leaseStateBeforeSecondRepay,
+        secondPayment,
       );
 
-      expect(BigInt(marginInterestPaid)).toBeGreaterThan(BigInt(0));
-      expect(BigInt(loanInterestPaid)).toBeGreaterThan(BigInt(0));
-
-      // principal < principal before repay && delay secs < outstandingBySec -->> interestAfterRepay < interestBeforeRepay
-      expect(BigInt(leaseInterestAfterSecondRepay)).toBeLessThan(
-        leaseInterestBeforeSecondRepay,
-      );
-
-      await verifyTransferAfterRepay(
-        BigInt(lppLiquidityBeforeSecondRepay.amount),
-        BigInt(borrowerBalanceBeforeSecondRepay.amount),
-        BigInt(profitBalanceBeforeSecondRepay.amount),
-        borrowerWallet.address as string,
-        BigInt(secondPayment.amount),
-        BigInt(marginInterestPaid),
-      );
-
-      //get the annual_interest after the second payment and expect these annual_interests to be equal
-      const leaseAnnualInterestAfterSecondRepay =
-        leaseStateAfterSecondRepay.interest_rate;
-
-      expect(leaseAnnualInterestBeforeAll).toBe(
-        leaseAnnualInterestAfterFirstRepay,
-      );
-      expect(leaseAnnualInterestBeforeAll).toBe(
-        leaseAnnualInterestAfterSecondRepay,
-      );
+      // // principal < principal before repay && delay secs < outstandingBySec -->> interestAfterRepay < interestBeforeRepay
+      // expect(BigInt(leaseInterestAfterSecondRepay)).toBeLessThan(
+      //   leaseInterestBeforeSecondRepay,
+      // );
     });
 
-    test('the borrower tries to pay a lease with an invalid denom - should produce an error', async () => {
-      const invalidLppDenom = ChainConstants.COIN_MINIMAL_DENOM;
+    test('the borrower tries to pay a lease with unsupported payment currency- should produce an error', async () => {
+      const invalidPaymentCurrency = 'unsupported';
 
-      expect(invalidLppDenom).not.toBe(lppDenom);
-
-      // send some tokens to the borrower
-      // for the payment and fees
-      const payment = {
-        denom: invalidLppDenom,
-        amount: '1', // any amount
-      };
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        borrowerWallet.address as string,
-      );
-
-      await feederWallet.transferAmount(
-        borrowerWallet.address as string,
-        [payment],
-        customFees.transfer,
-      );
-
-      const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
-      const result = () =>
-        leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
-
-      await expect(result).rejects.toThrow(
-        `Found currency '${invalidLppDenom}' expecting '${lppDenom}'`,
-      );
+      await testRepaymentWithInvalidParams(
+        mainLeaseAddress,
+        invalidPaymentCurrency,
+        '11',
+        'TO DO',
+      ); // any amount
     });
 
-    test('the borrower tries to pay a lease with more amount than he has - should produce an error', async () => {
+    test('the borrower tries to pay a lease with more amount than he owns - should produce an error', async () => {
       const forBalance = 5;
 
-      // send some tokens to the borrower
-      // for the payment and fees
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
         [
           {
-            denom: lppDenom,
+            denom: lppCurrencyToIBC,
             amount: forBalance.toString(),
           },
         ],
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
 
       const repayMore = {
-        denom: lppDenom,
+        denom: lppCurrencyToIBC,
         amount: (forBalance + 1).toString(),
       };
 
@@ -577,27 +550,20 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to pay a lease with 0 amount - should produce an error', async () => {
-      // send some tokens for fees
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        borrowerWallet.address as string,
+      await testRepaymentWithInvalidParams(
+        mainLeaseAddress,
+        lppCurrency,
+        '0',
+        'invalid coins',
       );
-      const payment = {
-        denom: lppDenom,
-        amount: '0',
-      };
-
-      const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
-      const result = () =>
-        leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
-
-      await expect(result).rejects.toThrow(/^.*invalid coins.*/);
     });
 
-    test('a user, other than the lease owner, tries to pay - should work as expected', async () => {
+    test('a user other than the lease owner tries to pay - should work as expected', async () => {
       const newUserWallet = await createWallet();
-
       const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
+
+      await sleep(outstandingBySec);
+
       const leaseStateBeforeRepay = (await leaseInstance.getLeaseStatus())
         .opened;
 
@@ -606,78 +572,21 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const PID_beforeRepay =
-        leaseStateBeforeRepay.previous_interest_due.amount;
-      const PMD_beforeRepay = leaseStateBeforeRepay.previous_margin_due.amount;
-      const CID_beforeRepay = leaseStateBeforeRepay.current_interest_due.amount;
-      const CMD_beforeRepay = leaseStateBeforeRepay.current_margin_due.amount;
+      paymentCurrency = lppCurrency;
+      paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
 
-      const leasePrincipalBeforeRepay =
-        leaseStateBeforeRepay.principal_due.amount;
-      const leaseInterestBeforeRepay =
-        BigInt(PID_beforeRepay) +
-        BigInt(PMD_beforeRepay) +
-        BigInt(CID_beforeRepay) +
-        BigInt(CMD_beforeRepay);
+      const leaseInterestBeforeRepay = getTotalInterest(leaseStateBeforeRepay);
 
       const payment = {
-        denom: lppDenom,
-        amount: Math.floor(+leasePrincipalBeforeRepay / 2).toString(),
+        denom: paymentCurrencyToIBC,
+        amount: leaseInterestBeforeRepay.toString(),
       };
 
-      // send some tokens to the borrower
-      // for the payment and fees
-      await feederWallet.transferAmount(
-        newUserWallet.address as string,
-        [payment],
-        customFees.transfer,
-      );
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        newUserWallet.address as string,
-      );
-
-      const userBalanceBeforeRepay = await newUserWallet.getBalance(
-        newUserWallet.address as string,
-        lppDenom,
-      );
-
-      await leaseInstance.repayLease(newUserWallet, customFees.exec, [payment]);
-
-      const leaseStateAfterRepay = (await leaseInstance.getLeaseStatus())
-        .opened;
-
-      if (!leaseStateAfterRepay) {
-        undefinedHandler();
-        return;
-      }
-      const PID_afterRepay = leaseStateAfterRepay.previous_interest_due.amount;
-      const PMD_afterRepay = leaseStateAfterRepay.previous_margin_due.amount;
-      const CID_afterRepay = leaseStateAfterRepay.current_interest_due.amount;
-      const CMD_afterRepay = leaseStateAfterRepay.current_margin_due.amount;
-
-      const leasePrincipalAfterRepay =
-        leaseStateAfterRepay.principal_due.amount;
-      const leaseInterestAfterRepay =
-        BigInt(PID_afterRepay) +
-        BigInt(PMD_afterRepay) +
-        BigInt(CID_afterRepay) +
-        BigInt(CMD_afterRepay);
-
-      const userBalanceAfterRepay = await newUserWallet.getBalance(
-        newUserWallet.address as string,
-        lppDenom,
-      );
-
-      expect(
-        BigInt(leasePrincipalAfterRepay) + leaseInterestAfterRepay,
-      ).toBeGreaterThanOrEqual(
-        BigInt(leasePrincipalBeforeRepay) +
-          leaseInterestBeforeRepay -
-          BigInt(payment.amount),
-      );
-      expect(BigInt(userBalanceAfterRepay.amount)).toBe(
-        BigInt(userBalanceBeforeRepay.amount) - BigInt(+payment.amount),
+      await testRepayment(
+        newUserWallet,
+        mainLeaseAddress,
+        leaseStateBeforeRepay,
+        payment,
       );
     });
 
@@ -691,17 +600,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const PID_beforeRepay =
-        leaseStateBeforeRepay.previous_interest_due.amount;
-      const PMD_beforeRepay = leaseStateBeforeRepay.previous_margin_due.amount;
-      const CID_beforeRepay = leaseStateBeforeRepay.current_interest_due.amount;
-      const CMD_beforeRepay = leaseStateBeforeRepay.current_margin_due.amount;
-
-      const leaseInterestBeforeRepay =
-        BigInt(PID_beforeRepay) +
-        BigInt(PMD_beforeRepay) +
-        BigInt(CID_beforeRepay) +
-        BigInt(CMD_beforeRepay);
+      const leaseInterestBeforeRepay = getTotalInterest(leaseStateBeforeRepay);
       const leasePrincipalBeforeRepay = BigInt(
         leaseStateBeforeRepay.principal_due.amount,
       );
@@ -709,11 +608,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const excess = leasePrincipalBeforeRepay;
 
-      // send some tokens to the borrower
-      // for the payment and fees
       const repayWithExcess = {
         // +excess - make sure the lease principal will be paid
-        denom: lppDenom,
+        denom: lppCurrencyToIBC,
         amount: (
           leaseInterestBeforeRepay +
           leasePrincipalBeforeRepay +
@@ -721,13 +618,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         ).toString(),
       };
 
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
         [repayWithExcess],
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
 
@@ -744,13 +641,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(stateBeforeClose.paid).toBeDefined();
 
       // try to pay already paid lease
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
         [repayWithExcess], // any amount
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
 
@@ -766,11 +663,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       // close
       const borrowerBalanceBeforeClose = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
-        lppDenom,
+        lppCurrency,
       );
 
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
 
@@ -786,7 +683,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const borrowerBalanceAfterClose = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
-        lppDenom,
+        lppCurrency,
       );
 
       expect(BigInt(borrowerBalanceAfterClose.amount)).toBe(
@@ -795,40 +692,24 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           exactExcess,
       );
 
-      // return amount to the main-feeder address
+      // return amount to the main account (user with balance)
       await sendInitTransferFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
       await borrowerWallet.transferAmount(
-        feederWallet.address as string,
+        userWithBalanceWallet.address as string,
         [borrowerBalanceAfterClose],
         customFees.transfer,
       );
     });
 
     test('the borrower tries to repay an already closed lease - should produce an error', async () => {
-      const payment = {
-        denom: lppDenom,
-        amount: '10', // any amount
-      };
-
-      await feederWallet.transferAmount(
-        borrowerWallet.address as string,
-        [payment],
-        customFees.transfer,
-      );
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        borrowerWallet.address as string,
-      );
-
-      const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
-      const result = () =>
-        leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
-
-      await expect(result).rejects.toThrow(
-        /^.*The underlying loan is closed.*/,
+      await testRepaymentWithInvalidParams(
+        mainLeaseAddress,
+        lppCurrency,
+        '11', // any amount
+        'The underlying loan is closed',
       );
     });
   },
