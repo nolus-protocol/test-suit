@@ -11,10 +11,7 @@ import {
   NANOSEC,
 } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import {
-  returnRestToMainAccount,
-  sendInitExecuteFeeTokens,
-} from '../util/transfer';
+import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   Lease,
   LeaserConfig,
@@ -22,11 +19,17 @@ import {
 } from '@nolus/nolusjs/build/contracts';
 import {
   calcInterestRate,
-  getLeaseAddressFromOpenLeaseResponse,
-  removeAllFeeders,
-} from '../util/smart-contracts';
+  currencyTicker_To_IBC,
+} from '../util/smart-contracts/calculations';
 import { runOrSkip } from '../util/testingRules';
-import { ExecuteResult } from '@nolus/nolusjs/node_modules/@cosmjs/cosmwasm-stargate';
+import {
+  getLeaseAddressFromOpenLeaseResponse,
+  getLeaseGroupCurrencies,
+} from '../util/smart-contracts/getters';
+import {
+  provideEnoughLiquidity,
+  pushPrice,
+} from '../util/smart-contracts/actions';
 
 //TO DO
 runOrSkip(process.env.TEST_BORROWER as string)(
@@ -35,14 +38,19 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let wasmAdminWallet: NolusWallet;
     let cosm: any;
     let borrowerWallet: NolusWallet;
-    let feederWallet: NolusWallet;
+    let userWithBalanceWallet: NolusWallet;
     let priceFeederWallet: NolusWallet;
     let leaserInstance: NolusContracts.Leaser;
     let oracleInstance: NolusContracts.Oracle;
     let lppInstance: NolusContracts.Lpp;
     let leaserConfigBefore: NolusContracts.LeaserConfig;
     let oracleConfigBefore: NolusContracts.Config;
-    let lppDenom: string;
+    let lppCurrency: string;
+    let lppCurrencyToIBC: string;
+    let leaseCurrency: string;
+    let leaseCurrencyToIBC: string;
+    let downpaymentCurrency: string;
+    let downpaymentCurrencyToIBC: string;
     let mainLeaseAddress: string;
     let liquidatedLeaseAddress: string;
     let marginInterestPaidByNanoSec: number;
@@ -58,131 +66,77 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     const downpayment = '100000000000';
     const fiveHoursSec = 18000;
 
-    async function pushPrice(
-      priceFeederWallet: NolusWallet,
-    ): Promise<ExecuteResult> {
-      // remove all feeders
-      await removeAllFeeders(oracleInstance, wasmAdminWallet);
+    // async function priceLiquidationCheck(
+    //   leaseInstance: any,
+    //   leaseAddress: string,
+    //   stateBefore: NolusContracts.LeaseStatus,
+    //   liquidationW: bigint,
+    //   liqStep: number, // 1-warn1%, 2-warn2%, 3-warn3%, 4-max%
+    // ) {
+    //   const leaseState = stateBefore.opened;
+    //   if (!leaseState) {
+    //     undefinedHandler();
+    //     return;
+    //   }
 
-      // add feeder
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        wasmAdminWallet.address as string,
-      );
+    //   // feedPrice until principal+interest / amount  = w1%
+    //   let leaseLiabilityLPN =
+    //     +leaseState.principal_due.amount +
+    //     +leaseState.current_interest_due.amount +
+    //     +leaseState.previous_interest_due.amount +
+    //     +leaseState.previous_margin_due.amount +
+    //     +leaseState.current_margin_due.amount;
 
-      await oracleInstance.addFeeder(
-        wasmAdminWallet,
-        priceFeederWallet.address as string,
-        customFees.exec,
-      );
+    //   const leaseAmount = +leaseState.amount.amount;
 
-      const isFeeder = await oracleInstance.isFeeder(
-        priceFeederWallet.address as string,
-      );
-      expect(isFeeder).toBe(true);
+    //   while (
+    //     BigInt(Math.trunc((leaseLiabilityLPN / leaseAmount) * 100)) <
+    //     liquidationW / BigInt(10)
+    //   ) {
+    //     console.log('Waiting for a warning...');
 
-      const newSupportedPair = [NATIVE_MINIMAL_DENOM, lppDenom];
+    //     // feed price - oracle will trigger alarm
+    //     await pushPrice(
+    //       oracleInstance,
+    //       priceFeederWallet,
+    //       NATIVE_MINIMAL_DENOM,
+    //       leaseCurrency,
+    //       '10',
+    //       '100',
+    //     ); // any price
 
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        wasmAdminWallet.address as string,
-      );
+    //     const stateAfter = (await leaseInstance.getLeaseStatus()).opened;
+    //     console.log(stateAfter);
 
-      await oracleInstance.updateCurrencyPaths(
-        wasmAdminWallet,
-        [newSupportedPair],
-        customFees.exec,
-      );
+    //     expect(BigInt(stateAfter.amount.amount)).toBe(BigInt(leaseAmount));
 
-      const feedPrices = {
-        prices: [
-          {
-            amount: { amount: '11', symbol: NATIVE_MINIMAL_DENOM }, // any amount
-            amount_quote: { amount: '1', symbol: lppDenom }, // any amount
-          },
-        ],
-      };
+    //     leaseLiabilityLPN =
+    //       +stateAfter.principal_due.amount +
+    //       +stateAfter.current_interest_due.amount +
+    //       +stateAfter.previous_interest_due.amount +
+    //       +stateAfter.previous_margin_due.amount +
+    //       +stateAfter.current_margin_due.amount;
+    //   }
+    //   await pushPrice(
+    //     oracleInstance,
+    //     priceFeederWallet,
+    //     NATIVE_MINIMAL_DENOM,
+    //     leaseCurrency,
+    //     '10',
+    //     '100',
+    //   ); // any price
 
-      await feederWallet.transferAmount(
-        priceFeederWallet.address as string,
-        customFees.feedPrice.amount,
-        customFees.transfer,
-        '',
-      );
-
-      const feedPriceTxReponse = await oracleInstance.feedPrices(
-        priceFeederWallet,
-        feedPrices,
-        1.3,
-      );
-
-      await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
-
-      const priceResult = await oracleInstance.getPriceFor(
-        NATIVE_MINIMAL_DENOM,
-      );
-      expect(priceResult).toBeDefined();
-
-      return feedPriceTxReponse;
-    }
-
-    async function priceLiquidationCheck(
-      leaseInstance: any,
-      leaseAddress: string,
-      stateBefore: NolusContracts.LeaseStatus,
-      liquidationW: bigint,
-      liqStep: number, // 1-warn1%, 2-warn2%, 3-warn3%, 4-max%
-    ) {
-      const leaseState = stateBefore.opened;
-      if (!leaseState) {
-        undefinedHandler();
-        return;
-      }
-
-      // feedPrice until principal+interest / amount  = w1%
-      let leaseLiabilityLPN =
-        +leaseState.principal_due.amount +
-        +leaseState.current_interest_due.amount +
-        +leaseState.previous_interest_due.amount +
-        +leaseState.previous_margin_due.amount +
-        +leaseState.current_margin_due.amount;
-
-      const leaseAmount = +leaseState.amount.amount;
-
-      while (
-        BigInt(Math.trunc((leaseLiabilityLPN / leaseAmount) * 100)) <
-        liquidationW / BigInt(10)
-      ) {
-        console.log('Waiting for a warning...');
-
-        // feed price - oracle will trigger alarm
-        await pushPrice(priceFeederWallet);
-
-        const stateAfter = (await leaseInstance.getLeaseStatus()).opened;
-        console.log(stateAfter);
-
-        expect(BigInt(stateAfter.amount.amount)).toBe(BigInt(leaseAmount));
-
-        leaseLiabilityLPN =
-          +stateAfter.principal_due.amount +
-          +stateAfter.current_interest_due.amount +
-          +stateAfter.previous_interest_due.amount +
-          +stateAfter.previous_margin_due.amount +
-          +stateAfter.current_margin_due.amount;
-      }
-      await pushPrice(priceFeederWallet);
-
-      const stateAfter = await leaseInstance.getLeaseStatus();
-      if (liqStep === 4) {
-        console.log('max% is reached!');
-        //expect(stateAfter.closed).toBeDefined();
-        // TO DO: expect liquidation info about mainLeaseAddress in feedPriceResult
-      } else {
-        console.log(`warning ${liqStep} is reached!`);
-        expect(+stateAfter.opened.amount.amount).toBe(leaseAmount);
-        // TO DO: expect W alarm about mainLeaseAddress in feedPriceResult
-      }
-    }
+    //   const stateAfter = await leaseInstance.getLeaseStatus();
+    //   if (liqStep === 4) {
+    //     console.log('max% is reached!');
+    //     //expect(stateAfter.closed).toBeDefined();
+    //     // TO DO: expect liquidation info about mainLeaseAddress in feedPriceResult
+    //   } else {
+    //     console.log(`warning ${liqStep} is reached!`);
+    //     expect(+stateAfter.opened.amount.amount).toBe(leaseAmount);
+    //     // TO DO: expect W alarm about mainLeaseAddress in feedPriceResult
+    //   }
+    // }
 
     async function timeLiquidationCheck(
       leaseInstance: Lease,
@@ -191,7 +145,14 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     ) {
       // wait main period to expires
       await sleep(newPeriodSec + 1); //+1sec
-      await pushPrice(priceFeederWallet);
+      await pushPrice(
+        oracleInstance,
+        priceFeederWallet,
+        leaseCurrency,
+        lppCurrency,
+        '10',
+        '100',
+      ); // any price
 
       const stateAfterMainPeriod = (await leaseInstance.getLeaseStatus())
         .opened;
@@ -199,8 +160,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         undefinedHandler();
         return;
       }
-
-      // TO DO - verify previous interest calc
 
       const PID_afterMainPeriod =
         stateAfterMainPeriod.previous_interest_due.amount;
@@ -214,20 +173,17 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         await lppInstance.getLoanInformation(mainLeaseAddress)
       ).interest_paid;
 
-      const loanRateByNanoSec = (
-        await lppInstance.getLoanInformation(mainLeaseAddress)
-      ).annual_interest_rate;
+      const loanRate = (await lppInstance.getLoanInformation(mainLeaseAddress))
+        .annual_interest_rate;
 
       const newPeriodByNanoSec = timeByNanoSec + newPeriodSec * NANOSEC;
 
       const PID_calcudated = calcInterestRate(
         BigInt(stateAfterMainPeriod.principal_due.amount),
-        BigInt(loanRateByNanoSec),
+        BigInt(loanRate),
         BigInt(loanInterestPaidByNanoSec),
         BigInt(newPeriodByNanoSec),
       );
-
-      console.log(stateAfterMainPeriod);
 
       expect(PID_calcudated).toBe(BigInt(PID_afterMainPeriod));
 
@@ -249,7 +205,14 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await sleep(newGracePeriodSec + 1); //+1sec
 
       // feed price - oracle will trigger a time alarm
-      const pushPriceResult = await pushPrice(priceFeederWallet);
+      const pushPriceResult = await pushPrice(
+        oracleInstance,
+        priceFeederWallet,
+        leaseCurrency,
+        lppCurrency,
+        '10',
+        '100',
+      ); // any price
       console.log(pushPriceResult);
 
       const stateAfterGracePeriod = (await leaseInstance.getLeaseStatus())
@@ -262,13 +225,21 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       marginInterestPaidByNanoSec =
         +pushPriceResult.logs[0].events[7].attributes[2].value;
 
-      // TO DO: issue https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/21
+      const leaseCurrencyPrice = await oracleInstance.getPriceFor(
+        leaseCurrency,
+      );
+      const previousInterestToLeaseCurrency =
+        ((BigInt(PID_afterMainPeriod) + BigInt(PMD_afterMainPeriod)) *
+          BigInt(leaseCurrencyPrice.amount.amount)) /
+        BigInt(leaseCurrencyPrice.amount_quote.amount);
+
       // it is liquidation time, so:
-      // expect(BigInt(stateAfterGracePeriod.amount.amount)).toBe(
-      //   BigInt(stateAfterMainPeriod.amount.amount) -
-      //     (BigInt(PID_afterMainPeriod) + BigInt(PMD_afterMainPeriod)),
-      // );
+      expect(BigInt(stateAfterGracePeriod.amount.amount)).toBe(
+        BigInt(stateAfterMainPeriod.amount.amount) -
+          previousInterestToLeaseCurrency,
+      );
     }
+
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
       cosm = await NolusClient.getInstance().getCosmWasmClient();
@@ -280,23 +251,28 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       wasmAdminWallet = await getWasmAdminWallet();
       borrowerWallet = await createWallet();
 
-      // feed the wasm admin
-      feederWallet = await getUser1Wallet();
+      // feed the contract owner
+      userWithBalanceWallet = await getUser1Wallet();
       priceFeederWallet = await createWallet();
 
-      const adminBalanceAmount = '10000000000';
+      const adminBalanceAmount = '10000';
       const adminBalance = {
         amount: adminBalanceAmount,
         denom: NATIVE_MINIMAL_DENOM,
       };
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         wasmAdminWallet.address as string,
         [adminBalance],
         customFees.transfer,
       );
 
       const lppConfig = await lppInstance.getLppConfig();
-      lppDenom = lppConfig.lpn_symbol;
+      lppCurrency = lppConfig.lpn_ticker;
+      lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
+      leaseCurrency = getLeaseGroupCurrencies()[0];
+      leaseCurrencyToIBC = currencyTicker_To_IBC(leaseCurrency);
+      downpaymentCurrency = lppCurrency;
+      downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
 
       // change leaser config
       leaserConfigBefore = await leaserInstance.getLeaserConfig();
@@ -320,20 +296,20 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         customFees.exec,
       );
 
-      const deposit = +downpayment * 10; // lpp must have enough liquidity to cover the down payment
-      await lppInstance.deposit(feederWallet, customFees.exec, [
-        {
-          denom: lppDenom,
-          amount: deposit.toString(),
-        },
-      ]);
-
-      await removeAllFeeders(oracleInstance, wasmAdminWallet);
+      await provideEnoughLiquidity(
+        leaserInstance,
+        lppInstance,
+        downpayment,
+        downpaymentCurrency,
+        leaseCurrency,
+      );
+      //TO DO
+      // await removeAllFeeders(oracleInstance, wasmAdminWallet);
     });
 
     afterAll(async () => {
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         wasmAdminWallet.address as string,
       );
 
@@ -347,7 +323,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(leaserConfigAfter).toStrictEqual(leaserConfigBefore);
 
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         wasmAdminWallet.address as string,
       );
 
@@ -360,25 +336,28 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const oracleConfigAfter = await oracleInstance.getConfig();
       expect(oracleConfigAfter).toStrictEqual(oracleConfigBefore);
+
+      //TO DO - register all feeders
+      // await registerAllFeeders(oracleInstance, wasmAdminWallet);
     });
 
     test('partial liquidation due to expiry of the grace period - should work as expected', async () => {
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [{ denom: lppDenom, amount: downpayment }],
+        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }],
         customFees.transfer,
       );
 
       // open lease
       const result = await leaserInstance.openLease(
         borrowerWallet,
-        lppDenom,
+        leaseCurrency,
         customFees.exec,
-        [{ denom: lppDenom, amount: downpayment }],
+        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }],
       );
 
       mainLeaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
@@ -427,8 +406,15 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(PMD_afterSeveralPeriods).not.toBe('0');
       expect(PID_afterSeveralPeriods).not.toBe('0');
 
-      // feed price - oracle will trigger alarm
-      await pushPrice(priceFeederWallet);
+      // feed price - oracle should trigger alarm
+      await pushPrice(
+        oracleInstance,
+        priceFeederWallet,
+        leaseCurrency,
+        lppCurrency,
+        '10',
+        '100',
+      ); // any price
 
       const stateAfterAlarm = (await leaseInstance.getLeaseStatus()).opened;
       if (!stateAfterAlarm) {
@@ -436,29 +422,38 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
+      const leaseCurrencyPrice = await oracleInstance.getPriceFor(
+        leaseCurrency,
+      );
+
+      const previousInterestToLeaseCurrency =
+        ((BigInt(PID_afterSeveralPeriods) + BigInt(PMD_afterSeveralPeriods)) *
+          BigInt(leaseCurrencyPrice.amount.amount)) /
+        BigInt(leaseCurrencyPrice.amount_quote.amount);
+
       expect(BigInt(stateAfterAlarm.amount.amount)).toBe(
         BigInt(stateAfterSeveralPeriods.amount.amount) -
-          (BigInt(PID_afterSeveralPeriods) + BigInt(PMD_afterSeveralPeriods)),
+          previousInterestToLeaseCurrency,
       );
     });
 
     test('full liquidation due to expiry of the grace period - should work as expected', async () => {
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [{ denom: lppDenom, amount: downpayment }],
+        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }],
         customFees.transfer,
       );
 
-      // change margin interest rate % - more easily simulate full liquidation
+      // change margin interest rate % - easier simulation of total liquidation
       const leaserConfigBefore = await leaserInstance.getLeaserConfig();
       const leaserConfigMsg: LeaserConfig = JSON.parse(
         JSON.stringify(leaserConfigBefore),
       );
-      leaserConfigMsg.config.lease_interest_rate_margin = 1000000000; // 100000000%
+      leaserConfigMsg.config.lease_interest_rate_margin = 1000000000;
 
       await leaserInstance.setLeaserConfig(
         wasmAdminWallet,
@@ -469,9 +464,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       // open lease
       const result = await leaserInstance.openLease(
         borrowerWallet,
-        lppDenom,
+        leaseCurrency,
         customFees.exec,
-        [{ denom: lppDenom, amount: downpayment }],
+        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }],
       );
 
       const leaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
@@ -486,7 +481,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const borrowerBalanceBefore = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
-        lppDenom,
+        leaseCurrencyToIBC,
       );
 
       let leaseAmount = BigInt(stateBeforePeriodExpiry.amount.amount);
@@ -496,8 +491,15 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         // wait for the entire period to expire
         await sleep(newPeriodSec + newGracePeriodSec + 1); //+1sec
 
-        // feed price - oracle will trigger alarm
-        await pushPrice(priceFeederWallet);
+        // feed price - oracle should trigger alarm
+        await pushPrice(
+          oracleInstance,
+          priceFeederWallet,
+          leaseCurrency,
+          lppCurrency,
+          '10',
+          '100',
+        ); // any price
 
         const stateAfterPeriodExpiry = await leaseInstance.getLeaseStatus();
 
@@ -517,7 +519,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const borrowerBalanceAfter = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
-        lppDenom,
+        leaseCurrencyToIBC,
       );
       expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
     });
@@ -529,17 +531,17 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
 
       const payment = {
-        denom: lppDenom,
+        denom: lppCurrencyToIBC,
         amount: '1', // any amount
       };
 
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
         [payment],
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
 
@@ -547,12 +549,12 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
 
       // TO DO: issue - https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/14
-      // await expect(paymentResult).rejects.toThrow(
-      //   /^.*The underlying loan is closed.*/,
-      // );
+      await expect(paymentResult).rejects.toThrow(
+        /^.*The underlying loan is closed.*/,
+      );
 
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
 
@@ -588,21 +590,21 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     //   console.log(await leaserInstance.getLeaserConfig());
 
     //   // open lease
-    //   await feederWallet.transferAmount(
+    //   await userWithBalanceWallet.transferAmount(
     //     borrowerWallet.address as string,
-    //     [{ denom: lppDenom, amount: downpayment }],
+    //     [{ denom: downpaymentCurrencyToIBC, amount: downpayment }],
     //     customFees.transfer,
     //   );
     //   await sendInitExecuteFeeTokens(
-    //     feederWallet,
+    //     userWithBalanceWallet,
     //     borrowerWallet.address as string,
     //   );
 
     //   const result = await leaserInstance.openLease(
     //     borrowerWallet,
-    //     lppDenom,
+    //     leaseCurrency,
     //     customFees.exec,
-    //     [{ denom: lppDenom, amount: downpayment }],
+    //     [{ denom: leaseCurrencyToIBC, amount: downpayment }],
     //   );
 
     //   mainLeaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
