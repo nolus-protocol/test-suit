@@ -37,12 +37,6 @@ npm config set //registry.npmjs.org/:_authToken <YOUR_NPM_ACCESS_TOKEN>
 yarn
 ```
 
-## Download contracts json schemas
-
-```sh
-curl --output schemas.zip --header "PRIVATE-TOKEN: <your_gitlab_access_token>" "https://gitlab-nomo.credissimo.net/api/v4/projects/8/jobs/artifacts/<contracts_version>/download?job=schema:cargo"
-```
-
 ## Linting the code
 
 We use the [TypeScript-Eslint](https://github.com/typescript-eslint) and [Prettier](https://prettier.io/).
@@ -60,7 +54,7 @@ Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://
 1. On dev-net:
 
     ```sh
-    yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --mnemonic-wasm-admin <mnemonic_phrase> --token-type "PRIVATE-TOKEN" --token-value <your_gitlab_access_token>
+    yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --mnemonic-wasm-admin <mnemonic_phrase> --token-type "PRIVATE-TOKEN" --token-value <your_gitlab_access_token> --test-transfer "true"/"false" --test-oracle "true"/"false" --test-staking "true"/"false" --test-borrower "true"/"false" --test-lender "true"/"false" --test-treasury "true"/"false" --test-vesting "true"/"false" --test-gov "true"/"false"
     ```
 
     ```sh
@@ -79,14 +73,14 @@ Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://
 
     * **--nolus-local-network <nolus-local-net-url>**, by default this is: http://localhost:26612
 
-    * **--lpp-native <stable-denom>**, by default this is: uusdc - ibc/fj29fj0fj
+    * **--stable-denom <stable-denom>**, (ticker) by default this is: USDC
 
     * **--home-dir <nolus-accounts-dir>**, by default this is: home/.nolus
 
-    You can get selected lpp-native in reserve account through: **/cosmzone/scripts/init-local-network.sh**.
+    You can get selected lpp-native/stable-denom in reserve account through: **/cosmzone/scripts/init-local-network.sh**.
     Example:
 
-    ``./scripts/init-local-network.sh --wasm-code-path <path_to_contracts_wasm_files> --wasm-script-path <path_to_"smart-contracts/scripts/deploy-contracts-genesis.sh"> --lpp-native ibc/fj29fj0fj --reserve-tokens 10000000000000ibc/fj29fj0fj,10000000000000unls``
+    ``./scripts/init-local-network.sh --wasm-code-path <path_to_contracts_wasm_files> --wasm-script-path <path_to_"smart-contracts/scripts/deploy-contracts-genesis.sh"> --lpp-native "USDC" --reserve-tokens 10000000000000ibc/7FBDBEEEBA9C50C4BCDF7BF438EAB99E64360833D240B32655C96E319559E911 (USDC ibc/ representation),10000000000000unls``
 
     ```sh
     yarn test

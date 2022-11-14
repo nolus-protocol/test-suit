@@ -5,7 +5,7 @@ ARTIFACT_BIN="nolus.tar.gz"
 NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
 GITLAB_API="https://gitlab-nomo.credissimo.net/api/v4"
 HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
-STABLE_DENOM='ibc/fj29fj0fj'
+STABLE_DENOM="USDC"
 COSMZONE_PROJECT_ID="3"
 SETUP_DEV_NETWORK_ARTIFACT="setup-dev-network"
 NOLUS_BUILD_BINARY_ARTIFACT="build-binary"
@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
     [--mnemonic-wasm-admin <mnemonic_phrase>]
     [--token-type <token_type>]
     [--token-value <token_value>]" \
-     "$0"
+    "$0"
     exit 0
     ;;
 

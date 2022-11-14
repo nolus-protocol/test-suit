@@ -36,8 +36,6 @@ export async function pushPrice(
 ): Promise<ExecuteResult> {
   const userWithBalanceWallet = await getUser1Wallet();
   const wasmAdminWallet = await getWasmAdminWallet();
-  // remove all feeders
-  await removeAllFeeders(oracleInstance, wasmAdminWallet);
 
   // add feeder
   await sendInitExecuteFeeTokens(
@@ -67,11 +65,11 @@ export async function pushPrice(
         amount: {
           amount: firstPairMemberValue,
           ticker: firstPairMemberCurrency,
-        }, // any amount
+        },
         amount_quote: {
           amount: secondPairMemberValue,
           ticker: secondPairMemberCurrency,
-        }, // any amount
+        },
       },
     ],
   };

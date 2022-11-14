@@ -16,7 +16,7 @@ while [[ $# -gt 0 ]]; do
   -h | --help)
     printf \
     "Usage: %s
-    [--nolus-local-network <nolus-local-net-url>]
+    [--nolus-local-network <nolus_local_net_url>]
     [--contracts-result-file-path <path_to_contracts_info>]
     [--wasm-admin-key <existing_key>]
     [--stable-denom <string>]

@@ -6,6 +6,10 @@ default:
   image: node:16.14.2-alpine
 
 env-prep:
+  variables:
+    FEEDERS_FILE: "feeders.json"
+    ACCOUNTS_DIR: "./accounts"
+    NOLUS_DEV_NET: "https://net-dev.nolus.io:26612"
   stage: prep
   only:
     - schedules
@@ -21,9 +25,11 @@ env-prep:
         --test-staking "$TEST_STAKING_PIPELINE" --test-borrower "$TEST_BORROWER_PIPELINE"
         --test-lender "$TEST_LENDER_PIPELINE" --test-treasury "$TEST_TREASURY_PIPELINE"
         --test-vesting "$TEST_VESTING_PIPELINE" --test-gov "$TEST_GOV_PIPELINE"
+    - yarn save-feeders --accounts-dir "$ACCOUNTS_DIR" --feeders-file "$FEEDERS_FILE" --nolus-net "$NOLUS_DEV_NET"
   artifacts:
     paths:
     - .env
+    - $FEEDERS_FILE
 
 test:
   stage: test

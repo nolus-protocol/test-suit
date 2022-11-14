@@ -9,7 +9,10 @@ import {
   returnRestToMainAccount,
   sendInitExecuteFeeTokens,
 } from '../util/transfer';
-import { removeAllFeeders } from '../util/smart-contracts/calculations';
+import {
+  registerAllFeedersBack,
+  removeAllFeeders,
+} from '../util/smart-contracts/calculations';
 import { NANOSEC } from '../util/utils';
 import { runOrSkip } from '../util/testingRules';
 import { SwapTree, Tree } from '@nolus/nolusjs/build/contracts/types/SwapTree';
@@ -56,6 +59,8 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     const currenciesPairs = await oracleInstance.getCurrencyPairs();
     firstPairMember = currenciesPairs[0].from;
     secondPairMember = currenciesPairs[0].to.target;
+
+    await removeAllFeeders(oracleInstance, wasmAdminWallet);
   });
 
   afterAll(async () => {
@@ -71,6 +76,13 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
       INIT_PRICE_FEED_PERIOD * NANOSEC,
     );
     expect(configAfter.expected_feeders).toBe(INIT_PERMILLES_NEEDED);
+
+    console.log(await oracleInstance.getFeeders());
+
+    await removeAllFeeders(oracleInstance, wasmAdminWallet);
+    await registerAllFeedersBack(oracleInstance, wasmAdminWallet);
+
+    console.log(await oracleInstance.getFeeders());
   });
 
   async function feedPrice(

@@ -8,3 +8,4 @@ deploy:cargo.zip
 accounts
 nolusd
 contracts-info.json
+feeders.json
