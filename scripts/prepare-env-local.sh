@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
     [--wasm-admin-key <existing_key>]
     [--stable-denom <string>]
     [--home-dir <nolus_accounts_dir>]" \
-     "$0"
+    "$0"
     exit 0
     ;;
 

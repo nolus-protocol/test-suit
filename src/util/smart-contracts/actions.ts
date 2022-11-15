@@ -1,9 +1,10 @@
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { createWallet, getUser1Wallet, getWasmAdminWallet } from '../clients';
 import { returnRestToMainAccount, sendInitExecuteFeeTokens } from '../transfer';
-import { customFees, NATIVE_MINIMAL_DENOM } from '../utils';
+import { customFees, NATIVE_MINIMAL_DENOM, sleep } from '../utils';
 import { currencyTicker_To_IBC } from './calculations';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
+import { getLeaseAddressFromOpenLeaseResponse } from './getters';
 
 export async function provideLeasePrices(
   oracleInstance: NolusContracts.Oracle,
@@ -151,4 +152,30 @@ export async function checkLeaseBalance(
     if (leaseBalance.amount) return true;
   });
   return false;
+}
+
+export async function waitLeaseOpeningProcess(
+  leaseInstance: NolusContracts.Lease,
+): Promise<Error | undefined> {
+  const allStates = [
+    'connecting',
+    'account creating',
+    'transfer-1',
+    'transfer-2',
+    'opened',
+  ];
+  let indexLastState = 0;
+  let newState;
+
+  do {
+    await sleep(5);
+    newState = JSON.stringify(await leaseInstance.getLeaseStatus());
+    const indexNewState = allStates.indexOf(Object.keys(newState)[0]);
+    if (indexLastState > indexNewState) {
+      return new Error('Error');
+    }
+    indexLastState = indexNewState;
+  } while (indexLastState != allStates.length - 1);
+
+  return undefined;
 }

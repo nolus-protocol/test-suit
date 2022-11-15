@@ -178,7 +178,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   });
 
   test('a registered feeder tries to feed a price - should work as expected', async () => {
-    const priceFeedPeriodSec = 30;
+    const priceFeedPeriodSec = 20;
     const expectedFeedersPermile = 500;
     await setConfig(priceFeedPeriodSec, expectedFeedersPermile);
 

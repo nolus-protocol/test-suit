@@ -33,6 +33,7 @@ import {
 import {
   checkLeaseBalance,
   provideEnoughLiquidity,
+  waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions';
 import { LeaseInfo } from '@nolus/nolusjs/build/contracts';
 
@@ -420,6 +421,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(mainLeaseAddress).not.toBe('');
 
       const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
+      expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
+
       const leaseStateBeforeFirstRepay = (await leaseInstance.getLeaseStatus())
         .opened;
 

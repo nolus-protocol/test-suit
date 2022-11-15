@@ -16,6 +16,7 @@ import {
 import {
   checkLeaseBalance,
   provideEnoughLiquidity,
+  waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
@@ -132,6 +133,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseAddress = getLeaseAddressFromOpenLeaseResponse(response);
       const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
+
+      expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
 
       // get the new lease state
       const currentLeaseState = await leaseInstance.getLeaseStatus();

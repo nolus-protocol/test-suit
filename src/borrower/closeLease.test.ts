@@ -11,6 +11,7 @@ import { runOrSkip } from '../util/testingRules';
 import {
   checkLeaseBalance,
   provideEnoughLiquidity,
+  waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions';
 import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
 
@@ -83,6 +84,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       mainLeaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
       leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
+
+      expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
 
       // check lease address balance - there shouldn't be any
       const leaseBalances = await checkLeaseBalance(mainLeaseAddress, [
