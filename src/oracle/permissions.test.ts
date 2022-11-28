@@ -15,7 +15,8 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     let userWithBalance: NolusWallet;
     let feederWallet: NolusWallet;
     let oracleInstance: NolusContracts.Oracle;
-    const testPairMember = 'UAT';
+    let firstPairMember: string;
+    let secondPairMember: string;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
     beforeAll(async () => {
@@ -37,17 +38,22 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         [adminBalance],
         customFees.transfer,
       );
+
+      const currenciesPairs = await oracleInstance.getCurrencyPairs();
+      firstPairMember = currenciesPairs[0].from;
+      secondPairMember = currenciesPairs[0].to.target;
     });
 
     test('only a registered feeder should be able to push a price', async () => {
+      // TO DO: make valid price
       const feedPrices = {
         prices: [
           {
-            amount: { amount: '10', ticker: 'A' },
-            amount_quote: { amount: '10', ticker: 'B' },
+            amount: { amount: '10', ticker: firstPairMember },
+            amount_quote: { amount: '10', ticker: secondPairMember },
           },
         ],
-      }; // any
+      }; // any amounts
 
       const result = () =>
         oracleInstance.feedPrices(userWithBalance, feedPrices, 1.3);
@@ -109,12 +115,12 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         add_price_alarm: {
           alarm: {
             below: {
-              amount: { amount: '5', ticker: testPairMember }, // any
-              amount_quote: { amount: '5', ticker: testPairMember }, // any
+              amount: { amount: '5', ticker: firstPairMember },
+              amount_quote: { amount: '5', ticker: secondPairMember },
             },
           },
         },
-      };
+      }; // any amounts
 
       const broadcastTx = () =>
         wasmAdminWallet.executeContract(

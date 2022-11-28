@@ -24,9 +24,10 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   let userWithBalance: NolusWallet;
   let feederWallet: NolusWallet;
   let oracleInstance: NolusContracts.Oracle;
-  let INIT_PRICE_FEED_PERIOD: number;
-  let INIT_PERMILLES_NEEDED: number;
-  let BASE_ASSET: string;
+  let initPriceFeedPeriod: number;
+  let initFeedersPermillesNeeded: number;
+  let initSwapTree: SwapTree;
+  let baseAsset: string;
   let firstPairMember: string;
   let secondPairMember: string;
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
@@ -41,9 +42,10 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
     const configBefore = await oracleInstance.getConfig();
-    BASE_ASSET = configBefore.base_asset;
-    INIT_PRICE_FEED_PERIOD = configBefore.price_feed_period / NANOSEC;
-    INIT_PERMILLES_NEEDED = configBefore.expected_feeders;
+    baseAsset = configBefore.base_asset;
+    initPriceFeedPeriod = configBefore.price_feed_period / NANOSEC;
+    initFeedersPermillesNeeded = configBefore.expected_feeders;
+    initSwapTree = await oracleInstance.getSwapTree();
 
     const adminBalance = {
       amount: '10000000',
@@ -66,23 +68,27 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   afterAll(async () => {
     await oracleInstance.setConfig(
       wasmAdminWallet,
-      INIT_PRICE_FEED_PERIOD,
-      INIT_PERMILLES_NEEDED,
+      initPriceFeedPeriod,
+      initFeedersPermillesNeeded,
       customFees.exec,
     );
 
     const configAfter = await oracleInstance.getConfig();
-    expect(configAfter.price_feed_period).toBe(
-      INIT_PRICE_FEED_PERIOD * NANOSEC,
-    );
-    expect(configAfter.expected_feeders).toBe(INIT_PERMILLES_NEEDED);
-
-    console.log(await oracleInstance.getFeeders());
+    expect(configAfter.price_feed_period).toBe(initPriceFeedPeriod * NANOSEC);
+    expect(configAfter.expected_feeders).toBe(initFeedersPermillesNeeded);
 
     await removeAllFeeders(oracleInstance, wasmAdminWallet);
     await registerAllFeedersBack(oracleInstance, wasmAdminWallet);
 
-    console.log(await oracleInstance.getFeeders());
+    // reset the swap tree to its init state
+    await oracleInstance.updateSwapTree(
+      wasmAdminWallet,
+      initSwapTree.tree,
+      customFees.exec,
+    );
+
+    const swapTreeAfter = await oracleInstance.getSwapTree();
+    expect(initSwapTree).toStrictEqual(swapTreeAfter);
   });
 
   async function feedPrice(
@@ -227,7 +233,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
       EXPECTED_AMOUNT,
       EXPECTED_AMOUNT_QUOTE,
       firstPairMember,
-      BASE_ASSET,
+      baseAsset,
     );
     const priceAfterSecondFeederVote = await oracleInstance.getPriceFor(
       firstPairMember,
@@ -237,7 +243,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     expect(priceAfterSecondFeederVote.amount_quote.amount).toBe(
       EXPECTED_AMOUNT_QUOTE,
     );
-    expect(priceAfterSecondFeederVote.amount_quote.ticker).toBe(BASE_ASSET);
+    expect(priceAfterSecondFeederVote.amount_quote.ticker).toBe(baseAsset);
     expect(priceAfterSecondFeederVote.amount.amount).toBe(EXPECTED_AMOUNT);
     expect(priceAfterSecondFeederVote.amount.ticker).toBe(firstPairMember);
 
@@ -289,8 +295,6 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     const priceFeedPeriodSec = 10000;
     await setConfig(priceFeedPeriodSec, 500); // any expectedFeeders
 
-    const initSwapTree: SwapTree = await oracleInstance.getSwapTree();
-
     await removeAllFeeders(oracleInstance, wasmAdminWallet);
     await oracleInstance.addFeeder(
       wasmAdminWallet,
@@ -304,7 +308,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     const thirdCurrency = leaseCurrencies[2];
 
     let newSwapTree: Tree = [
-      [0, BASE_ASSET],
+      [0, baseAsset],
       [[1, firstCurrency], [[2, secondCurrency]]],
     ];
     await oracleInstance.updateSwapTree(
@@ -321,7 +325,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
       firstCurrencyToBase[0].toString(),
       firstCurrencyToBase[1].toString(),
       firstCurrency,
-      BASE_ASSET,
+      baseAsset,
     );
 
     await feedPrice(
@@ -342,7 +346,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     verifyPrice(price, calcPrice);
 
     // SHORTENING
-    newSwapTree = [[0, BASE_ASSET], [[1, firstCurrency]]];
+    newSwapTree = [[0, baseAsset], [[1, firstCurrency]]];
     await oracleInstance.updateSwapTree(
       wasmAdminWallet,
       newSwapTree,
@@ -355,7 +359,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
     // EXTENDING
     newSwapTree = [
-      [0, BASE_ASSET],
+      [0, baseAsset],
       [[1, firstCurrency], [[2, thirdCurrency]]],
     ];
     await oracleInstance.updateSwapTree(
@@ -378,20 +382,13 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     price = await oracleInstance.getPriceFor(thirdCurrency);
     calcPrice = resolvePrice(firstCurrencyToBase, thirdCurrencyToSecond);
     verifyPrice(price, calcPrice);
-
-    // reset the swap tree to its init state
-    await oracleInstance.updateSwapTree(
-      wasmAdminWallet,
-      initSwapTree.tree,
-      customFees.exec,
-    );
   });
 
   test('a registered feeder tries to feed a price for an invalid pair - should produce an error', async () => {
     const feedPrices = {
       prices: [
         {
-          amount: { amount: '2', ticker: BASE_ASSET }, // any amount
+          amount: { amount: '2', ticker: baseAsset }, // any amount
           amount_quote: { amount: '5', ticker: firstPairMember }, // any amount
         },
       ],
@@ -434,7 +431,8 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
     await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
 
-    // TO DO: issue - https://gitlab-nomo.credissimo.net/nomo/smart-contracts/-/issues/22
-    await expect(broadcastTx).rejects.toThrow(/^.*Invalid price.*/);
+    await expect(broadcastTx).rejects.toThrow(
+      /^.*The amount should not be zero.*/,
+    );
   });
 });

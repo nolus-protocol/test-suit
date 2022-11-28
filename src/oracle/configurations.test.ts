@@ -6,7 +6,7 @@ import NODE_ENDPOINT, {
 } from '../util/clients';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
-import { Tree } from '@nolus/nolusjs/build/contracts/types/SwapTree';
+import { SwapTree, Tree } from '@nolus/nolusjs/build/contracts/types/SwapTree';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 
 runOrSkip(process.env.TEST_ORACLE as string)(
@@ -17,6 +17,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     let oracleInstance: NolusContracts.Oracle;
     let BASE_ASSET: string;
     let leaseCurrencies: string[];
+    let initSwapTree: SwapTree;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
     beforeAll(async () => {
@@ -41,6 +42,20 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         [adminBalance],
         customFees.transfer,
       );
+
+      initSwapTree = await oracleInstance.getSwapTree();
+    });
+
+    afterAll(async () => {
+      // reset the swap tree to its init state
+      await oracleInstance.updateSwapTree(
+        wasmAdminWallet,
+        initSwapTree.tree,
+        customFees.exec,
+      );
+
+      const swapTreeAfter = await oracleInstance.getSwapTree();
+      expect(initSwapTree).toStrictEqual(swapTreeAfter);
     });
 
     test('the contract owner tries to setup empty swap paths', async () => {

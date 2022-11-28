@@ -1,11 +1,11 @@
 #!/bin/bash
 set -euxo pipefail
 
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-source "$SCRIPT_DIR"/common/cmd.sh
-
 HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
+SCRIPT_DIR="$HOME_DIR"/scripts
+
 source "$HOME_DIR"/.env
+source "$SCRIPT_DIR"/common/cmd.sh
 
 ACCOUNTS_DIR="$HOME/.nolus"
 FEEDERS_FILE="feeders.json"
