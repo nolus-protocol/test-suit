@@ -2,32 +2,23 @@
 
 ## Prerequisites
 
-You need Node v14+ installed on your machine.
-You also need to install:
+* Node v14+
 
 * [yarn](https://classic.yarnpkg.com/lang/en/docs/install/#debian-stable)
 
-```sh
-npm install --global yarn
-```
+* [jq](https://stedolan.github.io/jq/download/)
 
 * [jest](https://jestjs.io/docs/getting-started)
 
-You can run Jest directly from the CLI if it's globally available in your PATH:
+    You can run Jest directly from the CLI if it is globally available in your PATH:
 
-```sh
-yarn global add jest
-```
+    ```sh
+    yarn global add jest
+    ```
 
-* [jq](https://stedolan.github.io/jq/download/):
+## Dependencies
 
-```sh
-sudo apt-get install jq
-```
-
-* the project's dependencies:
-
-First config your npm token. This is required to install Nolusjs:
+First config your npm token. This is required to install Nolus.js:
 
 ```sh
 npm config set //registry.npmjs.org/:_authToken <YOUR_NPM_ACCESS_TOKEN>
@@ -37,51 +28,44 @@ npm config set //registry.npmjs.org/:_authToken <YOUR_NPM_ACCESS_TOKEN>
 yarn
 ```
 
-## Linting the code
+## Run tests
 
-We use the [TypeScript-Eslint](https://github.com/typescript-eslint) and [Prettier](https://prettier.io/).
+### Prepare the environment
+
+#### Dev network
 
 ```sh
-yarn lint
+yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --mnemonic-wasm-admin <mnemonic_phrase> --token-type "PRIVATE-TOKEN" --token-value <your_gitlab_access_token>
 ```
 
-This will show you the results of the ESLint analysis.
+* For more flags: ```yarn prepare-env-dev --help```
 
-Ref: [Using ESLint and Prettier in a TypeScript Project, ROBERT COOPER](https://robertcooper.me/post/using-eslint-and-prettier-in-a-typescript-project).
+#### Local network
 
-## Run integration tests
+```sh
+yarn prepare-env-local --contracts-result-file-path <contracts_info_file_path>
+```
 
-1. On dev-net:
+* **--contracts-result-file-path** - path to the directory where the smart contracts information file is located (thе file produced by **nolusd-core/scripts/init-local-network.sh**)
 
-    ```sh
-    yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --mnemonic-wasm-admin <mnemonic_phrase> --token-type "PRIVATE-TOKEN" --token-value <your_gitlab_access_token> --test-transfer "true"/"false" --test-oracle "true"/"false" --test-staking "true"/"false" --test-borrower "true"/"false" --test-lender "true"/"false" --test-treasury "true"/"false" --test-vesting "true"/"false" --test-gov "true"/"false"
-    ```
+* For more flags: ```yarn prepare-env-local --help```
 
-    ```sh
-    yarn test
-    ```
+* The 'reserve' account must have funds (in nolus native currency && lpp base currency), so be sure to reflect this when starting a local network : **/nolus-core/scripts/init-local-network.sh**
 
-2. On local-net:
+Example:
 
-    ```sh
-    yarn prepare-env-local --contracts-result-file-path <path_to_contracts_info_file>
-    ```
+```sh
+./scripts/init-local-network.sh --reserve-tokens 100000000000000ibc/7FBDBEEEBA9C50C4BCDF7BF438EAB99E64360833D240B32655C96E319559E911 (lpp base ibc/ representation),10000000000000unls --hermes-mnemonic <hermes_account_mnemonic>
+```
 
-    * **--contracts-result-file-path** - you must pass the path to the directory where the smart contracts information file is located (thе file produced by **cosmzone/scripts/init-local-network.sh**)
+### Save feeders
 
-    More flags:
+```sh
+yarn save-feeders
+```
 
-    * **--nolus-local-network <nolus-local-net-url>**, by default this is: http://localhost:26612
+### Run
 
-    * **--stable-denom <stable-denom>**, (ticker) by default this is: USDC
-
-    * **--home-dir <nolus-accounts-dir>**, by default this is: home/.nolus
-
-    You can get selected lpp-native/stable-denom in reserve account through: **/cosmzone/scripts/init-local-network.sh**.
-    Example:
-
-    ``./scripts/init-local-network.sh --wasm-code-path <path_to_contracts_wasm_files> --wasm-script-path <path_to_"smart-contracts/scripts/deploy-contracts-genesis.sh"> --lpp-native "USDC" --reserve-tokens 10000000000000ibc/7FBDBEEEBA9C50C4BCDF7BF438EAB99E64360833D240B32655C96E319559E911 (USDC ibc/ representation),10000000000000unls``
-
-    ```sh
-    yarn test
-    ```
+```sh
+yarn test
+```
