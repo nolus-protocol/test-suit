@@ -32,12 +32,12 @@ prepareEnv() {
 # Add new keys
 
 local -r contracts_info_path=$1
-local -r stable_denom=$2
+local -r lpp_base_currency=$2
 local -r node_url=$3
 local -r node_env=$4
 local -r accounts_dir=$5
 local -r main_accounts_key=$6
-local -r wasm_admin_key=$7
+local -r contracts_owner_key=$7
 local -r test_transfers=$8
 local -r test_oracle=$9
 local -r test_staking=${10}
@@ -53,7 +53,7 @@ addKey "test-user-2" "$accounts_dir"
 local -r user_1_priv_key=$(exportKey "$main_accounts_key" "$accounts_dir")
 local -r user_2_priv_key=$(exportKey "test-user-1" "$accounts_dir")
 local -r user_3_priv_key=$(exportKey "test-user-2" "$accounts_dir")
-local -r wasm_admin=$(exportKey "$wasm_admin_key" "$accounts_dir")
+local -r contracts_owner=$(exportKey "$contracts_owner_key" "$accounts_dir")
 local -r validator_1_address=$(getValidatorAddress "0" "$accounts_dir" "$node_url")
 local -r validator_2_address=$(getValidatorAddress "1" "$accounts_dir" "$node_url")
 
@@ -72,12 +72,12 @@ local -r dispatcher_address=$(jq .contracts_info[6].rewards_dispatcher.instance 
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${node_url}
 ENV=${node_env}
-STABLE_DENOM=${stable_denom}
+LPP_BASE_CURRENCY=${lpp_base_currency}
 
 USER_1_PRIV_KEY=${user_1_priv_key}
 USER_2_PRIV_KEY=${user_2_priv_key}
 USER_3_PRIV_KEY=${user_3_priv_key}
-WASM_ADMIN_KEY=${wasm_admin}
+CONTRACTS_OWNER_KEY=${contracts_owner}
 VALIDATOR_1_ADDRESS=${validator_1_address}
 VALIDATOR_2_ADDRESS=${validator_2_address}
 

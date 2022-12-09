@@ -2,9 +2,9 @@
 set -euxo pipefail
 
 NOLUS_LOCAL_NET="http://localhost:26612"
-STABLE_DENOM="USDC"
+LPP_BASE_CURRENCY="USDC"
 MAIN_KEY="reserve"
-WASM_ADMIN_KEY="contracts_owner"
+CONTRACTS_OWNER_KEY="contracts_owner"
 NOLUS_HOME_DIR="$HOME/.nolus"
 CONTRACTS_INFO_PATH=""
 
@@ -16,10 +16,10 @@ while [[ $# -gt 0 ]]; do
   -h | --help)
     printf \
     "Usage: %s
-    [--nolus-local-network <nolus_local_net_url>]
+    [--nolus-local-network <nolus_local_net>]
     [--contracts-result-file-path <path_to_contracts_info>]
-    [--wasm-admin-key <existing_key>]
-    [--stable-denom <string>]
+    [--contracts-owner-key <contracts_owner_key>]
+    [--lpp-base-currency <lpp_base_currency>]
     [--home-dir <nolus_accounts_dir>]" \
     "$0"
     exit 0
@@ -37,14 +37,14 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  --wasm-admin-key)
-    WASM_ADMIN_KEY="$2"
+  --contracts-owner-key)
+    CONTRACTS_OWNER_KEY="$2"
     shift
     shift
     ;;
 
-  --stable-denom)
-    STABLE_DENOM="$2"
+  --lpp-base-currency)
+    LPP_BASE_CURRENCY="$2"
     shift
     shift
     ;;
@@ -71,5 +71,5 @@ source "$SCRIPT_DIR"/verify.sh
 
 verify_mandatory "$CONTRACTS_INFO_PATH" "contracts info file path"
 
-prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" "$WASM_ADMIN_KEY" \
+prepareEnv "$CONTRACTS_INFO_PATH" "$LPP_BASE_CURRENCY" "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" "$CONTRACTS_OWNER_KEY" \
 "" "" "" "" "" "" "" "" ""

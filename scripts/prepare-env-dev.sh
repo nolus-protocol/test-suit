@@ -1,30 +1,32 @@
 #!/bin/bash
 set -euxo pipefail
 
+HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
+
 ARTIFACT_BIN="nolus.tar.gz"
 NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
 GITLAB_API="https://gitlab-nomo.credissimo.net/api/v4"
-HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
-STABLE_DENOM="USDC"
 COSMZONE_PROJECT_ID="3"
 SETUP_DEV_NETWORK_ARTIFACT="setup-dev-network"
 NOLUS_BUILD_BINARY_ARTIFACT="build-binary"
-FAUCET_KEY="faucet"
-WASM_ADMIN_KEY="contracts_owner"
 
+FAUCET_KEY="faucet"
+CONTRACTS_OWNER_KEY="contracts_owner"
+
+LPP_BASE_CURRENCY="USDC"
 TAG=""
 MNEMONIC_FAUCET=""
-MNEMONIC_ADMIN=""
+MNEMONIC_CONTRACTS_OWNER=""
 TOKEN_TYPE=""
 TOKEN_VALUE=""
-TEST_TRANSFER=""
-TEST_ORACLE=""
-TEST_STAKING=""
-TEST_BORROWER=""
-TEST_LENDER=""
-TEST_TREASURY=""
-TEST_VESTING=""
-TEST_GOV=""
+TEST_TRANSFER="true"
+TEST_ORACLE="true"
+TEST_STAKING="true"
+TEST_BORROWER="true"
+TEST_LENDER="true"
+TEST_TREASURY="true"
+TEST_VESTING="true"
+TEST_GOV="true"
 
 
 while [[ $# -gt 0 ]]; do
@@ -35,13 +37,28 @@ while [[ $# -gt 0 ]]; do
   -h | --help)
     printf \
     "Usage: %s
+    [--lpp-base-currency <lpp_base_currency_ticker>]
     [--tag <cosmzone_preferred_tag>]
     [--mnemonic-faucet <mnemonic_phrase>]
-    [--mnemonic-wasm-admin <mnemonic_phrase>]
+    [--mnemonic-contracts-owner <mnemonic_phrase>]
     [--token-type <token_type>]
-    [--token-value <token_value>]" \
+    [--token-value <token_value>]
+    [--test-transfer-flag <test_transfer_true_or_false>]
+    [--test-oracle-flag <test_oracle_true_or_false>]
+    [--test-staking-flag <test_staking_true_or_false>]
+    [--test-borrower-flag <test_borrower_true_or_false>]
+    [--test-lender-flag <test_lender_true_or_false>]
+    [--test-treasury-flag <test_treasury_true_or_false>]
+    [--test-vesting-flag <test_vesting_true_or_false>]
+    [--test-gov-flag <test_gov_true_or_false>]" \
     "$0"
     exit 0
+    ;;
+
+  --lpp-base-currency)
+    LPP_BASE_CURRENCY="$2"
+    shift
+    shift
     ;;
 
   --tag)
@@ -56,8 +73,8 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  --mnemonic-wasm-admin)
-    MNEMONIC_ADMIN="$2"
+  --mnemonic-contracts-owner)
+    MNEMONIC_CONTRACTS_OWNER="$2"
     shift
     shift
     ;;
@@ -74,71 +91,69 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  --test-transfer)
+  --test-transfer-flag)
     TEST_TRANSFER="$2"
     shift
     shift
     ;;
 
-  --test-oracle)
+  --test-oracle-flag)
     TEST_ORACLE="$2"
     shift
     shift
     ;;
 
-  --test-staking)
+  --test-staking-flag)
     TEST_STAKING="$2"
     shift
     shift
     ;;
 
-  --test-borrower)
+  --test-borrower-flag)
     TEST_BORROWER="$2"
     shift
     shift
     ;;
 
-  --test-lender)
+  --test-lender-flag)
     TEST_LENDER="$2"
     shift
     shift
     ;;
 
-  --test-treasury)
+  --test-treasury-flag)
     TEST_TREASURY="$2"
     shift
     shift
     ;;
 
-  --test-vesting)
+  --test-vesting-flag)
     TEST_VESTING="$2"
     shift
     shift
     ;;
 
-  --test-gov)
+  --test-gov-flag)
     TEST_GOV="$2"
     shift
     shift
     ;;
-esac
+
+  *)
+    echo "unknown option '$key'"
+    exit 1
+    ;;
+
+  esac
 done
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR"/common/verify.sh
 
-verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic phrase"
-verify_mandatory "$MNEMONIC_ADMIN" "wasm admin mnemonic phrase"
+verify_mandatory "$MNEMONIC_FAUCET" "faucet key name"
+verify_mandatory "$MNEMONIC_CONTRACTS_OWNER" "contracts owner key name"
 verify_mandatory "$TOKEN_TYPE" "gitlab auth token type"
 verify_mandatory "$TOKEN_VALUE" "gitlab auth token value"
-verify_mandatory "$TEST_TRANSFER" "test transfer flag"
-verify_mandatory "$TEST_ORACLE" "test oracle flag"
-verify_mandatory "$TEST_STAKING" "test staking flag"
-verify_mandatory "$TEST_BORROWER" "test borrower flag"
-verify_mandatory "$TEST_LENDER" "test lender flag"
-verify_mandatory "$TEST_TREASURY" "test treasury flag"
-verify_mandatory "$TEST_VESTING" "test vesting flag"
-verify_mandatory "$TEST_GOV" "test gov flag"
 
 _downloadArtifact() {
   local -r name="$1"
@@ -164,25 +179,25 @@ _downloadArtifact() {
     COSMZONE_LATEST_VERSION="$TAG"
   fi
 
-_downloadArtifact "$SETUP_DEV_NETWORK_ARTIFACT" "v$COSMZONE_LATEST_VERSION" "$COSMZONE_PROJECT_ID"
-_downloadArtifact "$NOLUS_BUILD_BINARY_ARTIFACT" "v$COSMZONE_LATEST_VERSION" "$COSMZONE_PROJECT_ID"
+_downloadArtifact "$SETUP_DEV_NETWORK_ARTIFACT" "$COSMZONE_LATEST_VERSION" "$COSMZONE_PROJECT_ID"
+_downloadArtifact "$NOLUS_BUILD_BINARY_ARTIFACT" "$COSMZONE_LATEST_VERSION" "$COSMZONE_PROJECT_ID"
 
 tar -xvf $ARTIFACT_BIN
 export PATH
 PATH=$HOME_DIR:$PATH
 rm -r "$HOME_DIR/accounts"
 ACCOUNTS_DIR="$HOME_DIR/accounts"
-
-# contracts-info.json will be extracted here
 CONTRACTS_INFO_PATH="$HOME_DIR"
 
-# Recover wasm_admin and faucet
+# Recover contracts_owner and faucet
+
 source "$SCRIPT_DIR"/common/cmd.sh
 echo "$MNEMONIC_FAUCET" | run_cmd "$ACCOUNTS_DIR" keys add "$FAUCET_KEY" --recover --keyring-backend "test"
-echo "$MNEMONIC_ADMIN" | run_cmd "$ACCOUNTS_DIR" keys add "$WASM_ADMIN_KEY" --recover --keyring-backend "test"
+echo "$MNEMONIC_CONTRACTS_OWNER" | run_cmd "$ACCOUNTS_DIR" keys add "$CONTRACTS_OWNER_KEY" --recover --keyring-backend "test"
 
 # Prepare .env
+
 source "$SCRIPT_DIR"/common/prepare-env.sh
-prepareEnv "$CONTRACTS_INFO_PATH" "$STABLE_DENOM" "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" \
-"$WASM_ADMIN_KEY" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
+prepareEnv "$CONTRACTS_INFO_PATH" "$LPP_BASE_CURRENCY" "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" \
+"$CONTRACTS_OWNER_KEY" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
 "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV"
