@@ -61,7 +61,6 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
     );
     expect(isDeliverTxFailure(result)).toBeFalsy();
     const log = result.rawLog;
-    // console.log(result);
 
     if (!log) {
       undefinedHandler();
@@ -69,8 +68,6 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
     }
 
     const proposalId = JSON.parse(log)[0].events[4].attributes[0].value;
-
-    // check if proposal is added
     const proposalInfo = await getProposal(proposalId);
     expect(proposalInfo.proposal).toBeDefined();
   });
@@ -116,7 +113,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
           {
             subspace: 'wasm',
             key: 'uploadAccess',
-            value: '{ "permission": "Nobody" }',
+            value: '{ "permission": "Nobody", "address": "" }',
           },
         ],
       }).finish(),
@@ -206,9 +203,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
   });
 
   test('validator should be able to submit a StoreCode proposal', async () => {
-    const wasmBinary: Buffer = fs.readFileSync(
-      './wasm-contracts/cw20_base.wasm',
-    );
+    const wasmBinary: Buffer = fs.readFileSync('./cw20_base.wasm');
 
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.StoreCodeProposal',
