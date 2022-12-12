@@ -74,14 +74,14 @@ export function currencyTicker_To_IBC(ticker: string): string {
 
 export async function removeAllFeeders(
   oracleInstance: NolusContracts.Oracle,
-  wasmAdminWallet: NolusWallet,
+  contractsOwnerWallet: NolusWallet,
 ): Promise<void> {
   const allFeeders = await oracleInstance.getFeeders();
 
   for (let i = 0; i < allFeeders.length; i++) {
     console.log('Feeder removing...');
     await oracleInstance.removeFeeder(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       allFeeders[i],
       customFees.exec,
     );
@@ -90,12 +90,12 @@ export async function removeAllFeeders(
 
 export async function registerAllFeedersBack(
   oracleInstance: NolusContracts.Oracle,
-  wasmAdminWallet: NolusWallet,
+  contractsOwnerWallet: NolusWallet,
 ): Promise<void> {
   const allFeeders = FEEDERS.data;
   for (let i = 0; i < allFeeders.length; i++) {
     await oracleInstance.addFeeder(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       allFeeders[i],
       customFees.exec,
     );

@@ -1,7 +1,7 @@
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
-  getWasmAdminWallet,
+  getContractsOwnerWallet,
 } from '../util/clients';
 import {
   customFees,
@@ -35,7 +35,7 @@ import {
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Liquidation',
   () => {
-    let wasmAdminWallet: NolusWallet;
+    let contractsOwnerWallet: NolusWallet;
     let cosm: any;
     let borrowerWallet: NolusWallet;
     let userWithBalanceWallet: NolusWallet;
@@ -248,7 +248,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
-      wasmAdminWallet = await getWasmAdminWallet();
+      contractsOwnerWallet = await getContractsOwnerWallet();
       borrowerWallet = await createWallet();
 
       // feed the contract owner
@@ -261,7 +261,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         denom: NATIVE_MINIMAL_DENOM,
       };
       await userWithBalanceWallet.transferAmount(
-        wasmAdminWallet.address as string,
+        contractsOwnerWallet.address as string,
         [adminBalance],
         customFees.transfer,
       );
@@ -281,7 +281,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaserConfigMsg.config.repayment.grace_period =
         newGracePeriodSec * NANOSEC;
       await leaserInstance.setLeaserConfig(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         leaserConfigMsg,
         customFees.exec,
       );
@@ -290,7 +290,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       oracleConfigBefore = await oracleInstance.getConfig();
       const feedersNeededPermille = 10;
       await oracleInstance.setConfig(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         fiveHoursSec,
         feedersNeededPermille,
         customFees.exec,
@@ -304,17 +304,17 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrency,
       );
       //TO DO
-      // await removeAllFeeders(oracleInstance, wasmAdminWallet);
+      // await removeAllFeeders(oracleInstance, contractsOwnerWallet);
     });
 
     afterAll(async () => {
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
-        wasmAdminWallet.address as string,
+        contractsOwnerWallet.address as string,
       );
 
       await leaserInstance.setLeaserConfig(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         leaserConfigBefore,
         customFees.exec,
       );
@@ -324,11 +324,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
-        wasmAdminWallet.address as string,
+        contractsOwnerWallet.address as string,
       );
 
       await oracleInstance.setConfig(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         oracleConfigBefore.price_feed_period / NANOSEC,
         oracleConfigBefore.expected_feeders,
         customFees.exec,
@@ -338,7 +338,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(oracleConfigAfter).toStrictEqual(oracleConfigBefore);
 
       //TO DO - register all feeders
-      // await registerAllFeeders(oracleInstance, wasmAdminWallet);
+      // await registerAllFeeders(oracleInstance, contractsOwnerWallet);
     });
 
     test('partial liquidation due to expiry of the grace period - should work as expected', async () => {
@@ -456,7 +456,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaserConfigMsg.config.lease_interest_rate_margin = 1000000000;
 
       await leaserInstance.setLeaserConfig(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         leaserConfigMsg,
         customFees.exec,
       );
@@ -582,7 +582,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     //   leaserConfig.config.repayment.period = fiveHoursSec * NANOSEC;
 
     //   await leaserInstance.setLeaserConfig(
-    //     wasmAdminWallet,
+    //     contractsOwnerWallet,
     //     leaserConfig,
     //     customFees.exec,
     //   );

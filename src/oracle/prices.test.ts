@@ -2,7 +2,7 @@ import { customFees, sleep, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
-  getWasmAdminWallet,
+  getContractsOwnerWallet,
 } from '../util/clients';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import {
@@ -20,7 +20,7 @@ import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
 
 runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
-  let wasmAdminWallet: NolusWallet;
+  let contractsOwnerWallet: NolusWallet;
   let userWithBalance: NolusWallet;
   let feederWallet: NolusWallet;
   let oracleInstance: NolusContracts.Oracle;
@@ -34,7 +34,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    wasmAdminWallet = await getWasmAdminWallet();
+    contractsOwnerWallet = await getContractsOwnerWallet();
     userWithBalance = await getUser1Wallet();
     feederWallet = await createWallet();
 
@@ -53,7 +53,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     };
 
     await userWithBalance.transferAmount(
-      wasmAdminWallet.address as string,
+      contractsOwnerWallet.address as string,
       [adminBalance],
       customFees.transfer,
     );
@@ -62,12 +62,12 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     firstPairMember = currenciesPairs[0].from;
     secondPairMember = currenciesPairs[0].to.target;
 
-    await removeAllFeeders(oracleInstance, wasmAdminWallet);
+    await removeAllFeeders(oracleInstance, contractsOwnerWallet);
   });
 
   afterAll(async () => {
     await oracleInstance.setConfig(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       initPriceFeedPeriod,
       initFeedersPermillesNeeded,
       customFees.exec,
@@ -77,12 +77,12 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     expect(configAfter.price_feed_period).toBe(initPriceFeedPeriod * NANOSEC);
     expect(configAfter.expected_feeders).toBe(initFeedersPermillesNeeded);
 
-    await removeAllFeeders(oracleInstance, wasmAdminWallet);
-    await registerAllFeedersBack(oracleInstance, wasmAdminWallet);
+    await removeAllFeeders(oracleInstance, contractsOwnerWallet);
+    await registerAllFeedersBack(oracleInstance, contractsOwnerWallet);
 
     // reset the swap tree to its init state
     await oracleInstance.updateSwapTree(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       initSwapTree.tree,
       customFees.exec,
     );
@@ -126,7 +126,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     feedersNeededPermilles: number,
   ) {
     await oracleInstance.setConfig(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       priceFeedPeriodSec,
       feedersNeededPermilles,
       customFees.exec,
@@ -162,7 +162,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     expect(isFeeder).toBe(false);
 
     await oracleInstance.addFeeder(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       feederWallet.address as string,
       customFees.exec,
     );
@@ -173,7 +173,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     // adding an already registered feeder
     const result = () =>
       oracleInstance.addFeeder(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         feederWallet.address as string,
         customFees.exec,
       );
@@ -188,26 +188,26 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     const expectedFeedersPermile = 500;
     await setConfig(priceFeedPeriodSec, expectedFeedersPermile);
 
-    await removeAllFeeders(oracleInstance, wasmAdminWallet);
+    await removeAllFeeders(oracleInstance, contractsOwnerWallet);
 
     const firstFeederWallet = await createWallet();
     const secondFeederWallet = await createWallet();
     const thirdFeederWallet = await createWallet();
 
     await oracleInstance.addFeeder(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       firstFeederWallet.address as string,
       customFees.exec,
     );
 
     await oracleInstance.addFeeder(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       secondFeederWallet.address as string,
       customFees.exec,
     );
 
     await oracleInstance.addFeeder(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       thirdFeederWallet.address as string,
       customFees.exec,
     );
@@ -255,12 +255,12 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   });
 
   test('the contract owner changes the price period when a price is available - should work as expected', async () => {
-    await removeAllFeeders(oracleInstance, wasmAdminWallet);
+    await removeAllFeeders(oracleInstance, contractsOwnerWallet);
 
     const priceFeedPeriodSec = 100000;
     await setConfig(priceFeedPeriodSec, 500); // any expectedFeeders
     await oracleInstance.addFeeder(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       feederWallet.address as string,
       customFees.exec,
     );
@@ -295,9 +295,9 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     const priceFeedPeriodSec = 10000;
     await setConfig(priceFeedPeriodSec, 500); // any expectedFeeders
 
-    await removeAllFeeders(oracleInstance, wasmAdminWallet);
+    await removeAllFeeders(oracleInstance, contractsOwnerWallet);
     await oracleInstance.addFeeder(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       feederWallet.address as string,
       customFees.exec,
     );
@@ -312,12 +312,12 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
       [[1, firstCurrency], [[2, secondCurrency]]],
     ];
     await oracleInstance.updateSwapTree(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       newSwapTree,
       customFees.exec,
     );
 
-    const firstCurrencyToBase = [22, 33];
+    const firstCurrencyToBase = [2, 3];
     const secondCurrencyToFirst = [222, 333];
 
     await feedPrice(
@@ -348,7 +348,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     // SHORTENING
     newSwapTree = [[0, baseAsset], [[1, firstCurrency]]];
     await oracleInstance.updateSwapTree(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       newSwapTree,
       customFees.exec,
     );
@@ -363,7 +363,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
       [[1, firstCurrency], [[2, thirdCurrency]]],
     ];
     await oracleInstance.updateSwapTree(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       newSwapTree,
       customFees.exec,
     );

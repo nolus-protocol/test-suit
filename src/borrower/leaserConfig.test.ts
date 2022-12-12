@@ -1,7 +1,7 @@
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
-  getWasmAdminWallet,
+  getContractsOwnerWallet,
 } from '../util/clients';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
@@ -12,7 +12,7 @@ import { runOrSkip } from '../util/testingRules';
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Leaser contract tests - Config',
   () => {
-    let wasmAdminWallet: NolusWallet;
+    let contractsOwnerWallet: NolusWallet;
     let wallet: NolusWallet;
     let leaserInstance: NolusContracts.Leaser;
     let configBefore: NolusContracts.LeaserConfig;
@@ -41,7 +41,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
 
-      wasmAdminWallet = await getWasmAdminWallet();
+      contractsOwnerWallet = await getContractsOwnerWallet();
       wallet = await createWallet();
 
       configBefore = await leaserInstance.getLeaserConfig();
@@ -56,7 +56,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         denom: NATIVE_MINIMAL_DENOM,
       };
       await userWithBalance.transferAmount(
-        wasmAdminWallet.address as string,
+        contractsOwnerWallet.address as string,
         [adminBalance],
         customFees.transfer,
       );
@@ -71,7 +71,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('an unauthorized user tries to change the configuration - should produce an error', async () => {
-      await sendInitExecuteFeeTokens(wasmAdminWallet, wallet.address as string);
+      await sendInitExecuteFeeTokens(
+        contractsOwnerWallet,
+        wallet.address as string,
+      );
 
       await trySetConfig('Unauthorized', wallet);
     });
@@ -80,14 +83,20 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaserConfigMsg.config.liability.initial =
         leaserConfigMsg.config.liability.healthy + 1;
 
-      await trySetConfig('Initial % should be <= healthy %', wasmAdminWallet);
+      await trySetConfig(
+        'Initial % should be <= healthy %',
+        contractsOwnerWallet,
+      );
     });
 
     test('the wasm_admin tries to set initial liability % > max liability % - should produce an error', async () => {
       leaserConfigMsg.config.liability.initial =
         leaserConfigMsg.config.liability.max + 1;
 
-      await trySetConfig('Initial % should be <= healthy %', wasmAdminWallet);
+      await trySetConfig(
+        'Initial % should be <= healthy %',
+        contractsOwnerWallet,
+      );
     });
 
     test('the wasm_admin tries to set healthy liability % > max liability % - should produce an error', async () => {
@@ -96,7 +105,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Healthy % should be < first liquidation %',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
     });
 
@@ -106,7 +115,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Healthy % should be < first liquidation %',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
 
       leaserConfigMsg.config.liability.first_liq_warn =
@@ -114,7 +123,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Healthy % should be < first liquidation %',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
     });
 
@@ -124,7 +133,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'First liquidation % should be < second liquidation %',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
 
       leaserConfigMsg.config.liability.second_liq_warn =
@@ -132,7 +141,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'First liquidation % should be < second liquidation %',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
     });
 
@@ -142,7 +151,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Second liquidation % should be < third liquidation %',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
 
       leaserConfigMsg.config.liability.third_liq_warn =
@@ -150,7 +159,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Second liquidation % should be < third liquidation %',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
     });
 
@@ -160,7 +169,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Third liquidation % should be < max %',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
 
       leaserConfigMsg.config.liability.third_liq_warn =
@@ -168,7 +177,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Third liquidation % should be < max %',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
     });
 
@@ -178,7 +187,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Period length should be greater than grace period',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
     });
 
@@ -188,7 +197,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await trySetConfig(
         'Recalculate cadence in seconds should be >= 1h',
-        wasmAdminWallet,
+        contractsOwnerWallet,
       );
     });
   },

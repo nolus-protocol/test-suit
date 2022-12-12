@@ -35,7 +35,7 @@ yarn
 #### Dev network
 
 ```sh
-yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --mnemonic-wasm-admin <mnemonic_phrase> --token-type "PRIVATE-TOKEN" --token-value <your_gitlab_access_token>
+yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --mnemonic-contracts-owner <mnemonic_phrase> --token-type "PRIVATE-TOKEN" --token-value <your_gitlab_access_token>
 ```
 
 * For more flags: ```yarn prepare-env-dev --help```

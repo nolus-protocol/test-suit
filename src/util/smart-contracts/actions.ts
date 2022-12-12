@@ -1,10 +1,13 @@
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
-import { createWallet, getUser1Wallet, getWasmAdminWallet } from '../clients';
+import {
+  createWallet,
+  getUser1Wallet,
+  getContractsOwnerWallet,
+} from '../clients';
 import { returnRestToMainAccount, sendInitExecuteFeeTokens } from '../transfer';
 import { customFees, NATIVE_MINIMAL_DENOM, sleep } from '../utils';
 import { currencyTicker_To_IBC } from './calculations';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
-import { getLeaseAddressFromOpenLeaseResponse } from './getters';
 
 export async function provideLeasePrices(
   oracleInstance: NolusContracts.Oracle,
@@ -36,16 +39,16 @@ export async function pushPrice(
   secondPairMemberValue: string,
 ): Promise<ExecuteResult> {
   const userWithBalanceWallet = await getUser1Wallet();
-  const wasmAdminWallet = await getWasmAdminWallet();
+  const contractsOwnerWallet = await getContractsOwnerWallet();
 
   // add feeder
   await sendInitExecuteFeeTokens(
     userWithBalanceWallet,
-    wasmAdminWallet.address as string,
+    contractsOwnerWallet.address as string,
   );
 
   await oracleInstance.addFeeder(
-    wasmAdminWallet,
+    contractsOwnerWallet,
     priceFeederWallet.address as string,
     customFees.exec,
   );
@@ -57,7 +60,7 @@ export async function pushPrice(
 
   await sendInitExecuteFeeTokens(
     userWithBalanceWallet,
-    wasmAdminWallet.address as string,
+    contractsOwnerWallet.address as string,
   );
 
   const feedPrices = {
@@ -126,14 +129,14 @@ export async function provideEnoughLiquidity(
 
 export async function removeAllFeeders(
   oracleInstance: NolusContracts.Oracle,
-  wasmAdminWallet: NolusWallet,
+  contractsOwnerWallet: NolusWallet,
 ): Promise<void> {
   const allFeeders = await oracleInstance.getFeeders();
 
   for (let i = 0; i < allFeeders.length; i++) {
     console.log('Feeder removing...');
     await oracleInstance.removeFeeder(
-      wasmAdminWallet,
+      contractsOwnerWallet,
       allFeeders[i],
       customFees.exec,
     );
@@ -145,13 +148,15 @@ export async function checkLeaseBalance(
   currenciesTickers: string[],
 ): Promise<boolean> {
   const cosm = await NolusClient.getInstance().getCosmWasmClient();
-
+  let balanceState = false;
   currenciesTickers.forEach((ticker) => async () => {
     const tickerToIbc = currencyTicker_To_IBC(ticker);
     const leaseBalance = await cosm.getBalance(leaseAddress, tickerToIbc);
-    if (leaseBalance.amount) return true;
+
+    if (leaseBalance.amount) balanceState = true;
   });
-  return false;
+
+  return balanceState;
 }
 
 export async function waitLeaseOpeningProcess(

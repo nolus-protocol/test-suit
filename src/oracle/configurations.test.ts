@@ -2,7 +2,7 @@ import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
-  getWasmAdminWallet,
+  getContractsOwnerWallet,
 } from '../util/clients';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
@@ -12,7 +12,7 @@ import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 runOrSkip(process.env.TEST_ORACLE as string)(
   'Oracle tests - Configurations',
   () => {
-    let wasmAdminWallet: NolusWallet;
+    let contractsOwnerWallet: NolusWallet;
     let userWithBalance: NolusWallet;
     let oracleInstance: NolusContracts.Oracle;
     let BASE_ASSET: string;
@@ -22,7 +22,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
-      wasmAdminWallet = await getWasmAdminWallet();
+      contractsOwnerWallet = await getContractsOwnerWallet();
       userWithBalance = await getUser1Wallet();
 
       const cosm = await NolusClient.getInstance().getCosmWasmClient();
@@ -38,7 +38,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       };
 
       await userWithBalance.transferAmount(
-        wasmAdminWallet.address as string,
+        contractsOwnerWallet.address as string,
         [adminBalance],
         customFees.transfer,
       );
@@ -49,7 +49,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     afterAll(async () => {
       // reset the swap tree to its init state
       await oracleInstance.updateSwapTree(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         initSwapTree.tree,
         customFees.exec,
       );
@@ -63,7 +63,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
       const broadcastTx = () =>
         oracleInstance.updateSwapTree(
-          wasmAdminWallet,
+          contractsOwnerWallet,
           newSwapTree,
           customFees.exec,
         );
@@ -76,7 +76,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
       const broadcastTx = () =>
         oracleInstance.updateSwapTree(
-          wasmAdminWallet,
+          contractsOwnerWallet,
           newSwapTree,
           customFees.exec,
         );
@@ -92,7 +92,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
       const broadcastTx = () =>
         oracleInstance.updateSwapTree(
-          wasmAdminWallet,
+          contractsOwnerWallet,
           newSwapTree,
           customFees.exec,
         );
@@ -109,7 +109,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
       const broadcastTx = () =>
         oracleInstance.updateSwapTree(
-          wasmAdminWallet,
+          contractsOwnerWallet,
           newSwapTree,
           customFees.exec,
         );
@@ -126,7 +126,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         [[3, leaseCurrencies[2]]],
       ];
       await oracleInstance.updateSwapTree(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         swapTree,
         customFees.exec,
       );
@@ -146,13 +146,13 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     test('the contract owner tries to setup an invalid config - should produce an error', async () => {
       // price feed period = 0
       let result = () =>
-        oracleInstance.setConfig(wasmAdminWallet, 0, 1, customFees.exec); // any precentage needed
+        oracleInstance.setConfig(contractsOwnerWallet, 0, 1, customFees.exec); // any precentage needed
 
       await expect(result).rejects.toThrow('Price feed period can not be 0');
 
       // expected feeders = 0%
       result = () =>
-        oracleInstance.setConfig(wasmAdminWallet, 1, 0, customFees.exec); // any pricePeriod
+        oracleInstance.setConfig(contractsOwnerWallet, 1, 0, customFees.exec); // any pricePeriod
 
       await expect(result).rejects.toThrow(
         'Percent of expected available feeders should be > 0 and <= 1000',
@@ -160,7 +160,12 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
       // expected feeders > 100%, 1000permille
       result = () =>
-        oracleInstance.setConfig(wasmAdminWallet, 1, 1001, customFees.exec); // any pricePeriod
+        oracleInstance.setConfig(
+          contractsOwnerWallet,
+          1,
+          1001,
+          customFees.exec,
+        ); // any pricePeriod
 
       await expect(result).rejects.toThrow(
         'Percent of expected available feeders should be > 0 and <= 1000',
@@ -171,7 +176,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       const invalidAddress = 'nolus1ta43kkqwmugfdrddvdy4ewcgyw2n9maaaaaaaa';
       const result = () =>
         oracleInstance.addFeeder(
-          wasmAdminWallet,
+          contractsOwnerWallet,
           invalidAddress,
           customFees.exec,
         );
@@ -184,7 +189,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
       const result = () =>
         oracleInstance.removeFeeder(
-          wasmAdminWallet,
+          contractsOwnerWallet,
           newWallet.address as string,
           customFees.exec,
         );

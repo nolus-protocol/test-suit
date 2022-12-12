@@ -2,7 +2,7 @@ import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
-  getWasmAdminWallet,
+  getContractsOwnerWallet,
 } from '../util/clients';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
@@ -11,7 +11,7 @@ import { Tree } from '@nolus/nolusjs/build/contracts/types/SwapTree';
 runOrSkip(process.env.TEST_ORACLE as string)(
   'Oracle tests - Permissions',
   () => {
-    let wasmAdminWallet: NolusWallet;
+    let contractsOwnerWallet: NolusWallet;
     let userWithBalance: NolusWallet;
     let feederWallet: NolusWallet;
     let oracleInstance: NolusContracts.Oracle;
@@ -21,7 +21,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
-      wasmAdminWallet = await getWasmAdminWallet();
+      contractsOwnerWallet = await getContractsOwnerWallet();
       userWithBalance = await getUser1Wallet();
       feederWallet = await createWallet();
 
@@ -34,7 +34,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       };
 
       await userWithBalance.transferAmount(
-        wasmAdminWallet.address as string,
+        contractsOwnerWallet.address as string,
         [adminBalance],
         customFees.transfer,
       );
@@ -95,7 +95,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
     test('only the contract owner should be able to remove a feeder', async () => {
       await oracleInstance.addFeeder(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         feederWallet.address as string,
         customFees.exec,
       );
@@ -123,7 +123,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       }; // any amounts
 
       const broadcastTx = () =>
-        wasmAdminWallet.executeContract(
+        contractsOwnerWallet.executeContract(
           oracleContractAddress,
           addPriceAlarmMsg,
           customFees.exec,

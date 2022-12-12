@@ -1,7 +1,7 @@
 import NODE_ENDPOINT, {
   getUser1Wallet,
   createWallet,
-  getWasmAdminWallet,
+  getContractsOwnerWallet,
 } from '../util/clients';
 import {
   customFees,
@@ -18,7 +18,7 @@ runOrSkip(process.env.TEST_TREASURY as string)(
   'Treasury tests - Request rewards',
   () => {
     let userWithBalanceWallet: NolusWallet;
-    let wasmAdminWallet: NolusWallet;
+    let contractsOwnerWallet: NolusWallet;
     let newDispatcherWallet: NolusWallet;
     let treasuryInstance: NolusContracts.Treasury;
     const treasuryContractAddress = process.env.TREASURY_ADDRESS as string;
@@ -34,7 +34,7 @@ runOrSkip(process.env.TEST_TREASURY as string)(
 
       userWithBalanceWallet = await getUser1Wallet();
       newDispatcherWallet = await createWallet();
-      wasmAdminWallet = await getWasmAdminWallet();
+      contractsOwnerWallet = await getContractsOwnerWallet();
 
       treasuryInstance = new NolusContracts.Treasury(
         cosm,
@@ -53,11 +53,11 @@ runOrSkip(process.env.TEST_TREASURY as string)(
 
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
-        wasmAdminWallet.address as string,
+        contractsOwnerWallet.address as string,
       );
 
       await treasuryInstance.configRewardsTransfer(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         newDispatcherWallet.address as string,
         customFees.exec,
       );

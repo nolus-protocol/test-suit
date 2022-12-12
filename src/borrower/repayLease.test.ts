@@ -1,7 +1,7 @@
 import NODE_ENDPOINT, {
   getUser1Wallet,
   createWallet,
-  getWasmAdminWallet,
+  getContractsOwnerWallet,
 } from '../util/clients';
 import { Coin } from '@cosmjs/amino';
 import {
@@ -42,7 +42,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
   () => {
     let userWithBalanceWallet: NolusWallet;
     let borrowerWallet: NolusWallet;
-    let wasmAdminWallet: NolusWallet;
+    let contractsOwnerWallet: NolusWallet;
     let lppCurrency: string;
     let lppCurrencyToIBC: string;
     let leaseCurrency: string;
@@ -351,7 +351,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       userWithBalanceWallet = await getUser1Wallet();
       borrowerWallet = await createWallet();
-      wasmAdminWallet = await getWasmAdminWallet();
+      contractsOwnerWallet = await getContractsOwnerWallet();
 
       leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
       lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
@@ -374,11 +374,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
-        wasmAdminWallet.address as string,
+        contractsOwnerWallet.address as string,
       );
 
       await leaserInstance.setLeaserConfig(
-        wasmAdminWallet,
+        contractsOwnerWallet,
         leaserConfig,
         customFees.exec,
       );
