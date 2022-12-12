@@ -87,7 +87,7 @@ runOrSkip(process.env.TEST_VESTING as string)(
           customFees.configs,
         );
 
-      await expect(broadcastTx).rejects.toThrow(/^.*internal.*/);
+      await expect(broadcastTx).rejects.toThrow(/^.*invalid checksum.*/);
 
       await verifyVestingAccountBalance();
     });
@@ -120,7 +120,6 @@ runOrSkip(process.env.TEST_VESTING as string)(
       );
       expect(assertIsDeliverTxSuccess(result)).toBeUndefined();
 
-      // get balance before
       const vestingAccountBalanceBefore = await vestingWallet.getBalance(
         vestingWallet.address as string,
         NATIVE_TOKEN_DENOM,
@@ -148,7 +147,7 @@ runOrSkip(process.env.TEST_VESTING as string)(
       );
       await sleep(ENDTIME_SECONDS / 2 + 1); // > half
 
-      // half the tokens are provided now but not all
+      // half the tokens have already been distributed
       sendFailTx = await vestingWallet.transferAmount(
         user1Wallet.address as string,
         [FULL_AMOUNT],
