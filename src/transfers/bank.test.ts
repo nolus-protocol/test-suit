@@ -12,6 +12,7 @@ import NODE_ENDPOINT, {
 } from '../util/clients';
 import { customFees, gasPrice, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { runOrSkip } from '../util/testingRules';
+import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
 
 runOrSkip(process.env.TEST_TRANSFER as string)(
   'Transfers - tokens other than native',
@@ -22,7 +23,8 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
     let transfer: Coin;
     const transferAmount = '10';
     const treasuryAddress = process.env.TREASURY_ADDRESS as string;
-    const existingDenom = process.env.STABLE_DENOM as string;
+    const existingCurrencyTicker = process.env.LPP_BASE_CURRENCY as string;
+    const existingCurrencyIbc = currencyTicker_To_IBC(existingCurrencyTicker);
 
     const percision = 100000;
     const gasPriceInteger = gasPrice * percision;
@@ -35,7 +37,7 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
       user3Wallet = await getUser3Wallet();
 
       transfer = {
-        denom: existingDenom,
+        denom: existingCurrencyIbc,
         amount: transferAmount,
       };
       // send some native tokens
@@ -48,18 +50,18 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
     test('user should have some balance and the current token should be defined', async () => {
       const balance = await user1Wallet.getBalance(
         user1Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
 
-      expect(existingDenom).toBeDefined();
-      expect(existingDenom.length > 0).toBeTruthy();
+      expect(existingCurrencyIbc).toBeDefined();
+      expect(existingCurrencyIbc.length > 0).toBeTruthy();
       expect(BigInt(balance.amount) > 0).toBeTruthy();
     });
 
     test('user should be able to transfer and receive current tokens including sending the entire amount tokens he owns', async () => {
       const previousUser1Balance = await user1Wallet.getBalance(
         user1Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
 
       await sendInitTransferFeeTokens(
@@ -80,11 +82,11 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
       // user2 -> user3
       const previousUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
       const previousUser3Balance = await user3Wallet.getBalance(
         user3Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
 
       const treasuryBalanceBefore = await user1Wallet.getBalance(
@@ -115,11 +117,11 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
 
       const nextUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
       let nextUser3Balance = await user3Wallet.getBalance(
         user3Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
 
       expect(BigInt(nextUser2Balance.amount)).toBe(
@@ -149,12 +151,12 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
 
       const nextUser1Balance = await user1Wallet.getBalance(
         user1Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
 
       nextUser3Balance = await user3Wallet.getBalance(
         user3Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
 
       expect(BigInt(nextUser3Balance.amount)).toBe(
@@ -167,17 +169,17 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
 
     test('user tries to send 0 tokens - should produce an error', async () => {
       const transfer = {
-        denom: existingDenom,
+        denom: existingCurrencyIbc,
         amount: '0',
       };
 
       const previousUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
       const previousUser3Balance = await user3Wallet.getBalance(
         user3Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
 
       const broadcastTx = () =>
@@ -191,11 +193,11 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
 
       const nextUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
       const nextUser3Balance = await user1Wallet.getBalance(
         user3Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
 
       expect(BigInt(nextUser2Balance.amount)).toBe(
@@ -212,7 +214,7 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
 
       const previousUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
 
       const broadcastTx = () =>
@@ -226,7 +228,7 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
 
       const nextUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,
-        existingDenom,
+        existingCurrencyIbc,
       );
 
       expect(BigInt(nextUser2Balance.amount)).toBe(
