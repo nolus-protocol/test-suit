@@ -21,7 +21,6 @@ import {
   undefinedHandler,
 } from '../util/utils';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
-import { runOrSkip } from '../util/testingRules';
 
 const maybe =
   (process.env.ENV as string) === 'local' ||
@@ -72,7 +71,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     redelegateMsg.value.validatorSrcAddress = srcValidatorAddress;
     redelegateMsg.value.validatorDstAddress = dstValidatorAddress;
 
-    // send some tokens
     const initTransfer: Coin = {
       denom: NATIVE_MINIMAL_DENOM,
       amount: delegatedAmount + customFees.transfer.amount[0].amount,
@@ -95,14 +93,12 @@ maybe('Staking Nolus tokens - Redelegation', () => {
   });
 
   test('the delegator tries to redelegate tokens from a non-existent delegate-validator pair - should produce an error', async () => {
-    // try to redelegate
     const delegationResult = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [redelegateMsg],
       customFees.configs,
     );
 
-    // the delegator is a new user and in this first test he has not delegated tokens yet
     expect(isDeliverTxFailure(delegationResult)).toBeTruthy();
     expect(delegationResult.rawLog).toEqual(
       'failed to execute message; message index: 0: no delegation for (address, validator) tuple',
@@ -110,7 +106,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
   });
 
   test('the successful scenario for tokens redelegation - should work as expected', async () => {
-    // delegate tokens
     const delegationResult = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [delegateMsg],
@@ -119,7 +114,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
 
     expect(assertIsDeliverTxSuccess(delegationResult)).toBeUndefined();
 
-    // see the delegator staked tokens to the source validator - before redelegation
     const delegationsToSrcValBefore = await getDelegatorValidatorPairAmount(
       delegatorWallet.address as string,
       srcValidatorAddress,
@@ -130,7 +124,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       return;
     }
 
-    // redelegate tokens
     const redelegationResult = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [redelegateMsg],
@@ -140,7 +133,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     expect(assertIsDeliverTxSuccess(redelegationResult)).toBeUndefined();
     redelegationsCounter++;
 
-    // get redelegation list deligator-srcValidator-dstValidator
     const redelegationEntries =
       await getDelegatorValidatorsRedelegationsInformation(
         delegatorWallet.address as string,
@@ -159,7 +151,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
 
     expect(completionTime).not.toBe('');
 
-    // see the delegator staked tokens to the source validator - after redelegation
     const delegationsToSrcValAfter = await getDelegatorValidatorPairAmount(
       delegatorWallet.address as string,
       srcValidatorAddress,
@@ -174,7 +165,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       BigInt(delegationsToSrcValBefore) - BigInt(redelegatedAmount),
     );
 
-    // see the delegator staked tokens to the destination validator - after redelegation
     const delegationsToDstValAfter = await getDelegatorValidatorPairAmount(
       delegatorWallet.address as string,
       srcValidatorAddress,
@@ -189,7 +179,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
   });
 
   test('the delegator tries to redelegate 0 tokens - should produce an error', async () => {
-    // try to redelegate
     redelegateMsg.value.amount.amount = '0';
 
     const broadcastTx = () =>
@@ -203,7 +192,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
   });
 
   test('the delegator tries to redelegate tokens different than one defined by params.BondDenom - should produce an error', async () => {
-    // get BondDenom from params
     const bondDenom = (await getParamsInformation()).params?.bondDenom;
 
     if (!bondDenom) {
@@ -215,7 +203,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
 
     expect(bondDenom).not.toBe(invalidDenom);
 
-    // try to redelegate
     redelegateMsg.value.amount.denom = invalidDenom;
 
     const broadcastTx = await delegatorWallet.signAndBroadcast(
@@ -231,7 +218,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
   });
 
   test('the delegator tries to redelegate more tokens than he has delegated to the validator - should produce an error', async () => {
-    // see the delegator staked tokens to the source validator - before redelegation
     const delegationsToSrcValBefore = await getDelegatorValidatorPairAmount(
       delegatorWallet.address as string,
       srcValidatorAddress,
@@ -242,7 +228,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       return;
     }
 
-    // try to redelegate
     redelegateMsg.value.amount.amount = delegatedAmount;
 
     const broadcastTx = await delegatorWallet.signAndBroadcast(
@@ -251,12 +236,10 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       customFees.configs,
     );
 
-    // after the previous tests he has 'redelegatedAmount = delegatedAmount/2' tokens left so that:
     expect(broadcastTx.rawLog).toEqual(
       'failed to execute message; message index: 0: invalid shares amount: invalid request',
     );
 
-    // see the delegator staked tokens to the source validator - after redelegation
     const delegationsToSrcValAfter = await getDelegatorValidatorPairAmount(
       delegatorWallet.address as string,
       srcValidatorAddress,
@@ -273,7 +256,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
   });
 
   test('the delegator tries to redelegate tokens to non-existent validator - should produce an error', async () => {
-    // try to redelegate
     redelegateMsg.value.validatorDstAddress = delegatorWallet.address as string;
 
     const broadcastTx = await delegatorWallet.signAndBroadcast(
@@ -283,11 +265,12 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     );
 
     expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
-    expect(broadcastTx.rawLog).toEqual('internal');
+    expect(broadcastTx.rawLog).toEqual(
+      'failed to execute message; message index: 0: invalid Bech32 prefix; expected nolusvaloper, got nolus',
+    );
   });
 
   test('the delegator tries to redelegate tokens to the same validator - should produce an error', async () => {
-    // try to redelegate
     redelegateMsg.value.validatorDstAddress = srcValidatorAddress;
 
     const broadcastTx = await delegatorWallet.signAndBroadcast(
@@ -303,7 +286,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
   });
 
   test('the delegator tries to redelegate tokens more than params.MaxEntries times - should produce an error', async () => {
-    // delegate some tokens
     const delegationResult = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [delegateMsg],
@@ -311,7 +293,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     );
     expect(assertIsDeliverTxSuccess(delegationResult)).toBeUndefined();
 
-    // get MaxEntries from params
     const maxEntries = (await getParamsInformation()).params?.maxEntries;
 
     if (!maxEntries) {
@@ -326,7 +307,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     redelegateMsg.value.amount.amount = loopRedelegateAmount.toString();
 
     for (let i = 0; i < loopIteration; i++) {
-      // redelegate tokens
       const redelegationResult = await delegatorWallet.signAndBroadcast(
         delegatorWallet.address as string,
         [redelegateMsg],
@@ -341,7 +321,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       customFees.configs,
     );
 
-    // maxEntries has already been reached
     expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
     expect(broadcastTx.rawLog).toEqual(
       'failed to execute message; message index: 0: too many redelegation entries for (delegator, src-validator, dst-validator) tuple',
