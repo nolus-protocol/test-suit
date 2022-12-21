@@ -1,6 +1,6 @@
 # Integration tests
 
-<br /><p align="center"><img alt="Nolus.js" src="docs/test-suit-logo.svg" width="100"/></p><br />
+<br /><p align="center"><img alt="nolus-test-suit" src="docs/test-suit-logo.svg" width="100"/></p><br />
 
 ## Prerequisites
 
