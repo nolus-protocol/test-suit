@@ -1,5 +1,7 @@
 # Integration tests
 
+<br /><p align="center"><img alt="Nolus.js" src="docs/test-suit-logo.svg" width="100"/></p><br />
+
 ## Prerequisites
 
 * Node v14+
@@ -17,12 +19,6 @@
     ```
 
 ## Dependencies
-
-First config your npm token. This is required to install Nolus.js:
-
-```sh
-npm config set //registry.npmjs.org/:_authToken <YOUR_NPM_ACCESS_TOKEN>
-```
 
 ```sh
 yarn
@@ -63,6 +59,8 @@ Example:
 ```sh
 yarn save-feeders
 ```
+
+On dev add *--nolus-net https://net-dev.nolus.io:26612*
 
 ### Run
 
