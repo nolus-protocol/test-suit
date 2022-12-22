@@ -3,22 +3,19 @@ set -euxo pipefail
 
 HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
 
+GITHUB_NOLUS_CORE_RELEASES="https://github.com/Nolus-Protocol/nolus-core/releases"
 ARTIFACT_BIN="nolus.tar.gz"
-NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
-GITLAB_API="https://gitlab-nomo.credissimo.net/api/v4"
-COSMZONE_PROJECT_ID="3"
 SETUP_DEV_NETWORK_ARTIFACT="setup-dev-network"
-NOLUS_BUILD_BINARY_ARTIFACT="build-binary"
+NOLUS_BUILD_BINARY_ARTIFACT="nolus.tar.gz"
 
+NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
 FAUCET_KEY="faucet"
 CONTRACTS_OWNER_KEY="contracts_owner"
-
 LPP_BASE_CURRENCY="USDC"
-TAG=""
+
+NOLUS_CORE_TAG=""
 MNEMONIC_FAUCET=""
 MNEMONIC_CONTRACTS_OWNER=""
-TOKEN_TYPE=""
-TOKEN_VALUE=""
 TEST_TRANSFER="true"
 TEST_ORACLE="true"
 TEST_STAKING="true"
@@ -38,11 +35,9 @@ while [[ $# -gt 0 ]]; do
     printf \
     "Usage: %s
     [--lpp-base-currency <lpp_base_currency_ticker>]
-    [--tag <cosmzone_preferred_tag>]
+    [--nolus_core_version_tag <nolus_core_preferred_tag>]
     [--mnemonic-faucet <mnemonic_phrase>]
     [--mnemonic-contracts-owner <mnemonic_phrase>]
-    [--token-type <token_type>]
-    [--token-value <token_value>]
     [--test-transfer-flag <test_transfer_true_or_false>]
     [--test-oracle-flag <test_oracle_true_or_false>]
     [--test-staking-flag <test_staking_true_or_false>]
@@ -61,8 +56,8 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  --tag)
-    TAG="$2"
+  --nolus_core_version_tag)
+    NOLUS_CORE_TAG="$2"
     shift
     shift
     ;;
@@ -75,18 +70,6 @@ while [[ $# -gt 0 ]]; do
 
   --mnemonic-contracts-owner)
     MNEMONIC_CONTRACTS_OWNER="$2"
-    shift
-    shift
-    ;;
-
-  --token-type)
-    TOKEN_TYPE="$2"
-    shift
-    shift
-    ;;
-
-  --token-value)
-    TOKEN_VALUE="$2"
     shift
     shift
     ;;
@@ -150,37 +133,32 @@ done
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR"/common/verify.sh
 
-verify_mandatory "$MNEMONIC_FAUCET" "faucet key name"
-verify_mandatory "$MNEMONIC_CONTRACTS_OWNER" "contracts owner key name"
-verify_mandatory "$TOKEN_TYPE" "gitlab auth token type"
-verify_mandatory "$TOKEN_VALUE" "gitlab auth token value"
+verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic"
+verify_mandatory "$MNEMONIC_CONTRACTS_OWNER" "contracts owner mnemonic"
 
 _downloadArtifact() {
   local -r name="$1"
   local -r version="$2"
-  local -r project_id="$3"
   local response
 
-  rm -rf "$name.zip"
+  rm -rf "$name"
 
-  response=$(curl --output "$name".zip -w '%{http_code}' --header "$TOKEN_TYPE: $TOKEN_VALUE" "$GITLAB_API/projects/$project_id/jobs/artifacts/$version/download?job=$name")
+  response=$(curl -L --output "$name" -w '%{http_code}' "$GITHUB_NOLUS_CORE_RELEASES/download/$version/$name")
   if [[ $response -ne 200 ]]; then
-    echo "Error: failed to retrieve artifact $name, version $version from the project with ID $project_id. Are you sure the artifact and tag exist?"
+    echo "Error: failed to retrieve artifact $name, version $version. Are you sure the artifact and tag exist?"
     exit 1
   fi
-   echo 'A' | unzip "$name".zip
+  #  echo 'A' | unzip "$name".zip
 }
 
 # Get dev-network information
 
-  if [[ -z ${TAG} ]]; then
-    COSMZONE_LATEST_VERSION=$(curl --silent "$NOLUS_DEV_NET/abci_info" | jq '.result.response.version' | tr -d '"')
-  else
-    COSMZONE_LATEST_VERSION="$TAG"
+  if [[ -z ${NOLUS_CORE_TAG} ]]; then
+    NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq '.tag_name' | tr -d '"')
   fi
 
-_downloadArtifact "$SETUP_DEV_NETWORK_ARTIFACT" "$COSMZONE_LATEST_VERSION" "$COSMZONE_PROJECT_ID"
-_downloadArtifact "$NOLUS_BUILD_BINARY_ARTIFACT" "$COSMZONE_LATEST_VERSION" "$COSMZONE_PROJECT_ID"
+_downloadArtifact "$SETUP_DEV_NETWORK_ARTIFACT" "$NOLUS_CORE_TAG"
+_downloadArtifact "$NOLUS_BUILD_BINARY_ARTIFACT" "$NOLUS_CORE_TAG"
 
 tar -xvf $ARTIFACT_BIN
 export PATH
