@@ -369,8 +369,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const newPeriod = 5184000000000000;
       const newGracePeriod = 864000000000000;
       // provide enough time for the repay testing
-      leaserConfig.config.repayment.period = newPeriod;
-      leaserConfig.config.repayment.grace_period = newGracePeriod;
+      leaserConfig.config.lease_interest_payment.due_period = newPeriod;
+      leaserConfig.config.lease_interest_payment.grace_period = newGracePeriod;
 
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,

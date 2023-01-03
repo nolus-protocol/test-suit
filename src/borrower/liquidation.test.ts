@@ -277,8 +277,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       // change leaser config
       leaserConfigBefore = await leaserInstance.getLeaserConfig();
       leaserConfigMsg = JSON.parse(JSON.stringify(leaserConfigBefore));
-      leaserConfigMsg.config.repayment.period = newPeriodSec * NANOSEC;
-      leaserConfigMsg.config.repayment.grace_period =
+      leaserConfigMsg.config.lease_interest_payment.due_period =
+        newPeriodSec * NANOSEC;
+      leaserConfigMsg.config.lease_interest_payment.grace_period =
         newGracePeriodSec * NANOSEC;
       await leaserInstance.setLeaserConfig(
         contractsOwnerWallet,

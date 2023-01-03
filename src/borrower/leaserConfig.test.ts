@@ -182,8 +182,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the wasm_admin tries to set grace period > interest period - should produce an error', async () => {
-      leaserConfigMsg.config.repayment.grace_period =
-        leaserConfigMsg.config.repayment.period + 1;
+      leaserConfigMsg.config.lease_interest_payment.grace_period =
+        leaserConfigMsg.config.lease_interest_payment.due_period + 1;
 
       await trySetConfig(
         'Period length should be greater than grace period',
