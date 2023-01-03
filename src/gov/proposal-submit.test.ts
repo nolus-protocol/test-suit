@@ -59,6 +59,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       [msg],
       fee,
     );
+
     expect(isDeliverTxFailure(result)).toBeFalsy();
     const log = result.rawLog;
 
@@ -247,17 +248,16 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
     moduleName = 'wasm';
   });
 
-  //TO DO
+  // TO DO - Missing export migrate
   // Remark: RunAs was removed around wasmd 0.23 making this test fail as cosmjs still hasn't updated it's MigrateConctractProposal definition
-  xtest('validator should be able to submit a MigrateContract proposal', async () => {
+  test('validator should be able to submit a MigrateContract proposal', async () => {
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.MigrateContractProposal',
       value: MigrateContractProposal.encode({
         title: 'Test Proposal',
         description:
           'This proposal proposes to test whether this proposal passes',
-        runAs: wallet.address as string,
-        contract: wallet.address as string,
+        contract: process.env.TREASURY_ADDRESS as string,
         codeId: Long.fromInt(1),
         msg: toUtf8('{}'),
       }).finish(),
