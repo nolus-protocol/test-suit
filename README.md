@@ -42,7 +42,7 @@ yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --mnemonic-contracts-ow
 yarn prepare-env-local --contracts-result-file-path <contracts_info_file_path>
 ```
 
-* **--contracts-result-file-path** - path to the directory where the smart contracts information file is located (thе file produced by **nolusd-core/scripts/init-local-network.sh**)
+* **--contracts-result-file-path** - path to the directory where the smart contracts information file is located (thе file produced by **nolusd-core/scripts/init-local-network.sh**) - **nolus-core** path by default.
 
 * For more flags: ```yarn prepare-env-local --help```
 
