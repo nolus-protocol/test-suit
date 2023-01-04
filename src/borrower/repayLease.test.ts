@@ -32,9 +32,9 @@ import {
 } from '../util/smart-contracts/getters';
 import {
   checkLeaseBalance,
-  provideEnoughLiquidity,
   waitLeaseOpeningProcess,
-} from '../util/smart-contracts/actions';
+} from '../util/smart-contracts/actions/borrower';
+import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 import { LeaseInfo } from '@nolus/nolusjs/build/contracts';
 
 runOrSkip(process.env.TEST_BORROWER as string)(

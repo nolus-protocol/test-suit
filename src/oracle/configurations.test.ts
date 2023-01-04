@@ -4,7 +4,7 @@ import {
   Tree,
   OracleConfig,
 } from '@nolus/nolusjs/build/contracts/types';
-import { updateOracleConfig } from '../util/smart-contracts/actions';
+import { updateOracleConfig } from '../util/smart-contracts/actions/oracle';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,

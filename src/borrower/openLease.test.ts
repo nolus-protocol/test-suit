@@ -15,9 +15,9 @@ import {
 } from '../util/smart-contracts/getters';
 import {
   checkLeaseBalance,
-  provideEnoughLiquidity,
   waitLeaseOpeningProcess,
-} from '../util/smart-contracts/actions';
+} from '../util/smart-contracts/actions/borrower';
+import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Open a lease',

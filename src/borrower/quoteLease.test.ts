@@ -10,7 +10,7 @@ import {
 } from '../util/smart-contracts/calculations';
 import { runOrSkip } from '../util/testingRules';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
-import { provideEnoughLiquidity } from '../util/smart-contracts/actions';
+import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Quote lease',

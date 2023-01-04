@@ -27,10 +27,10 @@ import {
   getLeaseGroupCurrencies,
 } from '../util/smart-contracts/getters';
 import {
-  provideEnoughLiquidity,
   pushPrice,
   updateOracleConfig,
-} from '../util/smart-contracts/actions';
+} from '../util/smart-contracts/actions/oracle';
+import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 
 //TO DO
 runOrSkip(process.env.TEST_BORROWER as string)(

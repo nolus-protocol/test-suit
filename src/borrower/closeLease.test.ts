@@ -10,10 +10,10 @@ import {
 import { runOrSkip } from '../util/testingRules';
 import {
   checkLeaseBalance,
-  provideEnoughLiquidity,
   waitLeaseOpeningProcess,
-} from '../util/smart-contracts/actions';
+} from '../util/smart-contracts/actions/borrower';
 import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
+import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Close lease',
