@@ -1,12 +1,17 @@
+import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import {
+  SwapTree,
+  Tree,
+  OracleConfig,
+} from '@nolus/nolusjs/build/contracts/types';
+import { updateOracleConfig } from '../util/smart-contracts/actions';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
   getContractsOwnerWallet,
 } from '../util/clients';
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
-import { SwapTree, Tree } from '@nolus/nolusjs/build/contracts/types/SwapTree';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 
 runOrSkip(process.env.TEST_ORACLE as string)(
@@ -15,7 +20,8 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     let contractsOwnerWallet: NolusWallet;
     let userWithBalance: NolusWallet;
     let oracleInstance: NolusContracts.Oracle;
-    let BASE_ASSET: string;
+    let initConfig: OracleConfig;
+    let baseAsset: string;
     let leaseCurrencies: string[];
     let initSwapTree: SwapTree;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
@@ -28,8 +34,8 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       const cosm = await NolusClient.getInstance().getCosmWasmClient();
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
-      const config = await oracleInstance.getConfig();
-      BASE_ASSET = config.base_asset;
+      initConfig = await oracleInstance.getConfig();
+      baseAsset = initConfig.config.base_asset;
 
       leaseCurrencies = getLeaseGroupCurrencies();
       const adminBalance = {
@@ -72,7 +78,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     });
 
     test('the contract owner tries to setup swap paths with unsupported Nolus currencies', async () => {
-      const newSwapTree: Tree = [[0, BASE_ASSET], [[1, 'A']]];
+      const newSwapTree: Tree = [[0, baseAsset], [[1, 'A']]];
 
       const broadcastTx = () =>
         oracleInstance.updateSwapTree(
@@ -102,7 +108,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
     test('the contract owner tries to configure a duplicate swap path', async () => {
       const newSwapTree: Tree = [
-        [0, BASE_ASSET],
+        [0, baseAsset],
         [[1, leaseCurrencies[0]], [[2, leaseCurrencies[1]]]],
         [[3, leaseCurrencies[1]]],
       ];
@@ -121,7 +127,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
     test('the supported pairs should match the configured swap tree', async () => {
       const swapTree: Tree = [
-        [0, BASE_ASSET],
+        [0, baseAsset],
         [[1, leaseCurrencies[0]], [[2, leaseCurrencies[1]]]],
         [[3, leaseCurrencies[2]]],
       ];
@@ -134,41 +140,40 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       const supportedPairs = await oracleInstance.getCurrencyPairs();
       expect(supportedPairs.length).toBe(3);
       expect(supportedPairs[0].from).toBe(leaseCurrencies[0]);
-      expect(supportedPairs[0].to.target).toBe(BASE_ASSET);
+      expect(supportedPairs[0].to.target).toBe(baseAsset);
 
       expect(supportedPairs[1].from).toBe(leaseCurrencies[1]);
       expect(supportedPairs[1].to.target).toBe(leaseCurrencies[0]);
 
       expect(supportedPairs[2].from).toBe(leaseCurrencies[2]);
-      expect(supportedPairs[2].to.target).toBe(BASE_ASSET);
+      expect(supportedPairs[2].to.target).toBe(baseAsset);
     });
 
     test('the contract owner tries to setup an invalid config - should produce an error', async () => {
-      // price feed period = 0
-      let result = () =>
-        oracleInstance.setConfig(contractsOwnerWallet, 0, 1, customFees.exec); // any precentage needed
-
-      await expect(result).rejects.toThrow('Price feed period can not be 0');
-
-      // expected feeders = 0%
-      result = () =>
-        oracleInstance.setConfig(contractsOwnerWallet, 1, 0, customFees.exec); // any pricePeriod
-
+      // sample period = 0
+      let result = () => updateOracleConfig(oracleInstance, initConfig, 1, 0); // any precentage needed
       await expect(result).rejects.toThrow(
-        'Percent of expected available feeders should be > 0 and <= 1000',
+        'The sample period should be longer than zero',
       );
 
-      // expected feeders > 100%, 1000permille
-      result = () =>
-        oracleInstance.setConfig(
-          contractsOwnerWallet,
-          1,
-          1001,
-          customFees.exec,
-        ); // any pricePeriod
+      // sample numbers = 0
+      result = () => updateOracleConfig(oracleInstance, initConfig, 1, 1, 0); // any pricePeriod
+      await expect(result).rejects.toThrow(
+        'The price feeds validity should be longer than zero',
+      );
+
+      // min feeders = 0%
+      result = () => updateOracleConfig(oracleInstance, initConfig, 0);
 
       await expect(result).rejects.toThrow(
-        'Percent of expected available feeders should be > 0 and <= 1000',
+        'The minumum feeders should be greater than 0 and less or equal to 100%',
+      );
+
+      // min feeders > 100%, 1000permille
+      result = () => updateOracleConfig(oracleInstance, initConfig, 1001);
+
+      await expect(result).rejects.toThrow(
+        'The minumum feeders should be greater than 0 and less or equal to 100%',
       );
     });
 

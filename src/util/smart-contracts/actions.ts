@@ -1,5 +1,10 @@
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import {
+  OraclePriceConfig,
+  OracleConfig,
+} from '@nolus/nolusjs/build/contracts/types/';
+import { Oracle } from '@nolus/nolusjs/build/contracts';
+import {
   createWallet,
   getUser1Wallet,
   getContractsOwnerWallet,
@@ -183,4 +188,41 @@ export async function waitLeaseOpeningProcess(
   } while (indexLastState != allStates.length - 1);
 
   return undefined;
+}
+
+export async function updateOracleConfig(
+  oracleInstance: Oracle,
+  orState: OracleConfig,
+  minFeedersPermilles?: number,
+  samplePeriod?: number,
+  samplesNumber?: number,
+  discountFactor?: number,
+) {
+  const contractsOwnerWallet = await getContractsOwnerWallet();
+
+  const priceConfig_orState = orState.config.price_config;
+  const priceConfig: OraclePriceConfig = {
+    min_feeders:
+      minFeedersPermilles !== undefined
+        ? minFeedersPermilles
+        : priceConfig_orState.min_feeders,
+    discount_factor:
+      discountFactor !== undefined
+        ? discountFactor
+        : priceConfig_orState.discount_factor,
+    sample_period_secs:
+      samplePeriod !== undefined
+        ? samplePeriod
+        : priceConfig_orState.sample_period_secs,
+    samples_number:
+      samplesNumber !== undefined
+        ? samplesNumber
+        : priceConfig_orState.samples_number,
+  };
+
+  await oracleInstance.updateConfig(
+    contractsOwnerWallet,
+    priceConfig,
+    customFees.exec,
+  );
 }

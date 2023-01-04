@@ -29,6 +29,7 @@ import {
 import {
   provideEnoughLiquidity,
   pushPrice,
+  updateOracleConfig,
 } from '../util/smart-contracts/actions';
 
 //TO DO
@@ -44,7 +45,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let oracleInstance: NolusContracts.Oracle;
     let lppInstance: NolusContracts.Lpp;
     let leaserConfigBefore: NolusContracts.LeaserConfig;
-    let oracleConfigBefore: NolusContracts.Config;
+    let oracleConfigBefore: NolusContracts.OracleConfig;
     let lppCurrency: string;
     let lppCurrencyToIBC: string;
     let leaseCurrency: string;
@@ -290,11 +291,12 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       // change oracle config
       oracleConfigBefore = await oracleInstance.getConfig();
       const feedersNeededPermille = 10;
-      await oracleInstance.setConfig(
-        contractsOwnerWallet,
-        fiveHoursSec,
+      await updateOracleConfig(
+        oracleInstance,
+        oracleConfigBefore,
         feedersNeededPermille,
-        customFees.exec,
+        fiveHoursSec / 2,
+        2,
       );
 
       await provideEnoughLiquidity(
@@ -328,12 +330,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         contractsOwnerWallet.address as string,
       );
 
-      await oracleInstance.setConfig(
-        contractsOwnerWallet,
-        oracleConfigBefore.price_feed_period / NANOSEC,
-        oracleConfigBefore.expected_feeders,
-        customFees.exec,
-      );
+      await updateOracleConfig(oracleInstance, oracleConfigBefore);
 
       const oracleConfigAfter = await oracleInstance.getConfig();
       expect(oracleConfigAfter).toStrictEqual(oracleConfigBefore);

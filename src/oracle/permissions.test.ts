@@ -1,12 +1,16 @@
+import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import {
+  OracleConfig,
+  OraclePriceConfig,
+  Tree,
+} from '@nolus/nolusjs/build/contracts/types';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
   getContractsOwnerWallet,
 } from '../util/clients';
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
-import { Tree } from '@nolus/nolusjs/build/contracts/types/SwapTree';
 
 runOrSkip(process.env.TEST_ORACLE as string)(
   'Oracle tests - Permissions',
@@ -15,6 +19,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     let userWithBalance: NolusWallet;
     let feederWallet: NolusWallet;
     let oracleInstance: NolusContracts.Oracle;
+    let initConfig: OracleConfig;
     let firstPairMember: string;
     let secondPairMember: string;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
@@ -27,6 +32,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
       const cosm = await NolusClient.getInstance().getCosmWasmClient();
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
+      initConfig = await oracleInstance.getConfig();
 
       const adminBalance = {
         amount: '10000000',
@@ -53,7 +59,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
             amount_quote: { amount: '10', ticker: secondPairMember },
           },
         ],
-      }; // any amounts
+      };
 
       const result = () =>
         oracleInstance.feedPrices(userWithBalance, feedPrices, 1.3);
@@ -64,10 +70,23 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     });
 
     test('only the contract owner should be able to change the config', async () => {
-      const result = () =>
-        oracleInstance.setConfig(userWithBalance, 10, 10, customFees.exec); // any feederPercentage and pricePeriod
+      const priceConfig: OraclePriceConfig = {
+        min_feeders: 1,
+        discount_factor: 1,
+        sample_period_secs: 1,
+        samples_number: 1,
+      };
 
-      await expect(result).rejects.toThrow('Unauthorized');
+      const result = () =>
+        oracleInstance.updateConfig(
+          userWithBalance,
+          priceConfig,
+          customFees.exec,
+        ); // any feederPercentage and pricePeriod
+
+      await expect(result).rejects.toThrow(
+        `Checked address doesn't match the one associated with access control variable`,
+      );
     });
 
     test('only the contract owner should be able to change the currency paths', async () => {
@@ -79,7 +98,9 @@ runOrSkip(process.env.TEST_ORACLE as string)(
           customFees.exec,
         );
 
-      await expect(result).rejects.toThrow('Unauthorized');
+      await expect(result).rejects.toThrow(
+        `Checked address doesn't match the one associated with access control variable`,
+      );
     });
 
     test('only the contract owner should be able to add a feeder', async () => {
@@ -90,7 +111,9 @@ runOrSkip(process.env.TEST_ORACLE as string)(
           customFees.exec,
         );
 
-      await expect(result).rejects.toThrow('Unauthorized');
+      await expect(result).rejects.toThrow(
+        `Checked address doesn't match the one associated with access control variable`,
+      );
     });
 
     test('only the contract owner should be able to remove a feeder', async () => {
@@ -107,7 +130,9 @@ runOrSkip(process.env.TEST_ORACLE as string)(
           customFees.exec,
         );
 
-      await expect(result).rejects.toThrow('Unauthorized');
+      await expect(result).rejects.toThrow(
+        `Checked address doesn't match the one associated with access control variable`,
+      );
     });
 
     test('the alarm should not be added externally', async () => {

@@ -39,7 +39,7 @@
     "@cosmjs/launchpad": "^0.27.1",
     "@cosmjs/math": "^0.28.13",
     "@google-cloud/precise-date": "^3.0.1",
-    "@nolus/nolusjs": "^0.0.75",
+    "@nolus/nolusjs": "^0.0.83",
     "axios": "^0.26.1",
     "bip32": "^2.0.6",
     "bip39": "^3.0.4",
