@@ -171,7 +171,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     );
   });
 
-  test('a registered feeder tries to feed a price - should work as expected', async () => {
+  test('accept price as valid - should work as expected', async () => {
     const samplePeriodSec = 10;
     const sampleNumbers = 2;
     const priceFeedPeriodSec = samplePeriodSec * sampleNumbers;
@@ -189,7 +189,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     const firstFeederWallet = await createWallet();
     const secondFeederWallet = await createWallet();
     const thirdFeederWallet = await createWallet();
-    const lastFeederWallet = await createWallet();
+    const fourthFeederWallet = await createWallet();
 
     await oracleInstance.addFeeder(
       contractsOwnerWallet,
@@ -211,17 +211,17 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
     await oracleInstance.addFeeder(
       contractsOwnerWallet,
-      lastFeederWallet.address as string,
+      fourthFeederWallet.address as string,
       customFees.exec,
     );
 
     await feedPrice(
       firstFeederWallet,
-      '6',
-      '5',
+      '8',
+      '3',
       firstPairMember,
       secondPairMember,
-    ); // any amounts
+    );
 
     const priceAfterFirstFeederVote = () =>
       oracleInstance.getPriceFor(firstPairMember);
@@ -229,13 +229,10 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     // not enough votes yet
     await expect(priceAfterFirstFeederVote).rejects.toThrow(/^.*No price.*/);
 
-    const EXPECTED_AMOUNT_QUOTE = '33';
-    const EXPECTED_AMOUNT = '10';
-
     await feedPrice(
       secondFeederWallet,
-      EXPECTED_AMOUNT,
-      EXPECTED_AMOUNT_QUOTE,
+      '7',
+      '3',
       firstPairMember,
       secondPairMember,
     );
@@ -243,13 +240,53 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
       firstPairMember,
     );
 
-    // already enough votes - the price should be the last added value
+    // already enough votes
     expect(priceAfterSecondFeederVote.amount_quote.ticker).toBe(initBaseAsset);
     expect(priceAfterSecondFeederVote.amount.ticker).toBe(firstPairMember);
 
-    // TO DO
-    // expect(priceAfterSecondFeederVote.amount.amount).toBe(EXPECTED_AMOUNT);
-    // expect(priceAfterSecondFeederVote).toBe(EXPECTED_AMOUNT_QUOTE);
+    const lastFeederWallet = await createWallet();
+
+    await oracleInstance.addFeeder(
+      contractsOwnerWallet,
+      lastFeederWallet.address as string,
+      customFees.exec,
+    );
+
+    const priceAfterLastFeederRegistration = await oracleInstance.getPriceFor(
+      firstPairMember,
+    );
+
+    // 50% of 5 feeders = 2 -> the price is still valid
+    expect(priceAfterSecondFeederVote).toStrictEqual(
+      priceAfterLastFeederRegistration,
+    );
+
+    const pushedPriceAmount = '4';
+    const pushedPriceAmountQuote = '3';
+    await feedPrice(
+      lastFeederWallet,
+      pushedPriceAmount,
+      pushedPriceAmountQuote,
+      firstPairMember,
+      secondPairMember,
+    );
+    const priceAfterThirdFeederVote = await oracleInstance.getPriceFor(
+      firstPairMember,
+    );
+
+    // price should be > the pushed one and < priceAfterSecondFeederVote
+    expect(+priceAfterThirdFeederVote.amount_quote.amount).toBeGreaterThan(
+      +pushedPriceAmountQuote,
+    );
+    expect(+priceAfterThirdFeederVote.amount.amount).toBeGreaterThan(
+      +pushedPriceAmount,
+    );
+    expect(+priceAfterThirdFeederVote.amount_quote.amount).toBeLessThan(
+      +priceAfterSecondFeederVote.amount_quote.amount,
+    );
+    expect(+priceAfterThirdFeederVote.amount.amount).toBeLessThan(
+      +priceAfterSecondFeederVote.amount.amount,
+    );
 
     await sleep(priceFeedPeriodSec + 1); //+1sec
     // the price feed period has expired
@@ -263,7 +300,6 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
     const samplePeriodSec = 10000;
     const sampleNumbers = 10;
-    const priceFeedPeriodSec = samplePeriodSec * sampleNumbers;
 
     await updateOracleConfig(
       oracleInstance,
@@ -291,8 +327,8 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
     await updateOracleConfig(oracleInstance, initConfig, 500, 1, 1); // 1sec feed validity period, any expectedFeeders
 
-    // the price feed period has decreased - the price should be expired
-    let result = () => oracleInstance.getPriceFor(firstPairMember);
+    // the feed validity period has decreased - the price should be expired
+    const result = () => oracleInstance.getPriceFor(firstPairMember);
     await expect(result).rejects.toThrow(/^.*No price.*/);
 
     await updateOracleConfig(
@@ -301,9 +337,9 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
       500,
       samplePeriodSec,
       sampleNumbers,
-    ); // any expectedFeeders
+    ); // the init feed validity period, any expectedFeeders
 
-    // the price feed period has changed to the init state - returns data that is valid with respect to the configuration
+    // the feed validity period has changed to the init state - returns data that is valid with respect to the configuration
     const afterSecondUpdateResult = await oracleInstance.getPriceFor(
       firstPairMember,
     );
@@ -313,7 +349,6 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   test('shortening and extending of the currency path when a price is available - should work as expected', async () => {
     const samplePeriodSec = 1000;
     const sampleNumbers = 10;
-    const priceFeedPeriodSec = samplePeriodSec * sampleNumbers;
 
     await updateOracleConfig(
       oracleInstance,
@@ -381,7 +416,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
       customFees.exec,
     );
 
-    // the currency path was changed so now the pair doesn`t exist
+    // the currency path has been changed - the pair doesn`t exist
     const priceResult2 = () => oracleInstance.getPriceFor(secondCurrency);
     await expect(priceResult2).rejects.toThrow(/^.*Unsupported currency.*/);
 
