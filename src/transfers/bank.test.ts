@@ -10,7 +10,7 @@ import NODE_ENDPOINT, {
   getUser2Wallet,
   getUser3Wallet,
 } from '../util/clients';
-import { customFees, gasPrice, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import { customFees, GASPRICE, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { runOrSkip } from '../util/testingRules';
 import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
 
@@ -27,7 +27,7 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
     const existingCurrencyIbc = currencyTicker_To_IBC(existingCurrencyTicker);
 
     const percision = 100000;
-    const gasPriceInteger = gasPrice * percision;
+    const gasPriceInteger = GASPRICE * percision;
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);

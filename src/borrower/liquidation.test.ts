@@ -8,7 +8,7 @@ import {
   NATIVE_MINIMAL_DENOM,
   sleep,
   undefinedHandler,
-  NANOSEC,
+  TONANOSEC,
 } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
@@ -177,7 +177,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const loanRate = (await lppInstance.getLoanInformation(mainLeaseAddress))
         .annual_interest_rate;
 
-      const newPeriodByNanoSec = timeByNanoSec + newPeriodSec * NANOSEC;
+      const newPeriodByNanoSec = timeByNanoSec + newPeriodSec * TONANOSEC;
 
       const PID_calcudated = calcInterestRate(
         BigInt(stateAfterMainPeriod.principal_due.amount),
@@ -279,9 +279,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaserConfigBefore = await leaserInstance.getLeaserConfig();
       leaserConfigMsg = JSON.parse(JSON.stringify(leaserConfigBefore));
       leaserConfigMsg.config.lease_interest_payment.due_period =
-        newPeriodSec * NANOSEC;
+        newPeriodSec * TONANOSEC;
       leaserConfigMsg.config.lease_interest_payment.grace_period =
-        newGracePeriodSec * NANOSEC;
+        newGracePeriodSec * TONANOSEC;
       await leaserInstance.setLeaserConfig(
         contractsOwnerWallet,
         leaserConfigMsg,
@@ -378,7 +378,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await timeLiquidationCheck(
         leaseInstance,
         stateBeforeSecondLiquidation,
-        +openingTimeByNanoSec + (newPeriodSec + newGracePeriodSec) * NANOSEC,
+        +openingTimeByNanoSec + (newPeriodSec + newGracePeriodSec) * TONANOSEC,
       );
     });
 

@@ -19,7 +19,7 @@ import {
 } from '../util/staking';
 import {
   customFees,
-  gasPrice,
+  GASPRICE,
   NATIVE_MINIMAL_DENOM,
   undefinedHandler,
 } from '../util/utils';
@@ -36,7 +36,7 @@ runOrSkip(process.env.TEST_STAKING as string)(
 
     const delegatedAmount = '13';
     const percision = 100000;
-    const gasPriceInteger = gasPrice * percision;
+    const gasPriceInteger = GASPRICE * percision;
 
     const delegateMsg = {
       typeUrl: `${stakingModule}.MsgDelegate`,

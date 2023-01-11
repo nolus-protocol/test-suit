@@ -1,5 +1,5 @@
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
-import { customFees, gasPrice, NATIVE_TICKER } from '../util/utils';
+import { customFees, NATIVE_TICKER } from '../util/utils';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
 

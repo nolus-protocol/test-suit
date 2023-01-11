@@ -2,13 +2,14 @@ import { ChainConstants } from '@nolus/nolusjs';
 
 export const BLOCK_CREATION_TIME_DEV_SEC = 5;
 
-export const NANOSEC = 1000000000;
+export const TONANOSEC = 1000000000;
+export const PERMILLE_TO_PERCENT = 10;
 
 export const NATIVE_MINIMAL_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
 export const NATIVE_TICKER = ChainConstants.COIN_DENOM.toUpperCase();
+export const GASPRICE = 0.0025;
 
-export const gasPrice = 0.0025;
-export const validatorPart = 0.6; // 60%
+export const VALIDATOR_PART = 0.6; // 60%
 const alarmsOccurred = 100;
 
 export const customFees = {
@@ -16,7 +17,7 @@ export const customFees = {
     gas: '20000000',
     amount: [
       {
-        amount: Math.floor((20000000 * gasPrice) / validatorPart).toString(),
+        amount: Math.floor((20000000 * GASPRICE) / VALIDATOR_PART).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],
@@ -25,7 +26,7 @@ export const customFees = {
     gas: '500000',
     amount: [
       {
-        amount: Math.floor((500000 * gasPrice) / validatorPart).toString(),
+        amount: Math.floor((500000 * GASPRICE) / VALIDATOR_PART).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],
@@ -34,7 +35,7 @@ export const customFees = {
     gas: '1000000',
     amount: [
       {
-        amount: Math.floor((1000000 * gasPrice) / validatorPart).toString(),
+        amount: Math.floor((1000000 * GASPRICE) / VALIDATOR_PART).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],
@@ -43,7 +44,7 @@ export const customFees = {
     gas: '200000',
     amount: [
       {
-        amount: Math.floor((200000 * gasPrice) / validatorPart).toString(),
+        amount: Math.floor((200000 * GASPRICE) / VALIDATOR_PART).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],
@@ -52,7 +53,7 @@ export const customFees = {
     gas: '300000',
     amount: [
       {
-        amount: Math.floor((300000 * gasPrice) / validatorPart).toString(),
+        amount: Math.floor((300000 * GASPRICE) / VALIDATOR_PART).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],
@@ -62,7 +63,7 @@ export const customFees = {
     amount: [
       {
         amount: Math.floor(
-          (900000 * alarmsOccurred * gasPrice) / validatorPart,
+          (900000 * alarmsOccurred * GASPRICE) / VALIDATOR_PART,
         ).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },

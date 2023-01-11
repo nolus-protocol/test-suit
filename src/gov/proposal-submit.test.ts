@@ -24,10 +24,10 @@ import { UpgradeProposal, ClientUpdateProposal } from '../util/proposals';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 import {
   customFees,
-  gasPrice,
+  GASPRICE,
   NATIVE_MINIMAL_DENOM,
   undefinedHandler,
-  validatorPart,
+  VALIDATOR_PART,
 } from '../util/utils';
 import { getProposal } from '../util/gov';
 import { runOrSkip } from '../util/testingRules';
@@ -223,7 +223,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       gas: gas,
       amount: [
         {
-          amount: Math.floor((+gas * gasPrice) / validatorPart).toString(),
+          amount: Math.floor((+gas * GASPRICE) / VALIDATOR_PART).toString(),
           denom: NATIVE_MINIMAL_DENOM,
         },
       ],
