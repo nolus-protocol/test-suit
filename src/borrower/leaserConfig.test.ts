@@ -1,13 +1,13 @@
+import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
+import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
+import { runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
   getContractsOwnerWallet,
 } from '../util/clients';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
-import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
-import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
-import { runOrSkip } from '../util/testingRules';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Leaser contract tests - Config',
@@ -47,9 +47,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       configBefore = await leaserInstance.getLeaserConfig();
       leaserConfigMsg = JSON.parse(JSON.stringify(configBefore));
 
-      // feed the contract owner
       const userWithBalance = await getUser1Wallet();
-
       const adminBalanceAmount = '10000000';
       const adminBalance = {
         amount: adminBalanceAmount,
@@ -64,7 +62,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     afterEach(async () => {
       leaserConfigMsg = JSON.parse(JSON.stringify(configBefore));
-
       const configAfter = await leaserInstance.getLeaserConfig();
 
       expect(configAfter).toStrictEqual(configBefore);
@@ -76,10 +73,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         wallet.address as string,
       );
 
-      await trySetConfig('Unauthorized', wallet);
+      await trySetConfig(
+        `Checked address doesn't match the one associated with access control variable!`,
+        wallet,
+      );
     });
 
-    test('the wasm_admin tries to set initial liability % > healthy liability % - should produce an error', async () => {
+    test('the contract owner tries to set initial liability % > healthy liability % - should produce an error', async () => {
       leaserConfigMsg.config.liability.initial =
         leaserConfigMsg.config.liability.healthy + 1;
 
@@ -89,7 +89,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('the wasm_admin tries to set initial liability % > max liability % - should produce an error', async () => {
+    test('the contract owner tries to set initial liability % > max liability % - should produce an error', async () => {
       leaserConfigMsg.config.liability.initial =
         leaserConfigMsg.config.liability.max + 1;
 
@@ -99,7 +99,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('the wasm_admin tries to set healthy liability % > max liability % - should produce an error', async () => {
+    test('the contract owner tries to set healthy liability % > max liability % - should produce an error', async () => {
       leaserConfigMsg.config.liability.healthy =
         leaserConfigMsg.config.liability.max + 1;
 
@@ -109,7 +109,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('the wasm_admin tries to set first liq warn % <= healthy liability % - should produce an error', async () => {
+    test('the contract owner tries to set first liq warn % <= healthy liability % - should produce an error', async () => {
       leaserConfigMsg.config.liability.first_liq_warn =
         leaserConfigMsg.config.liability.healthy - 1;
 
@@ -127,7 +127,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('the wasm_admin tries to set second liq warn % <= first liq warn % - should produce an error', async () => {
+    test('the contract owner tries to set second liq warn % <= first liq warn % - should produce an error', async () => {
       leaserConfigMsg.config.liability.second_liq_warn =
         leaserConfigMsg.config.liability.first_liq_warn - 1;
 
@@ -145,7 +145,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('the wasm_admin tries to set third liq warn % <= second liq warn % - should produce an error', async () => {
+    test('the contract owner tries to set third liq warn % <= second liq warn % - should produce an error', async () => {
       leaserConfigMsg.config.liability.third_liq_warn =
         leaserConfigMsg.config.liability.second_liq_warn - 1;
 
@@ -163,7 +163,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('the wasm_admin tries to set third liq warn % >= max % - should produce an error', async () => {
+    test('the contract owner tries to set third liq warn % >= max % - should produce an error', async () => {
       leaserConfigMsg.config.liability.third_liq_warn =
         leaserConfigMsg.config.liability.max + 1;
 
@@ -181,22 +181,22 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('the wasm_admin tries to set grace period > interest period - should produce an error', async () => {
+    test('the contract owner tries to set grace period > interest period - should produce an error', async () => {
       leaserConfigMsg.config.lease_interest_payment.grace_period =
         leaserConfigMsg.config.lease_interest_payment.due_period + 1;
 
       await trySetConfig(
-        'Period length should be greater than grace period',
+        'The interest due period should be longer than grace period to avoid overlapping',
         contractsOwnerWallet,
       );
     });
 
-    test('the wasm_admin tries to set recalc period < 1hour - should produce an error', async () => {
+    test('the contract owner tries to set recalc period < 1hour - should produce an error', async () => {
       const oneHourToNanosec = 3600000000000;
       leaserConfigMsg.config.liability.recalc_time = oneHourToNanosec - 1;
 
       await trySetConfig(
-        'Recalculate cadence in seconds should be >= 1h',
+        'Recalculation cadence should be >= 1h',
         contractsOwnerWallet,
       );
     });
