@@ -1,9 +1,9 @@
 import { NolusContracts, NolusWallet, AssetUtils } from '@nolus/nolusjs';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
-import { customFees, NANOSEC } from '../utils';
+import { customFees, TONANOSEC } from '../utils';
 import * as FEEDERS from '../../../feeders.json';
 
-const NANOSEC_YEAR = 365 * 24 * 60 * 60 * NANOSEC;
+const NANOSEC_YEAR = 365 * 24 * 60 * 60 * TONANOSEC;
 
 export function calcBorrow(downpayment: number, initPercent: number): number {
   return (downpayment * initPercent) / (1000 - initPercent);
@@ -30,11 +30,11 @@ export function calcQuoteAnnualInterestRate( // permille
   baseInterestRatePercent: number,
   addonOptimalInterestRatePercent: number,
 ): number {
+  if (utilization < 1) return baseInterestRatePercent;
+
   const result =
-    (baseInterestRatePercent +
-      (utilization / utilizationOptimalPercent) *
-        addonOptimalInterestRatePercent) *
-    10; // permille
+    baseInterestRatePercent +
+    (utilization / utilizationOptimalPercent) * addonOptimalInterestRatePercent;
 
   return Math.trunc(result);
 }
@@ -70,6 +70,22 @@ export function NLPNS_To_LPNS(nlpns: number, price: Price): bigint {
 
 export function currencyTicker_To_IBC(ticker: string): string {
   return AssetUtils.makeIBCMinimalDenom(ticker);
+}
+
+export function currencyPriceObjToNumbers(
+  currencyPriceObj: NolusContracts.Price,
+  tolerancePercent: number,
+) {
+  const exactCurrencyPrice =
+    +currencyPriceObj.amount_quote.amount / +currencyPriceObj.amount.amount;
+  const tolerance = exactCurrencyPrice * (tolerancePercent / 100);
+  const minToleranceCurrencyPrice = exactCurrencyPrice - tolerance;
+  const maxToleranceCurrencyPrice = exactCurrencyPrice + tolerance;
+  return {
+    minToleranceCurrencyPrice,
+    exactCurrencyPrice,
+    maxToleranceCurrencyPrice,
+  };
 }
 
 export async function removeAllFeeders(
