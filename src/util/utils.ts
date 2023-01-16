@@ -12,6 +12,8 @@ export const GASPRICE = 0.0025;
 export const VALIDATOR_PART = 0.6; // 60%
 const alarmsOccurred = 100;
 
+export const noProvidedPriceFor = process.env.NO_PRICE_CURRENCY as string;
+
 export const customFees = {
   upload: {
     gas: '20000000',

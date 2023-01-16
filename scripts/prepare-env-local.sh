@@ -7,6 +7,7 @@ MAIN_KEY="reserve"
 CONTRACTS_OWNER_KEY="contracts_owner"
 NOLUS_HOME_DIR="$HOME/.nolus"
 CONTRACTS_INFO_PATH=""
+NO_PRICE_CURRENCY="STARS"
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -20,7 +21,8 @@ while [[ $# -gt 0 ]]; do
     [--contracts-result-file-path <path_to_contracts_info>]
     [--contracts-owner-key <contracts_owner_key>]
     [--lpp-base-currency <lpp_base_currency>]
-    [--home-dir <nolus_accounts_dir>]" \
+    [--home-dir <nolus_accounts_dir>]
+    [--no-price-currency <no_price_currency_ticker>]" \
     "$0"
     exit 0
     ;;
@@ -55,6 +57,12 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
+  --no-price-currency)
+    NO_PRICE_CURRENCY="$2"
+    shift
+    shift
+    ;;
+
   *)
     echo "unknown option '$key'"
     exit 1
@@ -72,4 +80,4 @@ source "$SCRIPT_DIR"/verify.sh
 verify_mandatory "$CONTRACTS_INFO_PATH" "contracts info file path"
 
 prepareEnv "$CONTRACTS_INFO_PATH" "$LPP_BASE_CURRENCY" "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" "$CONTRACTS_OWNER_KEY" \
-"" "" "" "" "" "" "" "" ""
+"" "" "" "" "" "" "" "" "$NO_PRICE_CURRENCY"

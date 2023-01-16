@@ -46,6 +46,7 @@ local -r test_lender=${12}
 local -r test_treasury=${13}
 local -r test_vesting=${14}
 local -r test_gov=${15}
+local -r no_price_currency=${16}
 
 addKey "test-user-1" "$accounts_dir"
 addKey "test-user-2" "$accounts_dir"
@@ -73,6 +74,7 @@ DOT_ENV=$(cat <<-EOF
 NODE_URL=${node_url}
 ENV=${node_env}
 LPP_BASE_CURRENCY=${lpp_base_currency}
+NO_PRICE_CURRENCY=${no_price_currency}
 
 USER_1_PRIV_KEY=${user_1_priv_key}
 USER_2_PRIV_KEY=${user_2_priv_key}

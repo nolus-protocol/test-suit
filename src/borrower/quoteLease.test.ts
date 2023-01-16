@@ -1,6 +1,6 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate/';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { runOrSkip } from '../util/testingRules';
+import { runTestIfLocal, runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, { createWallet } from '../util/clients';
 import {
   calcBorrow,
@@ -11,7 +11,7 @@ import {
 } from '../util/smart-contracts/calculations';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
-import { PERMILLE_TO_PERCENT } from '../util/utils';
+import { noProvidedPriceFor, PERMILLE_TO_PERCENT } from '../util/utils';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Quote lease',
@@ -80,11 +80,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrency,
       );
 
-      const {
+      const [
         minToleranceCurrencyPrice,
         exactCurrencyPrice,
         maxToleranceCurrencyPrice,
-      } = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
+      ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
 
       const quote = await leaserInstance.leaseQuote(
         downpayment,
@@ -184,5 +184,33 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         /^.*Unknown currency symbol: \"USDC\".*/,
       );
     });
+
+    runTestIfLocal(
+      'the borrower tries to apply for a lease when there is no currency price provided by the Oracle - should produce an error',
+      async () => {
+        const leaseCurrencyPriceObj = () =>
+          oracleInstance.getPriceFor(noProvidedPriceFor);
+        await expect(leaseCurrencyPriceObj).rejects.toThrow('No price');
+
+        const quoteQueryResult = () =>
+          leaserInstance.leaseQuote(
+            '100', // any amount
+            downpaymentCurrency,
+            noProvidedPriceFor,
+          );
+        await expect(quoteQueryResult).rejects.toThrow(/^.*TO DO".*/);
+
+        // TO DO - no downpayment currency price (when we have >1 onlyPaymentsCurrencies in the list of supported currencies)
+        // quoteQueryResult = () =>
+        //   leaserInstance.leaseQuote('100', noProvidedPriceForPaymentOnly, leaseCurrency);
+        // await expect(quoteQueryResult).rejects.toThrow(
+        //   /^.*TO DO".*/,
+        // );
+      },
+    );
+
+    // TO DO
+    // test('the borrower tries to apply for a lease whose total value is too small - should produce an error', async () => {
+    // });
   },
 );

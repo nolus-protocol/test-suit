@@ -81,11 +81,11 @@ export function currencyPriceObjToNumbers(
   const tolerance = exactCurrencyPrice * (tolerancePercent / 100);
   const minToleranceCurrencyPrice = exactCurrencyPrice - tolerance;
   const maxToleranceCurrencyPrice = exactCurrencyPrice + tolerance;
-  return {
+  return [
     minToleranceCurrencyPrice,
     exactCurrencyPrice,
     maxToleranceCurrencyPrice,
-  };
+  ];
 }
 
 export async function removeAllFeeders(

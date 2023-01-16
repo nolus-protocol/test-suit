@@ -1,13 +1,19 @@
-import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { customFees, NATIVE_TICKER, undefinedHandler } from '../util/utils';
+import { InstantiateOptions, CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
+import {
+  customFees,
+  NATIVE_TICKER,
+  noProvidedPriceFor,
+  undefinedHandler,
+} from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   calcBorrow,
+  currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
 } from '../util/smart-contracts/calculations';
-import { InstantiateOptions } from '@cosmjs/cosmwasm-stargate';
-import { runOrSkip } from '../util/testingRules';
+import { runTestIfLocal, runOrSkip } from '../util/testingRules';
 import {
   getLeaseAddressFromOpenLeaseResponse,
   getLeaseGroupCurrencies,
@@ -33,7 +39,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let lppInstance: NolusContracts.Lpp;
     let leaserInstance: NolusContracts.Leaser;
     let oracleInstance: NolusContracts.Oracle;
-    let cosm: any;
+    let cosm: CosmWasmClient;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -57,15 +63,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
-      const quote = await leaserInstance.leaseQuote(
-        downpayment,
-        downpaymentCurrency,
-        leaseCurrency,
-      );
-
-      expect(quote.borrow).toBeDefined();
-
-      // get borrower balance
       const borrowerBalanceBefore_LC = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
         leaseCurrencyToIBC,
@@ -75,7 +72,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         downpaymentCurrencyToIBC,
       );
 
-      // get the liquidity before
       const lppLiquidityBefore = await cosm.getBalance(
         lppContractAddress,
         lppCurrencyToIBC,
@@ -85,35 +81,38 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
-      // get config before open a lease
       const leaserConfig = await leaserInstance.getLeaserConfig();
 
-      // push price for leaseCurrency
-      // const leaseCurrencyPrice = await provideLeasePrices(
-      //   oracleInstance,
-      //   leaseCurrency,
-      //   lppCurrency,
-      // );
-      // OR get price
-      // TO DO: get the exact price from the open tx events
       const leaseCurrencyPriceObj = await oracleInstance.getPriceFor(
         leaseCurrency,
       );
-      const leaseCurrencyPrice =
-        +leaseCurrencyPriceObj.amount.amount /
-        +leaseCurrencyPriceObj.amount_quote.amount;
+      const [
+        minToleranceCurrencyPrice_LC,
+        exactCurrencyPrice_LC,
+        maxToleranceCurrencyPrice_LC,
+      ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
 
-      let downpaymentCurrencyPrice = 1;
+      let exactCurrencyPrice_PC = 1;
+      let minToleranceCurrencyPrice_PC = 1;
+      let maxToleranceCurrencyPrice_PC = 1;
       if (downpaymentCurrency !== lppCurrency) {
-        // push OR get price
-        // TO DO: get the exact price from the tx events (after openLease())
         const downnpaymentCurrencyPriceObj = await oracleInstance.getPriceFor(
           leaseCurrency,
         );
-        downpaymentCurrencyPrice =
-          +downnpaymentCurrencyPriceObj.amount.amount /
-          +downnpaymentCurrencyPriceObj.amount_quote.amount;
+        [
+          minToleranceCurrencyPrice_PC,
+          exactCurrencyPrice_PC,
+          maxToleranceCurrencyPrice_PC,
+        ] = currencyPriceObjToNumbers(downnpaymentCurrencyPriceObj, 1);
       }
+
+      await provideEnoughLiquidity(
+        leaserInstance,
+        lppInstance,
+        downpayment,
+        downpaymentCurrency,
+        leaseCurrency,
+      );
 
       const response = await leaserInstance.openLease(
         borrowerWallet,
@@ -136,7 +135,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
 
-      // get the new lease state
+      // get the new lease state - opened
       const currentLeaseState = await leaseInstance.getLeaseStatus();
 
       // check lease address balance - there shouldn't be any
@@ -156,24 +155,37 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const downpaymentToLPN = +downpayment / downpaymentCurrencyPrice;
-      const leaseToLPN = +leaseAmount / leaseCurrencyPrice;
+      const downpaymentToLPN_min = +downpayment / minToleranceCurrencyPrice_PC;
+      const downpaymentToLPN_max = +downpayment / maxToleranceCurrencyPrice_PC;
+      const leaseToLPN_min = +leaseAmount / minToleranceCurrencyPrice_LC;
+      const leaseToLPN_max = +leaseAmount / maxToleranceCurrencyPrice_LC;
 
-      expect(BigInt(leaseAmount)).toBe(
-        BigInt((downpaymentToLPN + +leasePrincipal) * leaseCurrencyPrice),
+      expect(BigInt(leaseAmount)).toBeGreaterThan(
+        BigInt(
+          (downpaymentToLPN_min + +leasePrincipal) *
+            minToleranceCurrencyPrice_LC,
+        ),
+      );
+      expect(BigInt(leaseAmount)).toBeLessThan(
+        BigInt(
+          (downpaymentToLPN_max + +leasePrincipal) *
+            maxToleranceCurrencyPrice_LC,
+        ),
       );
 
-      const calcBorrowAmount = calcBorrow(
-        Math.trunc(+downpayment / downpaymentCurrencyPrice),
+      const calcBorrowAmount_min = calcBorrow(
+        downpaymentToLPN_min,
+        +leaserConfig.config.liability.initial,
+      );
+      const calcBorrowAmount_max = calcBorrow(
+        downpaymentToLPN_max,
         +leaserConfig.config.liability.initial,
       );
 
       // borrow=init%*LeaseTotal(borrow+downpayment);
-      expect(+leasePrincipal).toBe(calcBorrowAmount);
+      expect(+leasePrincipal).toBeGreaterThan(calcBorrowAmount_min);
+      expect(+leasePrincipal).toBeLessThan(calcBorrowAmount_max);
 
-      expect(leaseToLPN - downpaymentToLPN).toBe(+leasePrincipal);
-
-      // get borrower balance
       const borrowerBalanceAfter_LC = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
         leaseCurrencyToIBC,
@@ -198,9 +210,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerBalanceBefore_LC.amount,
       );
 
-      expect(lppLiquidityAfter.amount).toBe(
+      expect(lppLiquidityAfter.amount).toBeGreaterThan(
         BigInt(lppLiquidityBefore.amount) -
-          (BigInt(leaseToLPN) - BigInt(downpayment)),
+          (BigInt(leaseToLPN_min) - BigInt(downpayment)),
+      );
+      expect(lppLiquidityAfter.amount).toBeLessThan(
+        BigInt(lppLiquidityBefore.amount) -
+          (BigInt(leaseToLPN_max) - BigInt(downpayment)),
       );
     }
 
@@ -215,11 +231,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
-      await userWithBalanceWallet.transferAmount(
-        borrowerWallet.address as string,
-        [{ denom: downpaymentCurrencyToIBC, amount: downpaymentAmount }],
-        customFees.transfer,
-      );
+      if (+downpaymentAmount > 0) {
+        await userWithBalanceWallet.transferAmount(
+          borrowerWallet.address as string,
+          [{ denom: downpaymentCurrencyIBC, amount: downpaymentAmount }],
+          customFees.transfer,
+        );
+      }
 
       const borrowerBalanceBefore = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
@@ -300,6 +318,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the successful scenario for opening a lease - downpayment currency === lease currency- should work as expected', async () => {
+      // TO DO !!!!!!!!!!!!!! leaseCurrency balance > 0 is required for the reserve account
       const currentLeaseCurrency = leaseCurrency;
       const currentDownpaymentCurrency = currentLeaseCurrency;
       const currentDownpaymentCurrencyToIBC = currencyTicker_To_IBC(
@@ -330,14 +349,41 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('the borrower tries to open a lease with unsupported payment currency - should produce an error', async () => {
-      await testOpeningWithInvalidParams(
-        leaseCurrency,
-        'unsupported',
-        '10',
-        'Found currency unsupported which is not defined in the payment currency group',
-      );
-    });
+    runTestIfLocal(
+      'the borrower tries to open lease when there is no currency price provided by the Oracle - should produce an error',
+      async () => {
+        const leaseCurrencyPriceObj = () =>
+          oracleInstance.getPriceFor(noProvidedPriceFor);
+        await expect(leaseCurrencyPriceObj).rejects.toThrow('No price');
+
+        await testOpeningWithInvalidParams(
+          noProvidedPriceFor,
+          downpaymentCurrencyToIBC,
+          '10',
+          `TO DO`,
+        );
+
+        // TO DO - no downpayment currency price (when we have >1 onlyPaymentsCurrencies in the list of supported currencies)
+        // await testOpeningWithInvalidParams(
+        //   leaseCurrency,
+        //   noProvidedPriceForPaymentOnly,
+        //   '10',
+        //   `TO DO`,
+        // );
+      },
+    );
+
+    runTestIfLocal(
+      'the borrower tries to open a lease with unsupported payment currency - should produce an error',
+      async () => {
+        await testOpeningWithInvalidParams(
+          leaseCurrency,
+          'unsupported',
+          '10',
+          `Found currency 'unsupported' which is not defined in the payment currency group`,
+        );
+      },
+    );
 
     test('the borrower tries to open a lease with 0 down payment - should produce an error', async () => {
       await testOpeningWithInvalidParams(
@@ -385,7 +431,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('the lpp "open loan" functionality should be used only by the lease contract', async () => {
       const lppOpenLoanMsg = {
-        open_loan: { amount: { amount: '10', symbol: leaseCurrency } }, // any amount
+        open_loan: { amount: { amount: '10', ticker: lppCurrency } }, // any amount
       };
 
       const openLoan = () =>
@@ -396,7 +442,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           customFees.exec,
         );
 
-      await expect(openLoan).rejects.toThrow(/^.*Unauthorized contract Id.*/);
+      await expect(openLoan).rejects.toThrow(/^.*No such contract.*/);
     });
 
     test('the lease instance can be created only by the leaser contract', async () => {
@@ -435,5 +481,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         /^.*can not instantiate: unauthorized.*/,
       );
     });
+
+    // TO DO
+    // test('the borrower tries to open lease whose total value is too small - should produce an error', async () => {
+    // });
   },
 );

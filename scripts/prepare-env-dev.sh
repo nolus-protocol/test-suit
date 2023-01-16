@@ -12,6 +12,7 @@ NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
 FAUCET_KEY="faucet"
 CONTRACTS_OWNER_KEY="contracts_owner"
 LPP_BASE_CURRENCY="USDC"
+NO_PRICE_CURRENCY="STARS"
 
 NOLUS_CORE_TAG=""
 MNEMONIC_FAUCET=""
@@ -45,7 +46,8 @@ while [[ $# -gt 0 ]]; do
     [--test-lender-flag <test_lender_true_or_false>]
     [--test-treasury-flag <test_treasury_true_or_false>]
     [--test-vesting-flag <test_vesting_true_or_false>]
-    [--test-gov-flag <test_gov_true_or_false>]" \
+    [--test-gov-flag <test_gov_true_or_false>]
+    [--no-price-currency <no_price_currency_ticker>]" \
     "$0"
     exit 0
     ;;
@@ -122,6 +124,12 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
+  --no-price-currency)
+    NO_PRICE_CURRENCY="$2"
+    shift
+    shift
+    ;;
+
   *)
     echo "unknown option '$key'"
     exit 1
@@ -178,4 +186,4 @@ echo "$MNEMONIC_CONTRACTS_OWNER" | run_cmd "$ACCOUNTS_DIR" keys add "$CONTRACTS_
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$CONTRACTS_INFO_PATH" "$LPP_BASE_CURRENCY" "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" \
 "$CONTRACTS_OWNER_KEY" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
-"$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV"
+"$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$NO_PRICE_CURRENCY"
