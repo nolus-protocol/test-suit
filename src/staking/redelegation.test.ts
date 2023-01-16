@@ -21,9 +21,10 @@ import {
   undefinedHandler,
 } from '../util/utils';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { ifLocal } from '../util/testingRules';
 
 const maybe =
-  (process.env.ENV as string) === 'local' ||
+  ifLocal() ||
   (process.env.TEST_STAKING as string).toLocaleLowerCase() === 'false'
     ? describe.skip
     : describe;
