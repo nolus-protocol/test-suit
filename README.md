@@ -42,7 +42,7 @@ yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --mnemonic-contracts-ow
 yarn prepare-env-local --contracts-result-file-path <contracts_info_file_path>
 ```
 
-* **--contracts-result-file-path** - path to the directory where the smart contracts information file is located (thе file produced by **nolusd-core/scripts/init-local-network.sh**) - **nolus-core** path by default.
+* **--contracts-result-file-path** - path to the directory where the smart contracts information file is located (thе file produced by **nolusd-core/scripts/init-local-network.sh**). = **nolus-core** path by default.
 
 * For more flags: ```yarn prepare-env-local --help```
 
@@ -51,10 +51,14 @@ yarn prepare-env-local --contracts-result-file-path <contracts_info_file_path>
 Example:
 
 ```sh
-./scripts/init-local-network.sh --reserve-tokens 100000000000000ibc/7FBDBEEEBA9C50C4BCDF7BF438EAB99E64360833D240B32655C96E319559E911 (lpp base ibc/ representation),10000000000000unls --hermes-mnemonic <hermes_account_mnemonic>
+./scripts/init-local-network.sh --reserve-tokens 10000000000000000ibc/7FBDBEEEBA9C50C4BCDF7BF438EAB99E64360833D240B32655C96E319559E911 (lpp base ibc/ representation), 1000000000000000unls, 1000000unsupported (for invalid currency test cases) --hermes-mnemonic <hermes_account_mnemonic>
 ```
 
+!!! On a local network, manual setup and startup of the feeder is required before testing. Instructions for this can be found in the our [**oracle-price-feeder**](https://github.com/Nolus-Protocol/oracle-price-feeder) repository. For some of the test cases, it is necessary to choose a currency for which this feeder does not provide a price. By default, here in the tests, this is set to be the "STARS" currency. So when you configure the feeder, in the configuration file there, please remove this currency from the **currencies** section. An option is provided here to select and specify a currency other than "STARS" via the flag "--no-price-currency" when running **yarn prepare-env-local**.
+
 ### Save feeders
+
+Testing the oracle contract requires isolating it from the active feeders. This requires removing them before testing and adding them afterwards. For this purpose, before running the tests, ensure that you have backed up the currently active feeders. In case of problem, you can find their addresses in the file created by the following command:
 
 ```sh
 yarn save-feeders
