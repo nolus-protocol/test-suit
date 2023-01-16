@@ -15,13 +15,13 @@ import {
   returnRestToMainAccount,
   sendInitExecuteFeeTokens,
 } from '../util/transfer';
-import {
-  registerAllFeedersBack,
-  removeAllFeeders,
-} from '../util/smart-contracts/calculations';
 import { runOrSkip } from '../util/testingRules';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
-import { updateOracleConfig } from '../util/smart-contracts/actions/oracle';
+import {
+  updateOracleConfig,
+  registerAllFeedersBack,
+  removeAllFeeders,
+} from '../util/smart-contracts/actions/oracle';
 
 runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   let contractsOwnerWallet: NolusWallet;

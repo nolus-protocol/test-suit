@@ -11,22 +11,7 @@ import {
 } from '../../transfer';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../../utils';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
-
-export async function removeAllFeeders(
-  oracleInstance: NolusContracts.Oracle,
-  contractsOwnerWallet: NolusWallet,
-): Promise<void> {
-  const allFeeders = await oracleInstance.getFeeders();
-
-  for (let i = 0; i < allFeeders.length; i++) {
-    console.log('Feeder removing...');
-    await oracleInstance.removeFeeder(
-      contractsOwnerWallet,
-      allFeeders[i],
-      customFees.exec,
-    );
-  }
-}
+import * as FEEDERS from '../../../../feeders.json';
 
 export async function pushPrice(
   oracleInstance: NolusContracts.Oracle,
@@ -132,4 +117,34 @@ export async function updateOracleConfig(
     priceConfig,
     customFees.exec,
   );
+}
+
+export async function removeAllFeeders(
+  oracleInstance: NolusContracts.Oracle,
+  contractsOwnerWallet: NolusWallet,
+): Promise<void> {
+  const allFeeders = await oracleInstance.getFeeders();
+
+  for (let i = 0; i < allFeeders.length; i++) {
+    console.log('Feeder removing...');
+    await oracleInstance.removeFeeder(
+      contractsOwnerWallet,
+      allFeeders[i],
+      customFees.exec,
+    );
+  }
+}
+
+export async function registerAllFeedersBack(
+  oracleInstance: NolusContracts.Oracle,
+  contractsOwnerWallet: NolusWallet,
+): Promise<void> {
+  const allFeeders = FEEDERS.data;
+  for (let i = 0; i < allFeeders.length; i++) {
+    await oracleInstance.addFeeder(
+      contractsOwnerWallet,
+      allFeeders[i],
+      customFees.exec,
+    );
+  }
 }

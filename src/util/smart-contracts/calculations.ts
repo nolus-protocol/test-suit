@@ -1,7 +1,6 @@
 import { NolusContracts, NolusWallet, AssetUtils } from '@nolus/nolusjs';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
-import { customFees, TONANOSEC } from '../utils';
-import * as FEEDERS from '../../../feeders.json';
+import { TONANOSEC } from '../utils';
 
 const NANOSEC_YEAR = 365 * 24 * 60 * 60 * TONANOSEC;
 
@@ -86,34 +85,4 @@ export function currencyPriceObjToNumbers(
     exactCurrencyPrice,
     maxToleranceCurrencyPrice,
   ];
-}
-
-export async function removeAllFeeders(
-  oracleInstance: NolusContracts.Oracle,
-  contractsOwnerWallet: NolusWallet,
-): Promise<void> {
-  const allFeeders = await oracleInstance.getFeeders();
-
-  for (let i = 0; i < allFeeders.length; i++) {
-    console.log('Feeder removing...');
-    await oracleInstance.removeFeeder(
-      contractsOwnerWallet,
-      allFeeders[i],
-      customFees.exec,
-    );
-  }
-}
-
-export async function registerAllFeedersBack(
-  oracleInstance: NolusContracts.Oracle,
-  contractsOwnerWallet: NolusWallet,
-): Promise<void> {
-  const allFeeders = FEEDERS.data;
-  for (let i = 0; i < allFeeders.length; i++) {
-    await oracleInstance.addFeeder(
-      contractsOwnerWallet,
-      allFeeders[i],
-      customFees.exec,
-    );
-  }
 }
