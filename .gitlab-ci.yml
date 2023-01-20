@@ -9,7 +9,6 @@ env-prep:
   variables:
     FEEDERS_FILE: "feeders.json"
     ACCOUNTS_DIR: "./accounts"
-    NOLUS_DEV_NET: "https://net-dev.nolus.io:26612"
   stage: prep
   only:
     - schedules
@@ -20,12 +19,12 @@ env-prep:
   script:
     - yarn prepare-env-dev --mnemonic-faucet "$FAUCET_MNEMONIC_DEV"
         --mnemonic-contracts-owner "$SMART_CONTRACTS_ADMIN_MNEMONIC"
-        --token-type "JOB-TOKEN" --token-value "$CI_JOB_TOKEN" --tag "$COSMZONE_PREFERRED_TAG"
-        --test-transfer "$TEST_TRANSFER_PIPELINE" --test-oracle "$TEST_ORACLE_PIPELINE"
-        --test-staking "$TEST_STAKING_PIPELINE" --test-borrower "$TEST_BORROWER_PIPELINE"
-        --test-lender "$TEST_LENDER_PIPELINE" --test-treasury "$TEST_TREASURY_PIPELINE"
-        --test-vesting "$TEST_VESTING_PIPELINE" --test-gov "$TEST_GOV_PIPELINE"
-    - yarn save-feeders --accounts-dir "$ACCOUNTS_DIR" --feeders-file "$FEEDERS_FILE" --nolus-net "$NOLUS_DEV_NET"
+        --nolus-core-version-tag "$COSMZONE_PREFERRED_TAG"
+        --test-transfer-flag "$TEST_TRANSFER_PIPELINE" --test-oracle-flag "$TEST_ORACLE_PIPELINE"
+        --test-staking-flag "$TEST_STAKING_PIPELINE" --test-borrower-flag "$TEST_BORROWER_PIPELINE"
+        --test-lender-flag "$TEST_LENDER_PIPELINE" --test-treasury-flag "$TEST_TREASURY_PIPELINE"
+        --test-vesting-flag "$TEST_VESTING_PIPELINE" --test-gov-flag "$TEST_GOV_PIPELINE"
+    - yarn save-feeders --accounts-dir "$ACCOUNTS_DIR" --feeders-file "$FEEDERS_FILE"
   artifacts:
     paths:
     - .env
@@ -38,7 +37,6 @@ test:
   before_script:
     - apk update && apk add bash
   script:
-    - npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
     - yarn install
     - yarn run test
 

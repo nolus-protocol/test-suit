@@ -12,7 +12,6 @@ NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
 FAUCET_KEY="faucet"
 CONTRACTS_OWNER_KEY="contracts_owner"
 LPP_BASE_CURRENCY="USDC"
-NO_PRICE_CURRENCY="STARS"
 
 NOLUS_CORE_TAG=""
 MNEMONIC_FAUCET=""
@@ -35,8 +34,9 @@ while [[ $# -gt 0 ]]; do
   -h | --help)
     printf \
     "Usage: %s
+    [--nolus-net <nolus_network_url>]
     [--lpp-base-currency <lpp_base_currency_ticker>]
-    [--nolus_core_version_tag <nolus_core_preferred_tag>]
+    [--nolus-core-version-tag <nolus_core_preferred_tag>]
     [--mnemonic-faucet <mnemonic_phrase>]
     [--mnemonic-contracts-owner <mnemonic_phrase>]
     [--test-transfer-flag <test_transfer_true_or_false>]
@@ -46,10 +46,15 @@ while [[ $# -gt 0 ]]; do
     [--test-lender-flag <test_lender_true_or_false>]
     [--test-treasury-flag <test_treasury_true_or_false>]
     [--test-vesting-flag <test_vesting_true_or_false>]
-    [--test-gov-flag <test_gov_true_or_false>]
-    [--no-price-currency <no_price_currency_ticker>]" \
+    [--test-gov-flag <test_gov_true_or_false>] "\
     "$0"
     exit 0
+    ;;
+
+  --nolus-net)
+    NOLUS_DEV_NET="$2"
+    shift
+    shift
     ;;
 
   --lpp-base-currency)
@@ -58,7 +63,7 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  --nolus_core_version_tag)
+  --nolus-core-version-tag)
     NOLUS_CORE_TAG="$2"
     shift
     shift
@@ -120,12 +125,6 @@ while [[ $# -gt 0 ]]; do
 
   --test-gov-flag)
     TEST_GOV="$2"
-    shift
-    shift
-    ;;
-
-  --no-price-currency)
-    NO_PRICE_CURRENCY="$2"
     shift
     shift
     ;;
