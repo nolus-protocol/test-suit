@@ -9,6 +9,7 @@
     "prepare-env-dev": "/bin/bash ./scripts/prepare-env-dev.sh",
     "prepare-env-local": "/bin/bash ./scripts/prepare-env-local.sh",
     "save-feeders": "/bin/bash ./scripts/save-active-feeders.sh",
+    "fund-main-account": "/bin/bash ./scripts/helpers/fund-with-supported-currencies.sh",
     "test": "jest --runInBand",
     "lint": "eslint 'src/**/*.{js,ts,tsx}' --quiet --fix"
   },
@@ -39,7 +40,7 @@
     "@cosmjs/launchpad": "^0.27.1",
     "@cosmjs/math": "^0.28.13",
     "@google-cloud/precise-date": "^3.0.1",
-    "@nolus/nolusjs": "^0.0.85",
+    "@nolus/nolusjs": "^0.0.87",
     "axios": "^0.26.1",
     "bip32": "^2.0.6",
     "bip39": "^3.0.4",
