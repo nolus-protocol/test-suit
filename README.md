@@ -42,16 +42,16 @@ yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --mnemonic-contracts-ow
 yarn prepare-env-local --contracts-result-file-path <contracts_info_file_path>
 ```
 
-* **--contracts-result-file-path** - path to the directory where the smart contracts information file is located (thе file produced by **nolusd-core/scripts/init-local-network.sh**). = **nolus-core** path by default.
-
-* For more flags: ```yarn prepare-env-local --help```
+* **--contracts-result-file-path** - path to the directory where the smart contracts information file is located (thе file produced by **nolusd-core/scripts/init-local-network.sh**) = **nolus-core** path by default
 
 * The 'reserve' account must have funds (in nolus native currency && lpp base currency), so be sure to reflect this when starting a local network : **/nolus-core/scripts/init-local-network.sh**
+
+* For more flags: ```yarn prepare-env-local --help```
 
 Example:
 
 ```sh
-./scripts/init-local-network.sh --reserve-tokens 10000000000000000ibc/7FBDBEEEBA9C50C4BCDF7BF438EAB99E64360833D240B32655C96E319559E911 (lpp base ibc/ representation), 1000000000000000unls, 1000000unsupported (for invalid currency test cases) --hermes-mnemonic <hermes_account_mnemonic>
+./scripts/init-local-network.sh --reserve-tokens 1000000000000000unls,1000000unsupported (for invalid currency test cases) --hermes-mnemonic <hermes_account_mnemonic>
 ```
 
 !!! On a local network, manual setup and startup of the feeder is required before testing. Instructions for this can be found in the our [**oracle-price-feeder**](https://github.com/Nolus-Protocol/oracle-price-feeder) repository. For some of the test cases, it is necessary to choose a currency for which this feeder does not provide a price. By default, here in the tests, this is set to be the "STARS" currency. So when you configure the feeder, in the configuration file there, please remove this currency from the **currencies** section. An option is provided here to select and specify a currency other than "STARS" via the flag "--no-price-currency" when running **yarn prepare-env-local**.
@@ -65,6 +65,31 @@ yarn save-feeders
 ```
 
 On dev add *--nolus-net https://net-dev.nolus.io:26612*
+
+### Fund wallet with supported currencies - Osmosis Dex
+
+To run the tests, regardless of the exact currency, it is necessary to load the test wallet with all currencies supported by the system. For this purpose you can use the script below, or to do that manually.
+
+!!! Before running the script, you have to fill in it the currencies with which you want the account to be funded. [Look in the script for more](./scripts/helpers/fund-with-supported-currencies.sh).
+
+!!! Osmosis binary is required.
+
+```sh
+yarn run fund-main-account <mnemonic_of_osmosis_account_you_have_preloaded> <address_of_osmosis_account_you_have_preloaded>  <nolus_receiver_address> <osmosis_node_url>
+```
+
+* Тhe osmosis account whose information you submit to the script must be loaded with osmo
+
+* The receiver is the "reserve" address (after running the [environment prep scripts](#prepare-the-environment) )
+
+* Some of the parameters in the script have default values for local network - change them with the following flags:
+
+```sh
+    [--nolus-node <nolus_network_url>]
+    [--nolus-home-dir <nolus_home_dir_path>]
+    [--osmosis-home-dir  <osmosis_home_dir_path>]
+    [--leaser-contract-address <leaser_contract_addrss]
+```
 
 ### Run
 
