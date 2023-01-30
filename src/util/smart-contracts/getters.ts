@@ -1,10 +1,6 @@
 import { AssetUtils } from '@nolus/nolusjs';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
 
-export function getCurrenciesByGroup(group: string): string[] {
-  return AssetUtils.getCurrenciesByGroup(group);
-}
-
 export function getLeaseGroupCurrencies(): string[] {
   return AssetUtils.getCurrenciesByGroup('Lease');
 }

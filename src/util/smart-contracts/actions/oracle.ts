@@ -13,7 +13,7 @@ import { customFees, NATIVE_MINIMAL_DENOM } from '../../utils';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
 import * as FEEDERS from '../../../../feeders.json';
 
-export async function pushPrice(
+export async function providePrice(
   oracleInstance: NolusContracts.Oracle,
   priceFeederWallet: NolusWallet,
   firstPairMemberCurrency: string,
