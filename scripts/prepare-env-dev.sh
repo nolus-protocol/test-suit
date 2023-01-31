@@ -4,8 +4,6 @@ set -euxo pipefail
 HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
 
 GITHUB_NOLUS_CORE_RELEASES="https://github.com/Nolus-Protocol/nolus-core/releases"
-ARTIFACT_BIN="nolus.tar.gz"
-SETUP_DEV_NETWORK_ARTIFACT="setup-dev-network"
 NOLUS_BUILD_BINARY_ARTIFACT="nolus.tar.gz"
 
 NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
@@ -34,7 +32,7 @@ while [[ $# -gt 0 ]]; do
   -h | --help)
     printf \
     "Usage: %s
-    [--nolus-net <nolus_network_url>]
+    [--nolus-dev-net <nolus_dev_url>]
     [--lpp-base-currency <lpp_base_currency_ticker>]
     [--nolus-core-version-tag <nolus_core_preferred_tag>]
     [--mnemonic-faucet <mnemonic_phrase>]
@@ -51,7 +49,7 @@ while [[ $# -gt 0 ]]; do
     exit 0
     ;;
 
-  --nolus-net)
+  --nolus-dev-net)
     NOLUS_DEV_NET="$2"
     shift
     shift
@@ -155,7 +153,6 @@ _downloadArtifact() {
     echo "Error: failed to retrieve artifact $name, version $version. Are you sure the artifact and tag exist?"
     exit 1
   fi
-  #  echo 'A' | unzip "$name".zip
 }
 
 # Get dev-network information
@@ -164,15 +161,15 @@ _downloadArtifact() {
     NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq '.tag_name' | tr -d '"')
   fi
 
-_downloadArtifact "$SETUP_DEV_NETWORK_ARTIFACT" "$NOLUS_CORE_TAG"
 _downloadArtifact "$NOLUS_BUILD_BINARY_ARTIFACT" "$NOLUS_CORE_TAG"
+tar -xvf "$NOLUS_BUILD_BINARY_ARTIFACT"
 
-tar -xvf $ARTIFACT_BIN
+# Home dir
 export PATH
 PATH=$HOME_DIR:$PATH
-rm -r "$HOME_DIR/accounts"
+rm -rf "$HOME_DIR/accounts"
+mkdir "$HOME_DIR/accounts"
 ACCOUNTS_DIR="$HOME_DIR/accounts"
-CONTRACTS_INFO_PATH="$HOME_DIR"
 
 # Recover contracts_owner and faucet
 
@@ -183,6 +180,6 @@ echo "$MNEMONIC_CONTRACTS_OWNER" | run_cmd "$ACCOUNTS_DIR" keys add "$CONTRACTS_
 # Prepare .env
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
-prepareEnv "$CONTRACTS_INFO_PATH" "$LPP_BASE_CURRENCY" "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" \
+prepareEnv "$LPP_BASE_CURRENCY" "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" \
 "$CONTRACTS_OWNER_KEY" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
-"$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$NO_PRICE_CURRENCY"
+"$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" ""

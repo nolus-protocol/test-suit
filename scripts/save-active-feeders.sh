@@ -4,9 +4,6 @@ set -euxo pipefail
 HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
 SCRIPT_DIR="$HOME_DIR"/scripts
 
-source "$HOME_DIR"/.env
-source "$SCRIPT_DIR"/common/cmd.sh
-
 ACCOUNTS_DIR="$HOME/.nolus"
 FEEDERS_FILE="feeders.json"
 NOLUS_NET="http://localhost:26612"
@@ -44,5 +41,11 @@ esac
 done
 
 GET_FEEDERS_MSG='{"feeders":{}}'
+
+export PATH
+PATH=$HOME_DIR:$PATH
+
+source "$HOME_DIR"/.env
+source "$SCRIPT_DIR"/common/cmd.sh
 
 run_cmd "$ACCOUNTS_DIR" query wasm contract-state smart "$ORACLE_ADDRESS" "$GET_FEEDERS_MSG" --output json --node "$NOLUS_NET"> "$HOME_DIR/$FEEDERS_FILE"

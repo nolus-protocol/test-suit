@@ -9,3 +9,4 @@ accounts
 nolusd
 contracts-info.json
 feeders.json
+deploy-contracts-genesis.sh
