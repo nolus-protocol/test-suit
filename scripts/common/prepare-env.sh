@@ -28,25 +28,21 @@ getValidatorAddress() {
 }
 
 prepareEnv() {
-
-# Add new keys
-
-local -r contracts_info_path=$1
-local -r lpp_base_currency=$2
-local -r node_url=$3
-local -r node_env=$4
-local -r accounts_dir=$5
-local -r main_accounts_key=$6
-local -r contracts_owner_key=$7
-local -r test_transfers=$8
-local -r test_oracle=$9
-local -r test_staking=${10}
-local -r test_borrower=${11}
-local -r test_lender=${12}
-local -r test_treasury=${13}
-local -r test_vesting=${14}
-local -r test_gov=${15}
-local -r no_price_currency=${16}
+local -r lpp_base_currency=$1
+local -r node_url=$2
+local -r node_env=$3
+local -r accounts_dir=$4
+local -r main_accounts_key=$5
+local -r contracts_owner_key=$6
+local -r test_transfers=$7
+local -r test_oracle=$8
+local -r test_staking=$9
+local -r test_borrower=${10}
+local -r test_lender=${11}
+local -r test_treasury=${12}
+local -r test_vesting=${13}
+local -r test_gov=${14}
+local -r no_price_currency=${15}
 
 addKey "test-user-1" "$accounts_dir"
 addKey "test-user-2" "$accounts_dir"
@@ -60,13 +56,16 @@ local -r validator_2_address=$(getValidatorAddress "1" "$accounts_dir" "$node_ur
 
 # Get contracts addresses
 
-local -r treasury_address=$(jq .contracts_info[0].treasury.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r lpp_address=$(jq .contracts_info[1].lpp.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r timealarms_address=$(jq .contracts_info[2].timealarms.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r oracle_address=$(jq .contracts_info[3].oracle.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r profit_address=$(jq .contracts_info[4].profit.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r leaser_address=$(jq .contracts_info[5].leaser.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
-local -r dispatcher_address=$(jq .contracts_info[6].rewards_dispatcher.instance "$contracts_info_path"/contracts-info.json | tr -d '"')
+curl https://raw.githubusercontent.com/Nolus-Protocol/nolus-money-market/main/scripts/deploy-contracts-genesis.sh >> deploy-contracts-genesis.sh
+source $HOME_DIR/deploy-contracts-genesis.sh
+
+local -r treasury_address=$(treasury_instance_addr)
+local -r lpp_address=$(lpp_instance_addr)
+local -r timealarms_address=$(timealarms_instance_addr)
+local -r oracle_address=$(oracle_instance_addr)
+local -r profit_address=$(profit_instance_addr)
+local -r leaser_address=$(leaser_instance_addr)
+local -r dispatcher_address=$(rewards_dispatcher_instance_addr)
 
 # Save the results
 

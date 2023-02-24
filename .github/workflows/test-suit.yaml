@@ -1,0 +1,101 @@
+name: Test Suit
+run-name: "Testing, triggered by ${{ github.actor }}"
+
+on:
+  # schedule:
+  #   - cron: "0 0 * * *"
+
+  workflow_dispatch:
+    inputs:
+      nolus-preferred-tag:
+        description: "Nolus-core preferred tag to use"
+        type: string
+      test-transfer-pipeline:
+        description: "Test transfer"
+        type: boolean
+      test-oracle-pipeline:
+        description:  "Test oracle"
+        type: boolean
+      test-staking-pipeline:
+        description:  "Test staking"
+        type: boolean
+      test-borrower-pipeline:
+        description:  "Test borrower"
+        type: boolean
+      test-lender-pipeline:
+        description:  "Test lender"
+        type: boolean
+      test-treasury-pipeline:
+        description:  "Test treasury"
+        type: boolean
+      test-vesting-pipeline:
+        description:  "Test vesting"
+        type: boolean
+      test-gov-pipeline:
+        description:  "Test gov"
+        type: boolean
+
+jobs:
+  env-prep:
+    environment: dev
+    env:
+        FEEDERS_FILE: "feeders.json"
+        ACCOUNTS_DIR: "./accounts"
+        DEV_URL:  ${{ vars.DEV_URL }}
+        FAUCET_MNEMONIC_DEV: ${{ secrets.FAUCET_MNEMONIC_DEV }}
+        SMART_CONTRACTS_ADMIN_MNEMONIC: ${{ secrets.SMART_CONTRACTS_ADMIN_MNEMONIC_DEV }}
+        NOLUS_PREFERRED_TAG: ${{ github.event.inputs.nolus-preferred-tag || '' }}
+        TEST_TRANSFER_PIPELINE: ${{ github.event.inputs.test-transfer-pipeline || 'true' }}
+        TEST_ORACLE_PIPELINE: ${{ github.event.inputs.test-oracle-pipeline || 'true' }}
+        TEST_STAKING_PIPELINE: ${{ github.event.inputs.test-staking-pipeline || 'true' }}
+        TEST_BORROWER_PIPELINE: ${{ github.event.inputs.test-borrower-pipeline || 'true' }}
+        TEST_LENDER_PIPELINE: ${{ github.event.inputs.test-lender-pipeline || 'true' }}
+        TEST_TREASURY_PIPELINE: ${{ github.event.inputs.test-treasury-pipeline || 'true' }}
+        TEST_VESTING_PIPELINE: ${{ github.event.inputs.test-vesting-pipeline || 'true' }}
+        TEST_GOV_PIPELINE: ${{ github.event.inputs.test-gov-pipeline || 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Install jq"
+        run: sudo apt-get update && sudo apt-get install jq
+      - uses: actions/checkout@v3
+      - shell: bash
+        run: |
+          yarn prepare-env-dev \
+          --mnemonic-faucet "$FAUCET_MNEMONIC_DEV" \
+          --mnemonic-contracts-owner "$SMART_CONTRACTS_ADMIN_MNEMONIC" \
+          --nolus-core-version-tag "$NOLUS_PREFERRED_TAG" \
+          --test-transfer-flag "$TEST_TRANSFER_PIPELINE" --test-oracle-flag "$TEST_ORACLE_PIPELINE" \
+          --test-staking-flag "$TEST_STAKING_PIPELINE" --test-borrower-flag "$TEST_BORROWER_PIPELINE" \
+          --test-lender-flag "$TEST_LENDER_PIPELINE" --test-treasury-flag "$TEST_TREASURY_PIPELINE" \
+          --test-vesting-flag "$TEST_VESTING_PIPELINE" --test-gov-flag "$TEST_GOV_PIPELINE"
+      - name: "Save active feeders"
+        run: |
+          yarn save-feeders --accounts-dir "$ACCOUNTS_DIR" --feeders-file "$FEEDERS_FILE" --nolus-net "$DEV_URL"
+        shell: bash
+      - name: "Upload .env artifact"
+        uses: actions/upload-artifact@v3
+        with:
+          name: .env
+          path: .env
+      - name: "Upload feeders artifact"
+        uses: actions/upload-artifact@v3
+        with:
+          name: active-feeders
+          path: ${{ env.FEEDERS_FILE }}
+
+  test:
+    runs-on: ubuntu-latest
+    needs: env-prep
+    steps:
+      - uses: actions/checkout@v3
+      - name: "Download the .env file"
+        uses: actions/download-artifact@v3
+        with:
+          name: .env
+      - name: "Download the feeders file"
+        uses: actions/download-artifact@v3
+        with:
+          name: active-feeders
+      - uses: actions/setup-node@v3
+      - run: yarn
+      - run: yarn run test
