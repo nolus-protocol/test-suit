@@ -84,5 +84,5 @@ source "$SCRIPT_DIR"/common/cmd.sh
   declare -n currency
   for currency in ${!CURRENCY@}; do
     echo 'y' | osmosisd tx gamm swap-exact-amount-in 1000000uosmo 100000 --swap-route-denoms "${currency[denom]}" --swap-route-pool-ids "${currency[pool_id]}" $FLAGS
-    echo 'y' | osmosisd tx ibc-transfer transfer transfer "$REMOTE_CHANNEL_ID" "$NOLUS_MAINKEY_ADDRESS" 500"${currency[denom]}" --packet-timeout-height "0-0"  $FLAGS
+    echo 'y' | osmosisd tx ibc-transfer transfer transfer "$REMOTE_CHANNEL_ID" "$NOLUS_MAINKEY_ADDRESS"  100000"${currency[denom]}" --packet-timeout-height "0-0"  $FLAGS
   done
