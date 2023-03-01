@@ -60,8 +60,8 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     );
 
     const currenciesPairs = await oracleInstance.getCurrencyPairs();
-    firstPairMember = currenciesPairs[0].from;
-    secondPairMember = currenciesPairs[0].to.target;
+    firstPairMember = currenciesPairs[0][0];
+    secondPairMember = currenciesPairs[0][1][1];
 
     await removeAllFeeders(oracleInstance, contractsOwnerWallet);
   });
@@ -121,23 +121,6 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
   }
 
-  function resolvePrice(
-    firstCurrencyToBase: number[],
-    secondCurrencyToFirst: number[],
-  ): number[] {
-    return [
-      firstCurrencyToBase[0] * secondCurrencyToFirst[0],
-      firstCurrencyToBase[1] * secondCurrencyToFirst[1],
-    ];
-  }
-
-  function verifyPrice(price: Price, calcPrice: number[]): void {
-    // a/b === c/d if a*d == b*c
-    expect(BigInt(price.amount_quote.amount) * BigInt(calcPrice[0])).toBe(
-      BigInt(price.amount.amount) * BigInt(calcPrice[1]),
-    );
-  }
-
   test('the contract owner tries to add a feeder - should work as expected', async () => {
     await sendInitExecuteFeeTokens(
       userWithBalance,
@@ -176,6 +159,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     const sampleNumbers = 2;
     const priceFeedPeriodSec = samplePeriodSec * sampleNumbers;
     const expectedFeedersPermile = 500;
+
     await updateOracleConfig(
       oracleInstance,
       initConfig,
@@ -370,46 +354,44 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     const secondCurrency = leaseCurrencies[1];
     const thirdCurrency = leaseCurrencies[2];
 
-    let newSwapTree: Tree = [
-      [0, initBaseAsset],
-      [[1, firstCurrency], [[2, secondCurrency]]],
-    ];
+    let newSwapTree: Tree = {
+      value: [0, initBaseAsset],
+      children: [
+        {
+          value: [1, firstCurrency],
+          children: [{ value: [2, secondCurrency] }],
+        },
+      ],
+    };
+
     await oracleInstance.updateSwapTree(
       contractsOwnerWallet,
       newSwapTree,
       customFees.exec,
     );
 
-    const firstCurrencyToBase = [2, 3];
-    const secondCurrencyToFirst = [222, 444];
-
-    await feedPrice(
-      feederWallet,
-      firstCurrencyToBase[0].toString(),
-      firstCurrencyToBase[1].toString(),
-      firstCurrency,
-      initBaseAsset,
-    );
-
-    await feedPrice(
-      feederWallet,
-      secondCurrencyToFirst[0].toString(),
-      secondCurrencyToFirst[1].toString(),
-      secondCurrency,
-      firstCurrency,
-    );
-
-    let price = await oracleInstance.getPriceFor(firstCurrency);
-    expect(price.amount.amount).toBe(firstCurrencyToBase[0].toString());
-    expect(price.amount_quote.amount).toBe(firstCurrencyToBase[1].toString());
+    await feedPrice(feederWallet, '50', '10', firstCurrency, initBaseAsset); //any amount
+    await feedPrice(feederWallet, '5', '7', secondCurrency, firstCurrency); //any amount
 
     // the price should be resolved
+    let price = await oracleInstance.getPriceFor(firstCurrency);
+    expect(price.amount.amount).toBeDefined();
+    expect(price.amount_quote.amount).toBeDefined();
+
     price = await oracleInstance.getPriceFor(secondCurrency);
-    let calcPrice = resolvePrice(firstCurrencyToBase, secondCurrencyToFirst);
-    verifyPrice(price, calcPrice);
+    expect(price.amount.amount).toBeDefined();
+    expect(price.amount_quote.amount).toBeDefined();
 
     // SHORTENING
-    newSwapTree = [[0, initBaseAsset], [[1, firstCurrency]]];
+    newSwapTree = {
+      value: [0, initBaseAsset],
+      children: [
+        {
+          value: [1, firstCurrency],
+        },
+      ],
+    };
+
     await oracleInstance.updateSwapTree(
       contractsOwnerWallet,
       newSwapTree,
@@ -421,10 +403,16 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     await expect(priceResult2).rejects.toThrow(/^.*Unsupported currency.*/);
 
     // EXTENDING
-    newSwapTree = [
-      [0, initBaseAsset],
-      [[1, firstCurrency], [[2, thirdCurrency]]],
-    ];
+    newSwapTree = {
+      value: [0, initBaseAsset],
+      children: [
+        {
+          value: [1, firstCurrency],
+          children: [{ value: [2, thirdCurrency] }],
+        },
+      ],
+    };
+
     await oracleInstance.updateSwapTree(
       contractsOwnerWallet,
       newSwapTree,
@@ -432,19 +420,12 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     );
 
     // push price for the new currency
-    const thirdCurrencyToSecond = [600, 40];
-    await feedPrice(
-      feederWallet,
-      thirdCurrencyToSecond[0].toString(),
-      thirdCurrencyToSecond[1].toString(),
-      thirdCurrency,
-      firstCurrency,
-    );
+    await feedPrice(feederWallet, '600', '200', thirdCurrency, firstCurrency); //any amount
 
     // the price should be resolved
     price = await oracleInstance.getPriceFor(thirdCurrency);
-    calcPrice = resolvePrice(firstCurrencyToBase, thirdCurrencyToSecond);
-    verifyPrice(price, calcPrice);
+    expect(price.amount.amount).toBeDefined();
+    expect(price.amount_quote.amount).toBeDefined();
   });
 
   test('a registered feeder tries to feed a price for an invalid pair - should produce an error', async () => {

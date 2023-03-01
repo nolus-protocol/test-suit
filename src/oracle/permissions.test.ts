@@ -46,8 +46,8 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       );
 
       const currenciesPairs = await oracleInstance.getCurrencyPairs();
-      firstPairMember = currenciesPairs[0].from;
-      secondPairMember = currenciesPairs[0].to.target;
+      firstPairMember = currenciesPairs[0][0];
+      secondPairMember = currenciesPairs[0][1][1];
     });
 
     test('only a registered feeder should be able to push a price', async () => {
@@ -90,7 +90,10 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     });
 
     test('only the contract owner should be able to change the currency paths', async () => {
-      const swapTree: Tree = [[0, 'A']]; //any
+      const swapTree: Tree = {
+        value: [0, 'A'],
+      };
+
       const result = () =>
         oracleInstance.updateSwapTree(
           userWithBalance,

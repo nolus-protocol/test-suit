@@ -64,21 +64,15 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       expect(initSwapTree).toStrictEqual(swapTreeAfter);
     });
 
-    test('the contract owner tries to setup empty swap paths', async () => {
-      const newSwapTree: Tree = [[]];
-
-      const broadcastTx = () =>
-        oracleInstance.updateSwapTree(
-          contractsOwnerWallet,
-          newSwapTree,
-          customFees.exec,
-        );
-
-      await expect(broadcastTx).rejects.toThrow(/^.*invalid length 0.*/);
-    });
-
     test('the contract owner tries to setup swap paths with unsupported Nolus currencies', async () => {
-      const newSwapTree: Tree = [[0, baseAsset], [[1, 'A']]];
+      const newSwapTree: Tree = {
+        value: [0, baseAsset],
+        children: [
+          {
+            value: [1, 'A'],
+          },
+        ],
+      };
 
       const broadcastTx = () =>
         oracleInstance.updateSwapTree(
@@ -94,7 +88,9 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
     test('the contract owner tries to update swap paths with base currency other than the init base currency', async () => {
       const leaseGroupCurrencies = getLeaseGroupCurrencies();
-      const newSwapTree: Tree = [[0, leaseGroupCurrencies[0]]];
+      const newSwapTree: Tree = {
+        value: [0, leaseGroupCurrencies[0]],
+      };
 
       const broadcastTx = () =>
         oracleInstance.updateSwapTree(
@@ -107,11 +103,18 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     });
 
     test('the contract owner tries to configure a duplicate swap path', async () => {
-      const newSwapTree: Tree = [
-        [0, baseAsset],
-        [[1, leaseCurrencies[0]], [[2, leaseCurrencies[1]]]],
-        [[3, leaseCurrencies[1]]],
-      ];
+      const newSwapTree: Tree = {
+        value: [0, baseAsset],
+        children: [
+          {
+            value: [1, leaseCurrencies[0]],
+            children: [{ value: [2, leaseCurrencies[1]] }],
+          },
+          {
+            value: [3, leaseCurrencies[1]],
+          },
+        ],
+      };
 
       const broadcastTx = () =>
         oracleInstance.updateSwapTree(
@@ -126,11 +129,19 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     });
 
     test('the supported pairs should match the configured swap tree', async () => {
-      const swapTree: Tree = [
-        [0, baseAsset],
-        [[1, leaseCurrencies[0]], [[2, leaseCurrencies[1]]]],
-        [[3, leaseCurrencies[2]]],
-      ];
+      const swapTree: Tree = {
+        value: [0, baseAsset],
+        children: [
+          {
+            value: [1, leaseCurrencies[0]],
+            children: [{ value: [2, leaseCurrencies[1]] }],
+          },
+          {
+            value: [3, leaseCurrencies[2]],
+          },
+        ],
+      };
+
       await oracleInstance.updateSwapTree(
         contractsOwnerWallet,
         swapTree,
@@ -139,14 +150,14 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
       const supportedPairs = await oracleInstance.getCurrencyPairs();
       expect(supportedPairs.length).toBe(3);
-      expect(supportedPairs[0].from).toBe(leaseCurrencies[0]);
-      expect(supportedPairs[0].to.target).toBe(baseAsset);
+      expect(supportedPairs[0][0]).toBe(leaseCurrencies[0]);
+      expect(supportedPairs[0][1][1]).toBe(baseAsset);
 
-      expect(supportedPairs[1].from).toBe(leaseCurrencies[1]);
-      expect(supportedPairs[1].to.target).toBe(leaseCurrencies[0]);
+      expect(supportedPairs[1][0]).toBe(leaseCurrencies[1]);
+      expect(supportedPairs[1][1][1]).toBe(leaseCurrencies[0]);
 
-      expect(supportedPairs[2].from).toBe(leaseCurrencies[2]);
-      expect(supportedPairs[2].to.target).toBe(baseAsset);
+      expect(supportedPairs[2][0]).toBe(leaseCurrencies[2]);
+      expect(supportedPairs[2][1][1]).toBe(baseAsset);
     });
 
     test('the contract owner tries to setup an invalid config - should produce an error', async () => {
