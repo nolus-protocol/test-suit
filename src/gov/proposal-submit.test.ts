@@ -13,7 +13,6 @@ import { ClientState } from 'cosmjs-types/ibc/lightclients/tendermint/v1/tenderm
 import {
   StoreCodeProposal,
   InstantiateContractProposal,
-  MigrateContractProposal,
   UpdateAdminProposal,
   ClearAdminProposal,
   PinCodesProposal,
@@ -59,7 +58,6 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       [msg],
       fee,
     );
-
     expect(isDeliverTxFailure(result)).toBeFalsy();
     const log = result.rawLog;
 
@@ -246,25 +244,6 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       }).finish(),
     };
     moduleName = 'wasm';
-  });
-
-  // TO DO - Missing export migrate
-  // Remark: RunAs was removed around wasmd 0.23 making this test fail as cosmjs still hasn't updated it's MigrateConctractProposal definition
-  test('validator should be able to submit a MigrateContract proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/cosmwasm.wasm.v1.MigrateContractProposal',
-      value: MigrateContractProposal.encode({
-        title: 'Test Proposal',
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        contract: process.env.TREASURY_ADDRESS as string,
-        codeId: Long.fromInt(1),
-        msg: toUtf8('{}'),
-      }).finish(),
-    };
-    moduleName = 'wasm';
-
-    fee = customFees.configs;
   });
 
   test('validator should be able to submit a UpdateAdmin proposal', async () => {
