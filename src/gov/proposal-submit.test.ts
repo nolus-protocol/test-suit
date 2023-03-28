@@ -30,6 +30,7 @@ import {
 } from '../util/utils';
 import { getProposal } from '../util/gov';
 import { runOrSkip } from '../util/testingRules';
+import { sha256 } from '@cosmjs/crypto';
 
 runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
   let wallet: NolusWallet;
@@ -203,6 +204,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
 
   test('validator should be able to submit a StoreCode proposal', async () => {
     const wasmBinary: Buffer = fs.readFileSync('./cw20_base.wasm');
+    console.log(sha256(wasmBinary));
 
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.StoreCodeProposal',
@@ -212,6 +214,11 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
         title: 'Test Proposal',
         runAs: wallet.address as string,
         wasmByteCode: wasmBinary,
+        builder: 'cosmwasm/workspace-optimizer:0.12.11',
+        source:
+          'https://github.com/Nolus-Protocol/nolus-money-market/releases/tag/v0.2.1',
+        codeHash: sha256(wasmBinary),
+        unpinCode: false,
       }).finish(),
     };
     moduleName = 'wasm';
