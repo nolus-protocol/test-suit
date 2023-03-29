@@ -21,7 +21,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
     let cosm: CosmWasmClient;
 
     const lppContractAddress = process.env.LPP_ADDRESS as string;
-    const deposit = '10';
+    const deposit = '100';
 
     async function verifyLppBalance(lppLiquidityBefore: string) {
       const lppLiquidityAfter = await cosm.getBalance(
