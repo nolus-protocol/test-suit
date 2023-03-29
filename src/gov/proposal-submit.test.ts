@@ -204,7 +204,6 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
 
   test('validator should be able to submit a StoreCode proposal', async () => {
     const wasmBinary: Buffer = fs.readFileSync('./cw20_base.wasm');
-    console.log(sha256(wasmBinary));
 
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.StoreCodeProposal',

@@ -1,7 +1,6 @@
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import {
   OracleConfig,
-  Price,
   SwapTree,
   Tree,
 } from '@nolus/nolusjs/build/contracts/types';
@@ -274,8 +273,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
     await sleep(priceFeedPeriodSec + 1); //+1sec
     // the price feed period has expired
-    const resultAfterPeriod = () =>
-      oracleInstance.getPricesFor([firstPairMember]);
+    const resultAfterPeriod = () => oracleInstance.getPriceFor(firstPairMember);
     await expect(resultAfterPeriod).rejects.toThrow(/^.*No price.*/);
   });
 
