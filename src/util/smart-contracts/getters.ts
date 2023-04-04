@@ -1,5 +1,6 @@
-import { AssetUtils } from '@nolus/nolusjs';
+import { AssetUtils, NolusContracts } from '@nolus/nolusjs';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
+import { undefinedHandler } from '../utils';
 
 export function getLeaseGroupCurrencies(): string[] {
   return AssetUtils.getCurrenciesByGroup('Lease');
@@ -16,7 +17,7 @@ export function getPaymentGroupCurrencies(): string[] {
 export function getLeaseAddressFromOpenLeaseResponse(
   response: ExecuteResult,
 ): string {
-  return response.logs[0].events[7].attributes[3].value;
+  return response.logs[0].events[8].attributes[3].value;
 }
 
 export function getMarginInterestPaidFromRepayResponse(
@@ -51,31 +52,28 @@ export function getMarginPaidTimeFromRepayResponse(
   return BigInt(response.logs[0].events[6].attributes[2].value);
 }
 
-export function getOnlyPaymentCurrencies(): string[] {
-  const paymentCurrencies = getPaymentGroupCurrencies();
-  const leaseCurrencies = getLeaseGroupCurrencies();
-  const lpnCurrencies = getLpnGroupCurrencies();
-  const paymentCurrenciesOnly = paymentCurrencies.filter(
-    (currency) =>
-      leaseCurrencies.indexOf(currency) < 0 &&
-      lpnCurrencies.indexOf(currency) < 0,
-  );
-  return paymentCurrenciesOnly;
-}
-
-// export async function getCurrencyOtherThan(
-//   oracleInstance: NolusContracts.Oracle,
-//   lppCurrency: string,
-// ): Promise<string> {
-//   const supportedPairs = await oracleInstance.getCurrencyPairs();
-//   const pairWithLPN = supportedPairs.find(
-//     (pair) => pair.to.target === lppCurrency,
+// export function getOnlyPaymentCurrencies(): string[] {
+//   const paymentCurrencies = getPaymentGroupCurrencies();
+//   const leaseCurrencies = getLeaseGroupCurrencies();
+//   const lpnCurrencies = getLpnGroupCurrencies();
+//   const paymentCurrenciesOnly = paymentCurrencies.filter(
+//     (currency) =>
+//       leaseCurrencies.indexOf(currency) < 0 &&
+//       lpnCurrencies.indexOf(currency) < 0,
 //   );
-
-//   if (!pairWithLPN) {
-//     undefinedHandler();
-//     return 'undefined';
-//   }
-//   console.log(pairWithLPN);
-//   return pairWithLPN.from;
+//   return paymentCurrenciesOnly;
 // }
+
+export function getCurrencyOtherThan(unlikeCurrencies: string[]): string {
+  const supportedCurrencies = getPaymentGroupCurrencies();
+  const currencyTicker = supportedCurrencies.find(
+    (currency) => !unlikeCurrencies.includes(currency),
+  );
+
+  if (!currencyTicker) {
+    undefinedHandler();
+    return 'undefined';
+  }
+  console.log(currencyTicker);
+  return currencyTicker;
+}
