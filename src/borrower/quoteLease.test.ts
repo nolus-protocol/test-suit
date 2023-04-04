@@ -12,6 +12,7 @@ import {
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 import { noProvidedPriceFor, PERMILLE_TO_PERCENT } from '../util/utils';
+import { findPriceLowerThanOneLPN } from '../util/smart-contracts/actions/borrower';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Quote lease',
@@ -142,9 +143,49 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
     });
 
+    test('the borrower should be able to get information depending on the optional max ltv', async () => {
+      let maxLTV = liabilityInitialPercent - 50; // -5%
+
+      let quote = await leaserInstance.leaseQuote(
+        downpayment,
+        downpaymentCurrency,
+        leaseCurrency,
+        maxLTV,
+      );
+
+      let calcBorrowAmount = calcBorrow(+downpayment, maxLTV);
+      expect(+quote.borrow.amount).toBe(Math.trunc(calcBorrowAmount));
+
+      // if maxLTV > the liability initPercent --> use the second one
+      maxLTV = liabilityInitialPercent + 100; // +10%
+
+      quote = await leaserInstance.leaseQuote(
+        downpayment,
+        downpaymentCurrency,
+        leaseCurrency,
+        maxLTV,
+      );
+
+      calcBorrowAmount = calcBorrow(+downpayment, liabilityInitialPercent);
+      expect(+quote.borrow.amount).toBe(Math.trunc(calcBorrowAmount));
+    });
+
     test('the borrower tries to apply for a lease with 0 down payment - should produce an error', async () => {
       const quoteQueryResult = () =>
         leaserInstance.leaseQuote('0', downpaymentCurrency, leaseCurrency);
+      await expect(quoteQueryResult).rejects.toThrow(
+        /^.*Cannot open lease with zero downpayment.*/,
+      );
+    });
+
+    test('the borrower tries to apply for a lease with max ltv = 0 - should produce an error', async () => {
+      const quoteQueryResult = () =>
+        leaserInstance.leaseQuote(
+          downpayment,
+          downpaymentCurrency,
+          leaseCurrency,
+          0,
+        );
       await expect(quoteQueryResult).rejects.toThrow(
         /^.*Cannot open lease with zero downpayment.*/,
       );
@@ -181,7 +222,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const quoteQueryResult = () =>
         leaserInstance.leaseQuote('100', downpaymentCurrency, lppCurrency);
       await expect(quoteQueryResult).rejects.toThrow(
-        /^.*Unknown currency symbol: \"USDC\".*/,
+        /^.*Unknown currency symbol.*/,
       );
     });
 
@@ -198,9 +239,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
             downpaymentCurrency,
             noProvidedPriceFor,
           );
-        await expect(quoteQueryResult).rejects.toThrow(/^.*TO DO".*/);
+        await expect(quoteQueryResult).rejects.toThrow(
+          /^.*Failed to fetch price for the pair.*/,
+        );
 
-        // TO DO - no downpayment currency price (when we have >1 onlyPaymentsCurrencies in the list of supported currencies)
+        // TO DO - no down payment currency price (when we have >1 onlyPaymentsCurrencies in the list of supported currencies)
         // quoteQueryResult = () =>
         //   leaserInstance.leaseQuote('100', noProvidedPriceForPaymentOnly, leaseCurrency);
         // await expect(quoteQueryResult).rejects.toThrow(
@@ -208,6 +251,26 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         // );
       },
     );
+
+    // TO DO - issue #40
+    // runTestIfLocal(
+    //   'the borrower tries to apply for a lease with an insufficient down payment (<1LPN) - should produce an error',
+    //   async () => {
+    //     const dpCurrency = await findPriceLowerThanOneLPN(oracleInstance);
+
+    //     if (typeof dpCurrency != 'undefined') {
+    //       const quoteQueryResult = () =>
+    //         leaserInstance.leaseQuote(
+    //           '1',
+    //           dpCurrency,
+    //           leaseCurrency,
+    //         );
+    //       await expect(quoteQueryResult).rejects.toThrow(
+    //         /^.*TO DO.*/,
+    //       );
+    //     }
+    //   },
+    // );
 
     // TO DO
     // test('the borrower tries to apply for a lease whose total value is too small - should produce an error', async () => {
