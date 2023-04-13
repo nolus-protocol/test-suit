@@ -8,12 +8,10 @@ NOLUS_BUILD_BINARY_ARTIFACT="nolus.tar.gz"
 
 NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
 FAUCET_KEY="faucet"
-CONTRACTS_OWNER_KEY="contracts_owner"
 LPP_BASE_CURRENCY="USDC"
 
 NOLUS_CORE_TAG=""
 MNEMONIC_FAUCET=""
-MNEMONIC_CONTRACTS_OWNER=""
 TEST_TRANSFER="true"
 TEST_ORACLE="true"
 TEST_STAKING="true"
@@ -36,7 +34,6 @@ while [[ $# -gt 0 ]]; do
     [--lpp-base-currency <lpp_base_currency_ticker>]
     [--nolus-core-version-tag <nolus_core_preferred_tag>]
     [--mnemonic-faucet <mnemonic_phrase>]
-    [--mnemonic-contracts-owner <mnemonic_phrase>]
     [--test-transfer-flag <test_transfer_true_or_false>]
     [--test-oracle-flag <test_oracle_true_or_false>]
     [--test-staking-flag <test_staking_true_or_false>]
@@ -69,12 +66,6 @@ while [[ $# -gt 0 ]]; do
 
   --mnemonic-faucet)
     MNEMONIC_FAUCET="$2"
-    shift
-    shift
-    ;;
-
-  --mnemonic-contracts-owner)
-    MNEMONIC_CONTRACTS_OWNER="$2"
     shift
     shift
     ;;
@@ -139,7 +130,6 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR"/common/verify.sh
 
 verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic"
-verify_mandatory "$MNEMONIC_CONTRACTS_OWNER" "contracts owner mnemonic"
 
 _downloadArtifact() {
   local -r name="$1"
@@ -171,15 +161,9 @@ rm -rf "$HOME_DIR/accounts"
 mkdir "$HOME_DIR/accounts"
 ACCOUNTS_DIR="$HOME_DIR/accounts"
 
-# Recover contracts_owner and faucet
-
-source "$SCRIPT_DIR"/common/cmd.sh
-echo "$MNEMONIC_FAUCET" | run_cmd "$ACCOUNTS_DIR" keys add "$FAUCET_KEY" --recover --keyring-backend "test"
-echo "$MNEMONIC_CONTRACTS_OWNER" | run_cmd "$ACCOUNTS_DIR" keys add "$CONTRACTS_OWNER_KEY" --recover --keyring-backend "test"
-
 # Prepare .env
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$LPP_BASE_CURRENCY" "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" \
-"$CONTRACTS_OWNER_KEY" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
+"$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
 "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" ""

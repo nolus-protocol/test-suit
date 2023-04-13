@@ -33,16 +33,15 @@ local -r node_url=$2
 local -r node_env=$3
 local -r accounts_dir=$4
 local -r main_accounts_key=$5
-local -r contracts_owner_key=$6
-local -r test_transfers=$7
-local -r test_oracle=$8
-local -r test_staking=$9
-local -r test_borrower=${10}
-local -r test_lender=${11}
-local -r test_treasury=${12}
-local -r test_vesting=${13}
-local -r test_gov=${14}
-local -r no_price_currency=${15}
+local -r test_transfers=$6
+local -r test_oracle=$7
+local -r test_staking=$8
+local -r test_borrower=$9
+local -r test_lender=${10}
+local -r test_treasury=${11}
+local -r test_vesting=${12}
+local -r test_gov=${13}
+local -r no_price_currency=${14}
 
 addKey "test-user-1" "$accounts_dir"
 addKey "test-user-2" "$accounts_dir"
@@ -50,7 +49,6 @@ addKey "test-user-2" "$accounts_dir"
 local -r user_1_priv_key=$(exportKey "$main_accounts_key" "$accounts_dir")
 local -r user_2_priv_key=$(exportKey "test-user-1" "$accounts_dir")
 local -r user_3_priv_key=$(exportKey "test-user-2" "$accounts_dir")
-local -r contracts_owner=$(exportKey "$contracts_owner_key" "$accounts_dir")
 local -r validator_1_address=$(getValidatorAddress "0" "$accounts_dir" "$node_url")
 local -r validator_2_address=$(getValidatorAddress "1" "$accounts_dir" "$node_url")
 
@@ -78,7 +76,6 @@ NO_PRICE_CURRENCY=${no_price_currency}
 USER_1_PRIV_KEY=${user_1_priv_key}
 USER_2_PRIV_KEY=${user_2_priv_key}
 USER_3_PRIV_KEY=${user_3_priv_key}
-CONTRACTS_OWNER_KEY=${contracts_owner}
 VALIDATOR_1_ADDRESS=${validator_1_address}
 VALIDATOR_2_ADDRESS=${validator_2_address}
 
