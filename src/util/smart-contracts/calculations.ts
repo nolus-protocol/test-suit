@@ -1,4 +1,4 @@
-import { NolusContracts, NolusWallet, AssetUtils } from '@nolus/nolusjs';
+import { NolusContracts, AssetUtils } from '@nolus/nolusjs';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
 import { TONANOSEC } from '../utils';
 
@@ -57,6 +57,7 @@ export function LPNS_To_NLPNS(lpns: number, price: Price): bigint {
   const result = Math.trunc(
     lpns * (+price.amount.amount / +price.amount_quote.amount),
   );
+
   return BigInt(result);
 }
 
@@ -64,6 +65,7 @@ export function NLPNS_To_LPNS(nlpns: number, price: Price): bigint {
   const result = Math.trunc(
     nlpns / (+price.amount.amount / +price.amount_quote.amount),
   );
+
   return BigInt(result);
 }
 
@@ -76,10 +78,11 @@ export function currencyPriceObjToNumbers(
   tolerancePercent: number,
 ) {
   const exactCurrencyPrice =
-    +currencyPriceObj.amount_quote.amount / +currencyPriceObj.amount.amount;
+    +currencyPriceObj.amount.amount / +currencyPriceObj.amount_quote.amount;
   const tolerance = exactCurrencyPrice * (tolerancePercent / 100);
   const minToleranceCurrencyPrice = exactCurrencyPrice - tolerance;
   const maxToleranceCurrencyPrice = exactCurrencyPrice + tolerance;
+
   return [
     minToleranceCurrencyPrice,
     exactCurrencyPrice,

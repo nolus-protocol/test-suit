@@ -15,6 +15,8 @@ const alarmsOccurred = 100;
 export const defaultTip = { amount: '300', denom: NATIVE_MINIMAL_DENOM };
 export const noProvidedPriceFor = process.env.NO_PRICE_CURRENCY as string;
 
+export const BORROWER_ATTEMPTS_TIMEOUT = 300;
+
 export const customFees = {
   upload: {
     gas: '20000000',

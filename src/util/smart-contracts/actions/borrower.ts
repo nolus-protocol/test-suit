@@ -1,5 +1,12 @@
-import { NolusClient, NolusContracts } from '@nolus/nolusjs';
-import { BLOCK_CREATION_TIME_DEV_SEC, sleep } from '../../../util/utils';
+import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import { sendInitTransferFeeTokens } from '../../../util/transfer';
+import { getUser1Wallet } from '../../../util/clients';
+import {
+  BLOCK_CREATION_TIME_DEV_SEC,
+  BORROWER_ATTEMPTS_TIMEOUT,
+  customFees,
+  sleep,
+} from '../../../util/utils';
 import { currencyTicker_To_IBC } from '../calculations';
 import { getPaymentGroupCurrencies } from '../getters';
 
@@ -19,6 +26,23 @@ export async function checkLeaseBalance(
   return balanceState;
 }
 
+export async function returnAmountToTheMainAccount(
+  from: NolusWallet,
+  denom: string,
+) {
+  const balance = await from.getBalance(from.address as string, denom);
+
+  if (+balance.amount > 0) {
+    const mainAccount = await getUser1Wallet();
+    await sendInitTransferFeeTokens(mainAccount, from.address as string);
+    await from.transferAmount(
+      mainAccount.address as string,
+      [balance],
+      customFees.transfer,
+    );
+  }
+}
+
 export async function waitLeaseOpeningProcess(
   leaseInstance: NolusContracts.Lease,
 ): Promise<Error | undefined> {
@@ -31,7 +55,7 @@ export async function waitLeaseOpeningProcess(
   ];
   let indexLastState = 0;
   let newState;
-  let timeout = 30;
+  let timeout = BORROWER_ATTEMPTS_TIMEOUT;
 
   do {
     await sleep(BLOCK_CREATION_TIME_DEV_SEC);
@@ -49,7 +73,34 @@ export async function waitLeaseOpeningProcess(
     //   return new Error('The lease has been returned to its previous state');
     // }
     // indexLastState = indexNewState;
-    timeout = timeout - 1;
+    timeout--;
+  } while (timeout > 0);
+
+  return new Error('Timeout');
+}
+
+export async function waitLeaseInProgressToBeNull(
+  leaseInstance: NolusContracts.Lease,
+): Promise<Error | undefined> {
+  let newState;
+  let timeout = BORROWER_ATTEMPTS_TIMEOUT;
+
+  do {
+    await sleep(BLOCK_CREATION_TIME_DEV_SEC);
+    const fullState = await leaseInstance.getLeaseStatus();
+    if (
+      fullState.opened?.in_progress === null ||
+      fullState.paid?.in_progress === null ||
+      fullState.closed
+    ) {
+      console.log('Lease state in_progress = null!');
+      return undefined;
+    }
+    newState = JSON.stringify(
+      fullState.opened?.in_progress || fullState.paid?.in_progress,
+    );
+    console.log('Lease is in progress: ', newState);
+    timeout--;
   } while (timeout > 0);
 
   return new Error('Timeout');
@@ -74,9 +125,10 @@ export async function findPriceLowerThanOneLPN(
 
       if (price < 1) {
         result = paymentCurrencies[i];
-        console.log('Found ', result, ' price = ', price);
+        console.log('Found ', result, ' price < 1 LPN = ', price);
       }
     }
   }
+
   return result;
 }
