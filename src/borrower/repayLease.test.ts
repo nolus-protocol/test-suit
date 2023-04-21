@@ -223,6 +223,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         ]);
 
       await expect(result).rejects.toThrow(message);
+
+      // transfer the tip amount back
+      await returnAmountToTheMainAccount(borrowerWallet, NATIVE_MINIMAL_DENOM);
     }
 
     beforeAll(async () => {
@@ -358,6 +361,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     test('the borrower tries to pay a lease with more amount than he owns - should produce an error', async () => {
       const forBalance = 5;
 
+      const borrowerBalance = await borrowerWallet.getBalance(
+        borrowerWallet.address as string,
+        lppCurrencyToIBC,
+      );
+
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
         [
@@ -365,9 +373,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
             denom: lppCurrencyToIBC,
             amount: forBalance.toString(),
           },
+          defaultTip,
         ],
         customFees.transfer,
       );
+
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
         borrowerWallet.address as string,
@@ -375,7 +385,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const repayMore = {
         denom: lppCurrencyToIBC,
-        amount: (forBalance + 1).toString(),
+        amount: (+borrowerBalance.amount + forBalance + 1).toString(),
       };
 
       const result = () =>
@@ -385,6 +395,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         ]);
 
       await expect(result).rejects.toThrow(/^.*insufficient funds.*/);
+      // transfer the tip amount back
+      await returnAmountToTheMainAccount(borrowerWallet, NATIVE_MINIMAL_DENOM);
     });
 
     test('the borrower tries to pay a lease with 0 amount - should produce an error', async () => {
@@ -454,7 +466,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [repayWithExcess],
+        [repayWithExcess, defaultTip],
         customFees.transfer,
       );
 
@@ -468,6 +480,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         defaultTip,
       ]);
 
+      expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
+
       paymentsCount += 1;
 
       const repayTxResponse = (
@@ -480,15 +494,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const exactExcess = getChangeFromRepayTx(repayTxResponse);
 
-      expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
-
       const stateBeforeClose = await leaseInstance.getLeaseStatus();
       expect(stateBeforeClose.paid).toBeDefined();
 
       // try to pay already paid lease
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [repayWithExcess], // any amount
+        [repayWithExcess, defaultTip], // any amount
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
@@ -505,6 +517,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await expect(result).rejects.toThrow(
         /^.*The operation 'repay' is not supported in the current state.*/,
       );
+      // transfer the tip amount back
+      await returnAmountToTheMainAccount(borrowerWallet, NATIVE_MINIMAL_DENOM);
 
       // close lease
       const borrowerBalanceBeforeClose = await borrowerWallet.getBalance(
