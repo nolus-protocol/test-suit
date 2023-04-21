@@ -10,7 +10,7 @@ export async function provideEnoughLiquidity(
   downpaymentCurrency: string,
   leaseCurrency: string,
 ) {
-  const depositAmountLPP = '1000';
+  const depositAmountLPP = '100000';
   const userWithBalanceWallet = await getUser1Wallet();
   const lppCurrencyToIBC = currencyTicker_To_IBC(
     (await lppInstance.getLppConfig()).lpn_ticker,
