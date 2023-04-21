@@ -1,15 +1,23 @@
-import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { customFees, NATIVE_TICKER, undefinedHandler } from '../util/utils';
+import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
+import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
+import {
+  customFees,
+  defaultTip,
+  NATIVE_MINIMAL_DENOM,
+  NATIVE_TICKER,
+  undefinedHandler,
+} from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
-  getChangeFromRepayResponse,
   getLeaseAddressFromOpenLeaseResponse,
   getLeaseGroupCurrencies,
 } from '../util/smart-contracts/getters';
 import { runOrSkip } from '../util/testingRules';
 import {
   checkLeaseBalance,
+  returnAmountToTheMainAccount,
+  waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
 import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
@@ -18,7 +26,7 @@ import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Close lease',
   () => {
-    let feederWallet: NolusWallet;
+    let userWithBalanceWallet: NolusWallet;
     let borrowerWallet: NolusWallet;
     let lppCurrency: string;
     let leaseCurrency: string;
@@ -27,27 +35,44 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let downpaymentCurrencyToIBC: string;
     let lppInstance: NolusContracts.Lpp;
     let leaserInstance: NolusContracts.Leaser;
-    let oracleInstance: NolusContracts.Oracle;
-    let mainLeaseAddress: string;
-    let cosm: any;
+    let leaseAddress: string;
+    let cosm: CosmWasmClient;
     let leaseInstance: NolusContracts.Lease;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
-    const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
-    const downpayment = '100';
+    const downpayment = '1000';
+
+    async function testCloseInvalidCases(wallet: NolusWallet, message: string) {
+      await sendInitExecuteFeeTokens(
+        userWithBalanceWallet,
+        wallet.address as string,
+      );
+      await userWithBalanceWallet.transferAmount(
+        wallet.address as string,
+        [defaultTip],
+        customFees.transfer,
+      );
+
+      const result = () =>
+        leaseInstance.closeLease(wallet, customFees.exec, [defaultTip]);
+
+      await expect(result).rejects.toThrow(message);
+
+      // transfer the tip amount back
+      await returnAmountToTheMainAccount(wallet, NATIVE_MINIMAL_DENOM);
+    }
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
       cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-      feederWallet = await getUser1Wallet();
+      userWithBalanceWallet = await getUser1Wallet();
       borrowerWallet = await createWallet();
 
       lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
       leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
-      oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
       const lppConfig = await lppInstance.getLppConfig();
       lppCurrency = lppConfig.lpn_ticker;
@@ -64,108 +89,81 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrency,
       );
 
-      // preparе one open lease
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }],
+        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
 
       const result = await leaserInstance.openLease(
         borrowerWallet,
-        lppCurrency,
+        leaseCurrency,
         customFees.exec,
-        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }],
+        undefined,
+        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
       );
 
-      mainLeaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
-      leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
+      leaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
+      expect(leaseAddress).not.toBe('');
+      leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
-
-      // check lease address balance - there shouldn't be any
-      const leaseBalances = await checkLeaseBalance(mainLeaseAddress, [
-        NATIVE_TICKER,
-        leaseCurrency,
-        downpaymentCurrency,
-      ]);
-      expect(leaseBalances).toBe(false);
     });
 
-    test('the borrower tries to close a lease before it is paid - should produce an error', async () => {
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        borrowerWallet.address as string,
+    test('the borrower tries to close the lease before it is paid - should produce an error', async () => {
+      await testCloseInvalidCases(
+        borrowerWallet,
+        `The operation 'close' is not supported in the current state`,
       );
 
-      const result = () =>
-        leaseInstance.closeLease(borrowerWallet, customFees.exec);
-
-      await expect(result).rejects.toThrow(
-        /^.*The underlying loan is not fully repaid.*/,
-      );
-
-      // make payment and try again
+      // make a payment and try again
       const payment = {
         denom: downpaymentCurrencyToIBC,
-        amount: '1', // any amount
+        amount: downpayment, // amount < principal
       };
 
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [payment],
+        [payment, defaultTip],
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
 
       await leaseInstance.repayLease(borrowerWallet, customFees.exec, [
         payment,
+        defaultTip,
       ]);
 
-      const leaseBalances = await checkLeaseBalance(mainLeaseAddress, [
-        NATIVE_TICKER,
+      expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
+
+      const leaseBalances = await checkLeaseBalance(leaseAddress, [
         leaseCurrency,
         downpaymentCurrency,
       ]);
       expect(leaseBalances).toBe(false);
 
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        borrowerWallet.address as string,
-      );
-
-      const result2 = () =>
-        leaseInstance.closeLease(borrowerWallet, customFees.exec);
-
-      await expect(result2).rejects.toThrow(
-        /^.*The underlying loan is not fully repaid.*/,
+      await testCloseInvalidCases(
+        borrowerWallet,
+        `The operation 'close' is not supported in the current state`,
       );
     });
 
-    test('an unauthorized user tries to close lease - should produce an error', async () => {
-      const unauthorizedUserWallet = await createWallet();
+    // TO DO: issue #78 - https://github.com/nolus-protocol/nolus-money-market/issues/78
+    // test('an unauthorized user tries to close the lease - should produce an error', async () => {
+    //   const unauthorizedUserWallet = await createWallet();
 
-      // const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
-      const leaseState = await leaseInstance.getLeaseStatus();
+    //   const leaseState = await leaseInstance.getLeaseStatus();
+    //   expect(leaseState.opened).toBeDefined();
 
-      expect(leaseState.opened).toBeDefined();
-
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        unauthorizedUserWallet.address as string,
-      );
-      const result = () =>
-        leaseInstance.closeLease(unauthorizedUserWallet, customFees.exec);
-
-      await expect(result).rejects.toThrow(/^.*Unauthorized.*/);
-    });
+    //   await testCloseInvalidCases(unauthorizedUserWallet, 'Unauthorized');
+    // });
 
     test('the successful scenario for lease closing - should work as expected', async () => {
       const borrowerBalanceBefore = await borrowerWallet.getBalance(
@@ -173,7 +171,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrencyToIBC,
       );
 
-      // const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
       const leaseStateBeforeRepay = (await leaseInstance.getLeaseStatus())
         .opened;
 
@@ -182,58 +179,32 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const currentPID = leaseStateBeforeRepay.previous_interest_due.amount;
-      const currentPMD = leaseStateBeforeRepay.previous_margin_due.amount;
-      const currentCID = leaseStateBeforeRepay.current_interest_due.amount;
-      const currentCMD = leaseStateBeforeRepay.current_margin_due.amount;
-
       const loanAmount = BigInt(leaseStateBeforeRepay.amount.amount);
-      const leaseInterestBeforeRepay =
-        BigInt(currentPID) +
-        BigInt(currentPMD) +
-        BigInt(currentCID) +
-        BigInt(currentCMD);
-      const leasePrincipalBeforeRepay = BigInt(
-        leaseStateBeforeRepay.principal_due.amount,
-      );
 
-      const excess = leasePrincipalBeforeRepay; // +excess - make sure the lease principal will be paid
+      const leasePrincipalBeforeRepay =
+        leaseStateBeforeRepay.principal_due.amount;
 
       const repayAll = {
         denom: downpaymentCurrencyToIBC,
-        amount: (
-          leaseInterestBeforeRepay +
-          leasePrincipalBeforeRepay +
-          excess
-        ).toString(),
+        amount: leasePrincipalBeforeRepay,
       };
 
-      await feederWallet.transferAmount(
+      await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [repayAll],
+        [repayAll, defaultTip],
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
 
-      // OR get price
-      // TO DO: get the exact price from the repay tx events
-      const leaseCurrencyPriceObj = await oracleInstance.getPriceFor(
-        leaseCurrency,
-      );
+      await leaseInstance.repayLease(borrowerWallet, customFees.exec, [
+        repayAll,
+        defaultTip,
+      ]);
 
-      const repayTxReponse = await leaseInstance.repayLease(
-        borrowerWallet,
-        customFees.exec,
-        [repayAll],
-      );
-
-      const exactExcessToLeaseCurrency =
-        (getChangeFromRepayResponse(repayTxReponse) *
-          BigInt(+leaseCurrencyPriceObj.amount.amount)) /
-        BigInt(+leaseCurrencyPriceObj.amount_quote.amount);
+      expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
 
       const leaseStateAfterRepay = await leaseInstance.getLeaseStatus();
       expect(leaseStateAfterRepay.paid).toBeDefined();
@@ -244,10 +215,20 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       // close
       await sendInitExecuteFeeTokens(
-        feederWallet,
+        userWithBalanceWallet,
         borrowerWallet.address as string,
       );
-      await leaseInstance.closeLease(borrowerWallet, customFees.exec);
+      await userWithBalanceWallet.transferAmount(
+        borrowerWallet.address as string,
+        [defaultTip],
+        customFees.transfer,
+      );
+
+      await leaseInstance.closeLease(borrowerWallet, customFees.exec, [
+        defaultTip,
+      ]);
+
+      expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
 
       const leasesAfterClose = await leaserInstance.getCurrentOpenLeasesByOwner(
         borrowerWallet.address as string,
@@ -264,13 +245,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
 
       expect(BigInt(borrowerBalanceAfter.amount)).toBe(
-        BigInt(borrowerBalanceBefore.amount) +
-          loanAmount +
-          exactExcessToLeaseCurrency,
+        BigInt(borrowerBalanceBefore.amount) + loanAmount,
       );
 
-      // check lease address balance - there shouldn't be any
-      const leaseBalances = await checkLeaseBalance(mainLeaseAddress, [
+      const leaseBalances = await checkLeaseBalance(leaseAddress, [
         NATIVE_TICKER,
         leaseCurrency,
         downpaymentCurrency,
@@ -278,20 +256,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(leaseBalances).toBe(false);
     });
 
-    test('the borrower tries to close an already closed lease - should produce an error', async () => {
-      await sendInitExecuteFeeTokens(
-        feederWallet,
-        borrowerWallet.address as string,
-      );
-
+    test('the borrower tries to close the already closed lease - should produce an error', async () => {
       // mainLease is now closed due to the previous test
-
-      // const leaseInstance = new NolusContracts.Lease(cosm, mainLeaseAddress);
-      const result = () =>
-        leaseInstance.closeLease(borrowerWallet, customFees.exec);
-
-      await expect(result).rejects.toThrow(
-        /^.*The underlying loan is closed.*/,
+      await testCloseInvalidCases(
+        borrowerWallet,
+        `The operation 'close' is not supported in the current state`,
       );
     });
   },
