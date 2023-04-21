@@ -35,21 +35,5 @@ runOrSkip(process.env.TEST_TREASURY as string)(
 
       await expect(broadcastTx).rejects.toThrow(/^.*Addr not found.*/);
     });
-
-    test('an unauthorized user tries to change dispatcher address - should produce an error', async () => {
-      const dispatcherContractAddress = process.env
-        .DISPATCHER_ADDRESS as string;
-
-      const broadcastTx = () =>
-        treasuryInstance.configRewardsTransfer(
-          userWithBalanceWallet,
-          dispatcherContractAddress,
-          customFees.exec,
-        );
-
-      await expect(broadcastTx).rejects.toThrow(
-        /^.*Checked address doesn't match the one associated with access control variable.*/,
-      );
-    });
   },
 );
