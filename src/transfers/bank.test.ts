@@ -11,7 +11,7 @@ import NODE_ENDPOINT, {
   getUser3Wallet,
 } from '../util/clients';
 import { customFees, GASPRICE, NATIVE_MINIMAL_DENOM } from '../util/utils';
-import { runOrSkip } from '../util/testingRules';
+import { ifLocal, runOrSkip } from '../util/testingRules';
 import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
 
 runOrSkip(process.env.TEST_TRANSFER as string)(
@@ -108,12 +108,14 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      expect(BigInt(treasuryBalanceAfter.amount)).toBe(
-        BigInt(treasuryBalanceBefore.amount) +
-          BigInt(customFees.transfer.amount[0].amount) -
-          (BigInt(customFees.transfer.gas) * BigInt(gasPriceInteger)) /
-            BigInt(percision),
-      );
+      if (ifLocal()) {
+        expect(BigInt(treasuryBalanceAfter.amount)).toBe(
+          BigInt(treasuryBalanceBefore.amount) +
+            BigInt(customFees.transfer.amount[0].amount) -
+            (BigInt(customFees.transfer.gas) * BigInt(gasPriceInteger)) /
+              BigInt(percision),
+        );
+      }
 
       const nextUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,

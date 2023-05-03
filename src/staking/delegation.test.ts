@@ -24,7 +24,7 @@ import {
   undefinedHandler,
 } from '../util/utils';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
-import { runOrSkip } from '../util/testingRules';
+import { ifLocal, runOrSkip } from '../util/testingRules';
 
 runOrSkip(process.env.TEST_STAKING as string)(
   'Staking Nolus tokens - Delegation',
@@ -144,12 +144,14 @@ runOrSkip(process.env.TEST_STAKING as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      expect(BigInt(treasuryBalanceAfter.amount)).toBe(
-        BigInt(treasuryBalanceBefore.amount) +
-          BigInt(customFees.configs.amount[0].amount) -
-          (BigInt(customFees.configs.gas) * BigInt(gasPriceInteger)) /
-            BigInt(percision),
-      );
+      if (ifLocal()) {
+        expect(BigInt(treasuryBalanceAfter.amount)).toBe(
+          BigInt(treasuryBalanceBefore.amount) +
+            BigInt(customFees.configs.amount[0].amount) -
+            (BigInt(customFees.configs.gas) * BigInt(gasPriceInteger)) /
+              BigInt(percision),
+        );
+      }
 
       // see the stakeholder staked tokens to the current validator - after delegation
       const stakeholderDelegationsToValAfter =

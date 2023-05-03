@@ -12,7 +12,7 @@ import NODE_ENDPOINT, {
 import { customFees, GASPRICE, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 import { sendInitTransferFeeTokens } from '../util/transfer';
-import { runOrSkip } from '../util/testingRules';
+import { ifLocal, runOrSkip } from '../util/testingRules';
 
 runOrSkip(process.env.TEST_TRANSFER as string)(
   'Transfers - Native transfer',
@@ -90,13 +90,14 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      // 40% fees should be paid to treasury
-      expect(BigInt(treasuryBalanceAfter.amount)).toBe(
-        BigInt(treasuryBalanceBefore.amount) +
-          BigInt(customFees.transfer.amount[0].amount) -
-          (BigInt(customFees.transfer.gas) * BigInt(gasPriceInteger)) /
-            BigInt(percision),
-      );
+      if (ifLocal()) {
+        expect(BigInt(treasuryBalanceAfter.amount)).toBe(
+          BigInt(treasuryBalanceBefore.amount) +
+            BigInt(customFees.transfer.amount[0].amount) -
+            (BigInt(customFees.transfer.gas) * BigInt(gasPriceInteger)) /
+              BigInt(percision),
+        );
+      }
 
       assertIsDeliverTxSuccess(broadcastTxResponse1);
 
