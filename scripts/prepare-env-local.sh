@@ -6,6 +6,7 @@ LPP_BASE_CURRENCY="USDC"
 MAIN_KEY="reserve"
 NOLUS_HOME_DIR="$HOME/.nolus"
 NO_PRICE_CURRENCY="STARS"
+FEEDER_KEY=""
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -18,6 +19,7 @@ while [[ $# -gt 0 ]]; do
     [--nolus-local-network <nolus_local_url>]
     [--lpp-base-currency <lpp_base_currency_ticker>]
     [--home-dir <nolus_accounts_dir>]
+    [--feeder-key <feeder_key_name>]
     [--no-price-currency <no_price_currency_ticker>]" \
     "$0"
     exit 0
@@ -31,6 +33,12 @@ while [[ $# -gt 0 ]]; do
 
   --lpp-base-currency)
     LPP_BASE_CURRENCY="$2"
+    shift
+    shift
+    ;;
+
+  --feeder-key)
+    FEEDER_KEY="$2"
     shift
     shift
     ;;
@@ -58,7 +66,10 @@ done
 # Prepare .env
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-source "$SCRIPT_DIR"/common/prepare-env.sh
 
+source "$SCRIPT_DIR"/common/verify.sh
+verify_mandatory "$FEEDER_KEY" "feeder key name"
+
+source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$LPP_BASE_CURRENCY" "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" \
-"" "" "" "" "" "" "" "" "$NO_PRICE_CURRENCY"
+"$FEEDER_KEY" "" "" "" "" "" "" "" "" "$NO_PRICE_CURRENCY"

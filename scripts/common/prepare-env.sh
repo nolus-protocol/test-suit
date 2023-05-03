@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euxo pipefail
+
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR"/cmd.sh
 
@@ -33,15 +34,16 @@ local -r node_url=$2
 local -r node_env=$3
 local -r accounts_dir=$4
 local -r main_accounts_key=$5
-local -r test_transfers=$6
-local -r test_oracle=$7
-local -r test_staking=$8
-local -r test_borrower=$9
-local -r test_lender=${10}
-local -r test_treasury=${11}
-local -r test_vesting=${12}
-local -r test_gov=${13}
-local -r no_price_currency=${14}
+local -r feeder_key=$6
+local -r test_transfers=$7
+local -r test_oracle=$8
+local -r test_staking=$9
+local -r test_borrower=${10}
+local -r test_lender=${11}
+local -r test_treasury=${12}
+local -r test_vesting=${13}
+local -r test_gov=${14}
+local -r no_price_currency=${15}
 
 addKey "test-user-1" "$accounts_dir"
 addKey "test-user-2" "$accounts_dir"
@@ -51,6 +53,12 @@ local -r user_2_priv_key=$(exportKey "test-user-1" "$accounts_dir")
 local -r user_3_priv_key=$(exportKey "test-user-2" "$accounts_dir")
 local -r validator_1_address=$(getValidatorAddress "0" "$accounts_dir" "$node_url")
 local -r validator_2_address=$(getValidatorAddress "1" "$accounts_dir" "$node_url")
+
+local feeder_priv_key=""
+if [ -n "$feeder_key" ];
+then
+feeder_priv_key=$(exportKey "$feeder_key" "$accounts_dir")
+fi
 
 # Get contracts addresses
 
@@ -76,6 +84,7 @@ NO_PRICE_CURRENCY=${no_price_currency}
 USER_1_PRIV_KEY=${user_1_priv_key}
 USER_2_PRIV_KEY=${user_2_priv_key}
 USER_3_PRIV_KEY=${user_3_priv_key}
+FEEDER_PRIV_KEY=${feeder_priv_key}
 VALIDATOR_1_ADDRESS=${validator_1_address}
 VALIDATOR_2_ADDRESS=${validator_2_address}
 

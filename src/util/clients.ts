@@ -13,6 +13,7 @@ import { nolusOfflineSigner } from '@nolus/nolusjs/build/wallet/NolusWalletFacto
 const user1PrivKey = fromHex(process.env.USER_1_PRIV_KEY as string);
 const user2PrivKey = fromHex(process.env.USER_2_PRIV_KEY as string);
 const user3PrivKey = fromHex(process.env.USER_3_PRIV_KEY as string);
+const feederPrivKey = fromHex(process.env.FEEDER_PRIV_KEY as string);
 
 const NODE_ENDPOINT = process.env.NODE_URL as string;
 export default NODE_ENDPOINT;
@@ -45,6 +46,10 @@ export async function getUser2Wallet(): Promise<NolusWallet> {
 
 export async function getUser3Wallet(): Promise<NolusWallet> {
   return await getWallet(user3PrivKey);
+}
+
+export async function getFeederWallet(): Promise<NolusWallet> {
+  return await getWallet(feederPrivKey);
 }
 
 export async function createWallet(): Promise<NolusWallet> {

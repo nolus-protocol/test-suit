@@ -161,9 +161,12 @@ rm -rf "$HOME_DIR/accounts"
 mkdir "$HOME_DIR/accounts"
 ACCOUNTS_DIR="$HOME_DIR/accounts"
 
+source "$SCRIPT_DIR"/common/cmd.sh
+echo "$MNEMONIC_FAUCET" | run_cmd "$ACCOUNTS_DIR" keys add "$FAUCET_KEY" --recover --keyring-backend "test"
+
 # Prepare .env
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$LPP_BASE_CURRENCY" "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" \
-"$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
+"" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
 "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" ""

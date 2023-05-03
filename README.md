@@ -39,10 +39,8 @@ yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase>
 #### Local network
 
 ```sh
-yarn prepare-env-local --contracts-result-file-path <contracts_info_file_path>
+yarn prepare-env-local --feeder-key <feeder_key_name>
 ```
-
-* **--contracts-result-file-path** - path to the directory where the smart contracts information file is located (thе file produced by **nolusd-core/scripts/init-local-network.sh**) = **nolus-core** path by default
 
 * The 'reserve' account must have funds (in nolus native currency), so be sure to reflect this when starting a local network : **/nolus-core/scripts/init-local-network.sh**
 
@@ -54,17 +52,7 @@ Example:
 ./scripts/init-local-network.sh --reserve-tokens 1000000000000000unls --hermes-mnemonic <hermes_account_mnemonic>
 ```
 
-!!! On a local network, manual setup and startup of the feeder&&dispatcher is required before testing. Instructions for this can be found in the our [**oracle-price-feeder**](https://github.com/Nolus-Protocol/oracle-price-feeder) repository. For some of the test cases, it is necessary to choose a currency for which this feeder does not provide a price. By default, here in the tests, this is set to be the "STARS" currency. So when you configure the feeder, in the configuration file there, please remove this currency from the **currencies** section. An option is provided here to select and specify a currency other than "STARS" via the flag "--no-price-currency" when running **yarn prepare-env-local**.
-
-### Save feeders
-
-Testing the oracle contract requires isolating it from the active feeders. This requires removing them before testing and adding them afterwards. For this purpose, before running the tests, ensure that you have backed up the currently active feeders. In case of problem, you can find their addresses in the file created by the following command:
-
-```sh
-yarn save-feeders
-```
-
-On dev add *--nolus-net https://net-dev.nolus.io:26612*
+!!! On a local network, manual setup and startup of the feeder&&dispatcher is required before testing. Instructions for this can be found in our [**oracle-price-feeder**](https://github.com/Nolus-Protocol/oracle-price-feeder) repository and the name of the feeder key must be passed to the "--feeder-key" flag when running **yarn prepare-env-local** ([here](#local-network)). For some of the test cases, it is necessary to choose a currency for which this feeder does not provide a price. By default, here in the tests, this is set to be the "STARS" currency. So when you configure the feeder, in the configuration file there, please remove this currency from the **currencies** section. An option is provided here to select and specify a currency other than "STARS" via the flag "--no-price-currency" when running **yarn prepare-env-local**.
 
 ### Fund wallet with supported currencies - Osmosis Dex
 
@@ -80,7 +68,7 @@ yarn run fund-main-account <mnemonic_of_osmosis_account_you_have_preloaded> <add
 
 * Тhe osmosis account whose information you submit to the script must be loaded with osmo
 
-* The receiver is the "reserve" address (after running the [environment prep scripts](#prepare-the-environment) )
+* The receiver is the "reserve" address (after running the [environment prep scripts](#prepare-the-environment))
 
 * Some of the parameters in the script have default values for local network - change them with the following flags:
 

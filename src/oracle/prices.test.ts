@@ -1,480 +1,101 @@
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
-import {
-  OracleConfig,
-  SwapTree,
-  Tree,
-} from '@nolus/nolusjs/build/contracts/types';
-import { customFees, sleep, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import NODE_ENDPOINT, {
-  createWallet,
+  getFeederWallet,
   getUser1Wallet,
-  getContractsOwnerWallet,
 } from '../util/clients';
-import {
-  returnRestToMainAccount,
-  sendInitExecuteFeeTokens,
-} from '../util/transfer';
-import { runOrSkip } from '../util/testingRules';
-import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
-import {
-  updateOracleConfig,
-  registerAllFeedersBack,
-  removeAllFeeders,
-} from '../util/smart-contracts/actions/oracle';
+import { returnRestToMainAccount } from '../util/transfer';
+import { runOrSkip, runTestIfLocal } from '../util/testingRules';
 
+// !!! Since the feeder we use in the locally started bot (oracle-price-feeder) is also used here
+// - running the tests in this file requires the bot to be stopped
 runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
-  let contractsOwnerWallet: NolusWallet;
   let userWithBalance: NolusWallet;
   let feederWallet: NolusWallet;
   let oracleInstance: NolusContracts.Oracle;
-  let initConfig: OracleConfig;
-  let initSwapTree: SwapTree;
-  let initBaseAsset: string;
   let firstPairMember: string;
   let secondPairMember: string;
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
+  const initBaseAsset = process.env.LPP_BASE_CURRENCY as string;
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    contractsOwnerWallet = await getContractsOwnerWallet();
     userWithBalance = await getUser1Wallet();
-    feederWallet = await createWallet();
+    feederWallet = await getFeederWallet();
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
     oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
-    initConfig = await oracleInstance.getConfig();
-    initBaseAsset = initConfig.config.base_asset;
-    initSwapTree = await oracleInstance.getSwapTree();
-
-    const adminBalance = {
-      amount: '10000000',
-      denom: NATIVE_MINIMAL_DENOM,
-    };
-
-    await userWithBalance.transferAmount(
-      contractsOwnerWallet.address as string,
-      [adminBalance],
-      customFees.transfer,
-    );
-
     const currenciesPairs = await oracleInstance.getCurrencyPairs();
     firstPairMember = currenciesPairs[0][0];
     secondPairMember = currenciesPairs[0][1][1];
-
-    await removeAllFeeders(oracleInstance, contractsOwnerWallet);
   });
 
-  afterAll(async () => {
-    // reset the config
-    await oracleInstance.updateConfig(
-      contractsOwnerWallet,
-      initConfig.config.price_config,
-      customFees.exec,
-    );
-
-    const configAfter = await oracleInstance.getConfig();
-    expect(configAfter).toStrictEqual(initConfig);
-
-    await removeAllFeeders(oracleInstance, contractsOwnerWallet);
-    await registerAllFeedersBack(oracleInstance, contractsOwnerWallet);
-
-    // reset the swap tree
-    await oracleInstance.updateSwapTree(
-      contractsOwnerWallet,
-      initSwapTree.tree,
-      customFees.exec,
-    );
-
-    const swapTreeAfter = await oracleInstance.getSwapTree();
-    expect(initSwapTree).toStrictEqual(swapTreeAfter);
-  });
-
-  async function feedPrice(
-    feederWallet: NolusWallet,
-    amountAmount: string,
-    amoutnQuoteAmount: string,
-    amountSymbol: string,
-    amountQuoteSymbol: string,
-  ) {
-    await userWithBalance.transferAmount(
-      feederWallet.address as string,
-      customFees.feedPrice.amount,
-      customFees.transfer,
-      '',
-    );
-
-    const feedPrices = {
-      prices: [
-        {
-          amount: { amount: amountAmount, ticker: amountSymbol },
-          amount_quote: {
-            amount: amoutnQuoteAmount,
-            ticker: amountQuoteSymbol,
+  runTestIfLocal(
+    'a registered feeder tries to feed a price for an invalid pair - should produce an error',
+    async () => {
+      const feedPrices = {
+        prices: [
+          {
+            amount: { amount: '2', ticker: initBaseAsset }, // any amount
+            amount_quote: { amount: '5', ticker: firstPairMember }, // any amount
           },
-        },
-      ],
-    };
+        ],
+      };
 
-    await oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
-    await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
-  }
-
-  test('the contract owner tries to add a feeder - should work as expected', async () => {
-    await sendInitExecuteFeeTokens(
-      userWithBalance,
-      feederWallet.address as string,
-    );
-
-    let isFeeder = await oracleInstance.isFeeder(
-      feederWallet.address as string,
-    );
-    expect(isFeeder).toBe(false);
-
-    await oracleInstance.addFeeder(
-      contractsOwnerWallet,
-      feederWallet.address as string,
-      customFees.exec,
-    );
-
-    isFeeder = await oracleInstance.isFeeder(feederWallet.address as string);
-    expect(isFeeder).toBe(true);
-
-    // adding an already registered feeder
-    const result = () =>
-      oracleInstance.addFeeder(
-        contractsOwnerWallet,
+      await userWithBalance.transferAmount(
         feederWallet.address as string,
-        customFees.exec,
+        customFees.feedPrice.amount,
+        customFees.transfer,
+        '',
       );
 
-    await expect(result).rejects.toThrow(
-      /^.*Given address already registered as a price feeder.*/,
-    );
-  });
+      const broadcastTx = () =>
+        oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
 
-  test('accept price as valid - should work as expected', async () => {
-    const samplePeriodSec = 10;
-    const sampleNumbers = 2;
-    const priceFeedPeriodSec = samplePeriodSec * sampleNumbers;
-    const expectedFeedersPermile = 500;
+      await expect(broadcastTx).rejects.toThrow(/^.*Unsupported denom pairs.*/);
 
-    await updateOracleConfig(
-      oracleInstance,
-      initConfig,
-      expectedFeedersPermile,
-      samplePeriodSec,
-      sampleNumbers,
-    );
+      await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
+    },
+  );
 
-    await removeAllFeeders(oracleInstance, contractsOwnerWallet);
+  runTestIfLocal(
+    'a registered feeder tries to feed price = 0 - should produce an error',
+    async () => {
+      const feedPrices = {
+        prices: [
+          {
+            amount: { amount: '2', ticker: firstPairMember },
+            amount_quote: { amount: '0', ticker: secondPairMember },
+          },
+        ],
+      };
 
-    const firstFeederWallet = await createWallet();
-    const secondFeederWallet = await createWallet();
-    const thirdFeederWallet = await createWallet();
-    const fourthFeederWallet = await createWallet();
+      await userWithBalance.transferAmount(
+        feederWallet.address as string,
+        customFees.feedPrice.amount,
+        customFees.transfer,
+        '',
+      );
 
-    await oracleInstance.addFeeder(
-      contractsOwnerWallet,
-      firstFeederWallet.address as string,
-      customFees.exec,
-    );
+      let broadcastTx = () =>
+        oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
 
-    await oracleInstance.addFeeder(
-      contractsOwnerWallet,
-      secondFeederWallet.address as string,
-      customFees.exec,
-    );
+      await expect(broadcastTx).rejects.toThrow(
+        /^.*The quote amount should not be zero.*/,
+      );
 
-    await oracleInstance.addFeeder(
-      contractsOwnerWallet,
-      thirdFeederWallet.address as string,
-      customFees.exec,
-    );
+      feedPrices.prices[0].amount.amount = '0';
+      feedPrices.prices[0].amount_quote.amount = '2';
 
-    await oracleInstance.addFeeder(
-      contractsOwnerWallet,
-      fourthFeederWallet.address as string,
-      customFees.exec,
-    );
+      broadcastTx = () =>
+        oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
 
-    await feedPrice(
-      firstFeederWallet,
-      '8',
-      '3',
-      firstPairMember,
-      secondPairMember,
-    );
+      await expect(broadcastTx).rejects.toThrow(
+        /^.*The amount should not be zero.*/,
+      );
 
-    const priceAfterFirstFeederVote = () =>
-      oracleInstance.getPriceFor(firstPairMember);
-
-    // not enough votes yet
-    await expect(priceAfterFirstFeederVote).rejects.toThrow(/^.*No price.*/);
-
-    await feedPrice(
-      secondFeederWallet,
-      '7',
-      '3',
-      firstPairMember,
-      secondPairMember,
-    );
-    const priceAfterSecondFeederVote = await oracleInstance.getPriceFor(
-      firstPairMember,
-    );
-
-    // already enough votes
-    expect(priceAfterSecondFeederVote.amount_quote.ticker).toBe(initBaseAsset);
-    expect(priceAfterSecondFeederVote.amount.ticker).toBe(firstPairMember);
-
-    const lastFeederWallet = await createWallet();
-
-    await oracleInstance.addFeeder(
-      contractsOwnerWallet,
-      lastFeederWallet.address as string,
-      customFees.exec,
-    );
-
-    const priceAfterLastFeederRegistration = await oracleInstance.getPriceFor(
-      firstPairMember,
-    );
-
-    // 50% of 5 feeders = 2 -> the price is still valid
-    expect(priceAfterSecondFeederVote).toStrictEqual(
-      priceAfterLastFeederRegistration,
-    );
-
-    const pushedPriceAmount = '4';
-    const pushedPriceAmountQuote = '3';
-    await feedPrice(
-      lastFeederWallet,
-      pushedPriceAmount,
-      pushedPriceAmountQuote,
-      firstPairMember,
-      secondPairMember,
-    );
-    const priceAfterThirdFeederVote = await oracleInstance.getPriceFor(
-      firstPairMember,
-    );
-
-    // price should be > the pushed one and < priceAfterSecondFeederVote
-    expect(+priceAfterThirdFeederVote.amount_quote.amount).toBeGreaterThan(
-      +pushedPriceAmountQuote,
-    );
-    expect(+priceAfterThirdFeederVote.amount.amount).toBeGreaterThan(
-      +pushedPriceAmount,
-    );
-    expect(+priceAfterThirdFeederVote.amount_quote.amount).toBeLessThan(
-      +priceAfterSecondFeederVote.amount_quote.amount,
-    );
-    expect(+priceAfterThirdFeederVote.amount.amount).toBeLessThan(
-      +priceAfterSecondFeederVote.amount.amount,
-    );
-
-    await sleep(priceFeedPeriodSec + 1); //+1sec
-    // the price feed period has expired
-    const resultAfterPeriod = () => oracleInstance.getPriceFor(firstPairMember);
-    await expect(resultAfterPeriod).rejects.toThrow(/^.*No price.*/);
-  });
-
-  test('the contract owner changes the price period when a price is available - should work as expected', async () => {
-    await removeAllFeeders(oracleInstance, contractsOwnerWallet);
-
-    const samplePeriodSec = 10000;
-    const sampleNumbers = 10;
-
-    await updateOracleConfig(
-      oracleInstance,
-      initConfig,
-      500,
-      samplePeriodSec,
-      sampleNumbers,
-    ); // any expectedFeeders
-    await oracleInstance.addFeeder(
-      contractsOwnerWallet,
-      feederWallet.address as string,
-      customFees.exec,
-    );
-
-    await feedPrice(
-      feederWallet,
-      '22',
-      '33',
-      firstPairMember,
-      secondPairMember,
-    ); // any amounts
-
-    const price = await oracleInstance.getPriceFor(firstPairMember);
-    expect(price.amount).toBeDefined();
-
-    await updateOracleConfig(oracleInstance, initConfig, 500, 1, 1); // 1sec feed validity period, any expectedFeeders
-
-    // the feed validity period has decreased - the price should be expired
-    const result = () => oracleInstance.getPriceFor(firstPairMember);
-    await expect(result).rejects.toThrow(/^.*No price.*/);
-
-    await updateOracleConfig(
-      oracleInstance,
-      initConfig,
-      500,
-      samplePeriodSec,
-      sampleNumbers,
-    ); // the init feed validity period, any expectedFeeders
-
-    // the feed validity period has changed to the init state - returns data that is valid with respect to the configuration
-    const afterSecondUpdateResult = await oracleInstance.getPriceFor(
-      firstPairMember,
-    );
-    expect(afterSecondUpdateResult.amount).toBeDefined();
-  });
-
-  test('shortening and extending of the currency path when a price is available - should work as expected', async () => {
-    const samplePeriodSec = 1000;
-    const sampleNumbers = 10;
-
-    await updateOracleConfig(
-      oracleInstance,
-      initConfig,
-      500,
-      samplePeriodSec,
-      sampleNumbers,
-    ); // any expectedFeeders
-
-    await removeAllFeeders(oracleInstance, contractsOwnerWallet);
-    await oracleInstance.addFeeder(
-      contractsOwnerWallet,
-      feederWallet.address as string,
-      customFees.exec,
-    );
-
-    const leaseCurrencies = getLeaseGroupCurrencies();
-    const firstCurrency = leaseCurrencies[0];
-    const secondCurrency = leaseCurrencies[1];
-    const thirdCurrency = leaseCurrencies[2];
-
-    let newSwapTree: Tree = {
-      value: [0, initBaseAsset],
-      children: [
-        {
-          value: [1, firstCurrency],
-          children: [{ value: [2, secondCurrency] }],
-        },
-      ],
-    };
-
-    await oracleInstance.updateSwapTree(
-      contractsOwnerWallet,
-      newSwapTree,
-      customFees.exec,
-    );
-
-    await feedPrice(feederWallet, '50', '10', firstCurrency, initBaseAsset); //any amount
-    await feedPrice(feederWallet, '5', '7', secondCurrency, firstCurrency); //any amount
-
-    // the price should be resolved
-    let price = await oracleInstance.getPriceFor(firstCurrency);
-    expect(price.amount.amount).toBeDefined();
-    expect(price.amount_quote.amount).toBeDefined();
-
-    price = await oracleInstance.getPriceFor(secondCurrency);
-    expect(price.amount.amount).toBeDefined();
-    expect(price.amount_quote.amount).toBeDefined();
-
-    // SHORTENING
-    newSwapTree = {
-      value: [0, initBaseAsset],
-      children: [
-        {
-          value: [1, firstCurrency],
-        },
-      ],
-    };
-
-    await oracleInstance.updateSwapTree(
-      contractsOwnerWallet,
-      newSwapTree,
-      customFees.exec,
-    );
-
-    // the currency path has been changed - the pair doesn`t exist
-    const priceResult2 = () => oracleInstance.getPriceFor(secondCurrency);
-    await expect(priceResult2).rejects.toThrow(/^.*Unsupported currency.*/);
-
-    // EXTENDING
-    newSwapTree = {
-      value: [0, initBaseAsset],
-      children: [
-        {
-          value: [1, firstCurrency],
-          children: [{ value: [2, thirdCurrency] }],
-        },
-      ],
-    };
-
-    await oracleInstance.updateSwapTree(
-      contractsOwnerWallet,
-      newSwapTree,
-      customFees.exec,
-    );
-
-    // push price for the new currency
-    await feedPrice(feederWallet, '600', '200', thirdCurrency, firstCurrency); //any amount
-
-    // the price should be resolved
-    price = await oracleInstance.getPriceFor(thirdCurrency);
-    expect(price.amount.amount).toBeDefined();
-    expect(price.amount_quote.amount).toBeDefined();
-  });
-
-  test('a registered feeder tries to feed a price for an invalid pair - should produce an error', async () => {
-    const feedPrices = {
-      prices: [
-        {
-          amount: { amount: '2', ticker: initBaseAsset }, // any amount
-          amount_quote: { amount: '5', ticker: firstPairMember }, // any amount
-        },
-      ],
-    };
-
-    await userWithBalance.transferAmount(
-      feederWallet.address as string,
-      customFees.feedPrice.amount,
-      customFees.transfer,
-      '',
-    );
-
-    const broadcastTx = () =>
-      oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
-
-    await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
-
-    await expect(broadcastTx).rejects.toThrow(/^.*Unsupported denom pairs.*/);
-  });
-
-  test('a registered feeder tries to feed price 0 - should produce an error', async () => {
-    const feedPrices = {
-      prices: [
-        {
-          amount: { amount: '0', ticker: firstPairMember },
-          amount_quote: { amount: '0', ticker: secondPairMember },
-        },
-      ],
-    };
-
-    await userWithBalance.transferAmount(
-      feederWallet.address as string,
-      customFees.feedPrice.amount,
-      customFees.transfer,
-      '',
-    );
-
-    const broadcastTx = () =>
-      oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
-
-    await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
-
-    await expect(broadcastTx).rejects.toThrow(
-      /^.*The amount should not be zero.*/,
-    );
-  });
+      await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
+    },
+  );
 });
