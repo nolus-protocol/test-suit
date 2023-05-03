@@ -35,7 +35,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     const lppContractAddress = process.env.LPP_ADDRESS as string;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
-    const downpayment = '10';
+    const downpayment = '10000';
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
@@ -110,12 +110,12 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       expect(+quote.total.amount).toBeGreaterThanOrEqual(
         Math.trunc(
-          (+quote.borrow.amount + +downpayment) / minToleranceCurrencyPrice,
+          (+quote.borrow.amount + +downpayment) * minToleranceCurrencyPrice,
         ),
       );
       expect(+quote.total.amount).toBeLessThanOrEqual(
         Math.trunc(
-          (+quote.borrow.amount + +downpayment) / maxToleranceCurrencyPrice,
+          (+quote.borrow.amount + +downpayment) * maxToleranceCurrencyPrice,
         ),
       );
 
