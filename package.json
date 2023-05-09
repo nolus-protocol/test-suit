@@ -8,7 +8,6 @@
     "start": "ts-node src/index.ts",
     "prepare-env-dev": "/bin/bash ./scripts/prepare-env-dev.sh",
     "prepare-env-local": "/bin/bash ./scripts/prepare-env-local.sh",
-    "save-feeders": "/bin/bash ./scripts/save-active-feeders.sh",
     "fund-main-account": "/bin/bash ./scripts/helpers/fund-with-supported-currencies.sh",
     "test": "npx jest --runInBand",
     "lint": "eslint 'src/**/*.{js,ts,tsx}' --quiet --fix"
