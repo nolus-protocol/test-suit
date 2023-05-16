@@ -4,8 +4,12 @@ import { TONANOSEC } from '../utils';
 
 const NANOSEC_YEAR = 365 * 24 * 60 * 60 * TONANOSEC;
 
-export function calcBorrow(downpayment: number, initPercent: number): number {
-  return (downpayment * initPercent) / (1000 - initPercent);
+export function calcBorrowLTV(downpayment: number, ltv: number): number {
+  return (downpayment * ltv) / (1000 - ltv);
+}
+
+export function calcBorrowLTD(downpayment: number, ltd: number): number {
+  return downpayment * (ltd / 1000);
 }
 
 export function calcUtilization( // %
@@ -53,6 +57,10 @@ export function calcInterestRate(
   return (interestPerYear * duration) / BigInt(NANOSEC_YEAR);
 }
 
+export function LTVtoLTD(ltv: number): number {
+  return Math.trunc((1000 * ltv) / (1000 - ltv));
+}
+
 export function LPNS_To_NLPNS(lpns: number, price: Price): bigint {
   const result = Math.trunc(
     lpns * (+price.amount.amount / +price.amount_quote.amount),
@@ -78,7 +86,7 @@ export function currencyPriceObjToNumbers(
   tolerancePercent: number,
 ) {
   const exactCurrencyPrice =
-    +currencyPriceObj.amount.amount / +currencyPriceObj.amount_quote.amount;
+    +currencyPriceObj.amount.amount / +currencyPriceObj.amount_quote.amount; // = 1LPN
   const tolerance = exactCurrencyPrice * (tolerancePercent / 100);
   const minToleranceCurrencyPrice = exactCurrencyPrice - tolerance;
   const maxToleranceCurrencyPrice = exactCurrencyPrice + tolerance;
