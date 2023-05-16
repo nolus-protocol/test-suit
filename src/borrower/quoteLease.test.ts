@@ -3,11 +3,13 @@ import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { runTestIfLocal, runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, { createWallet } from '../util/clients';
 import {
-  calcBorrow,
+  calcBorrowLTD,
+  calcBorrowLTV,
   calcQuoteAnnualInterestRate,
   calcUtilization,
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
+  LTVtoLTD,
 } from '../util/smart-contracts/calculations';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
@@ -102,7 +104,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(quote.borrow).toBeDefined();
       expect(quote.annual_interest_rate).toBeDefined();
 
-      const calcBorrowAmount = calcBorrow(
+      const calcBorrowAmount = calcBorrowLTV(
         +downpayment,
         liabilityInitialPercent,
       );
@@ -144,29 +146,30 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower should be able to get information depending on the optional max ltv', async () => {
-      let maxLTV = liabilityInitialPercent - 50; // -5%
+      const initLTD = LTVtoLTD(liabilityInitialPercent);
+      let maxLTD = initLTD - 50; // -5%
 
       let quote = await leaserInstance.leaseQuote(
         downpayment,
         downpaymentCurrency,
         leaseCurrency,
-        maxLTV,
+        maxLTD,
       );
 
-      let calcBorrowAmount = calcBorrow(+downpayment, maxLTV);
+      let calcBorrowAmount = calcBorrowLTD(+downpayment, maxLTD);
       expect(+quote.borrow.amount).toBe(Math.trunc(calcBorrowAmount));
 
       // if maxLTV > the liability initPercent --> use the second one
-      maxLTV = liabilityInitialPercent + 100; // +10%
+      maxLTD = initLTD + 100; // +10%
 
       quote = await leaserInstance.leaseQuote(
         downpayment,
         downpaymentCurrency,
         leaseCurrency,
-        maxLTV,
+        maxLTD,
       );
 
-      calcBorrowAmount = calcBorrow(+downpayment, liabilityInitialPercent);
+      calcBorrowAmount = calcBorrowLTV(+downpayment, liabilityInitialPercent);
       expect(+quote.borrow.amount).toBe(Math.trunc(calcBorrowAmount));
     });
 
