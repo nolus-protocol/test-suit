@@ -235,6 +235,10 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
   });
 
   test('validator should be able to submit a InstantiateContract proposal', async () => {
+    const treasuryInitMsg = {
+      rewards_dispatcher: process.env.LEASER_ADDRESS as string,
+    };
+
     msg.value.content = {
       typeUrl: '/cosmwasm.wasm.v1.InstantiateContractProposal',
       value: InstantiateContractProposal.encode({
@@ -245,7 +249,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
         admin: wallet.address as string,
         codeId: Long.fromInt(1),
         label: 'contractlabel',
-        msg: toUtf8('{}'),
+        msg: toUtf8(JSON.stringify(treasuryInitMsg)),
         funds: [{ denom: NATIVE_MINIMAL_DENOM, amount: '12' }],
       }).finish(),
     };
