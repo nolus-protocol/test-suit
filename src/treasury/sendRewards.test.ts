@@ -33,7 +33,9 @@ runOrSkip(process.env.TEST_TREASURY as string)(
           customFees.exec,
         );
 
-      await expect(broadcastTx).rejects.toThrow(/^.*Addr not found.*/);
+      await expect(broadcastTx).rejects.toThrow(
+        /^.*Checked address doesn't match the one associated with access control variable.*/,
+      );
     });
   },
 );
