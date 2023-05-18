@@ -1,14 +1,14 @@
 import { AssetUtils } from '@nolus/nolusjs';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
-import { TxResponse } from '@cosmjs/tendermint-rpc';
+import { Event, TxResponse } from '@cosmjs/tendermint-rpc';
 import { undefinedHandler } from '../utils';
 import { TextDecoder } from 'node:util';
 
 const textDecoder = new TextDecoder();
 
-function findWasmRepayEventPosition(response: TxResponse): number {
-  const events = response.result.events;
-  const index = events.findIndex((e) => e.type === 'wasm-ls-repay');
+function findWasmEventPosition(response: any, eType: string): number {
+  const events = response.events;
+  const index = events.findIndex((e: Event) => e.type === eType);
 
   return index;
 }
@@ -17,7 +17,10 @@ function getAttributeValueFromWasmRepayEvent(
   response: TxResponse,
   attributeIndex: number,
 ): bigint {
-  const wasmEventIndex = findWasmRepayEventPosition(response);
+  const wasmEventIndex = findWasmEventPosition(
+    response.result,
+    'wasm-ls-repay',
+  );
 
   return BigInt(
     textDecoder.decode(
@@ -41,7 +44,9 @@ export function getPaymentGroupCurrencies(): string[] {
 export function getLeaseAddressFromOpenLeaseResponse(
   response: ExecuteResult,
 ): string {
-  return response.logs[0].events[8].attributes[3].value;
+  const wasmEventIndex = findWasmEventPosition(response, 'wasm');
+
+  return response.events[wasmEventIndex].attributes[1].value;
 }
 
 export function getMarginInterestPaidFromRepayTx(response: TxResponse): bigint {

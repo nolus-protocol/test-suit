@@ -12,9 +12,11 @@ import {
 } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
-  calcBorrow,
+  calcBorrowLTD,
+  calcBorrowLTV,
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
+  LTVtoLTD,
 } from '../util/smart-contracts/calculations';
 import { runTestIfLocal, runOrSkip, ifLocal } from '../util/testingRules';
 import {
@@ -59,7 +61,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaseCurrency: string,
       downpaymentCurrency: string,
       downpaymentCurrencyToIBC: string,
-      ltv: number,
+      ltd?: number,
     ) {
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
@@ -120,17 +122,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         lppCurrencyToIBC,
       );
 
-      let openWithPreferredLTV = undefined;
-
-      if (ltv != +leaserConfig.config.liability.initial) {
-        openWithPreferredLTV = ltv;
-      }
-
       const response = await leaserInstance.openLease(
         borrowerWallet,
         leaseCurrency,
         customFees.exec,
-        openWithPreferredLTV,
+        ltd,
         [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
       );
 
@@ -186,12 +182,26 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         ),
       );
 
-      const calcBorrowAmount_max = Math.trunc(
-        calcBorrow(downpaymentToLPN_min, ltv),
-      );
-      const calcBorrowAmount_min = Math.trunc(
-        calcBorrow(downpaymentToLPN_max, ltv),
-      );
+      let calcBorrowAmount_max;
+      let calcBorrowAmount_min;
+
+      if (ltd) {
+        calcBorrowAmount_max = Math.trunc(
+          calcBorrowLTD(downpaymentToLPN_min, ltd),
+        );
+        calcBorrowAmount_min = Math.trunc(
+          calcBorrowLTD(downpaymentToLPN_max, ltd),
+        );
+      } else {
+        const initPercent = +leaserConfig.config.liability.initial;
+
+        calcBorrowAmount_max = Math.trunc(
+          calcBorrowLTV(downpaymentToLPN_min, initPercent),
+        );
+        calcBorrowAmount_min = Math.trunc(
+          calcBorrowLTV(downpaymentToLPN_max, initPercent),
+        );
+      }
 
       expect(+leasePrincipal).toBeGreaterThanOrEqual(calcBorrowAmount_min);
       expect(+leasePrincipal).toBeLessThanOrEqual(calcBorrowAmount_max);
@@ -376,7 +386,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         currentLeaseCurrency,
         currentDownpaymentCurrency,
         currentDownpaymentCurrencyToIBC,
-        +leaserConfig.config.liability.initial,
       );
     });
 
@@ -396,7 +405,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         currentLeaseCurrency,
         currentDownpaymentCurrency,
         currentDownpaymentCurrencyToIBC,
-        +leaserConfig.config.liability.initial,
       );
     });
 
@@ -412,7 +420,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         currentLeaseCurrency,
         currentDownpaymentCurrency,
         currentDownpaymentCurrencyToIBC,
-        +leaserConfig.config.liability.initial,
       );
     });
 
@@ -423,13 +430,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         currentDownpaymentCurrency,
       );
 
-      const maxLTV = +leaserConfig.config.liability.initial - 200; // - 20%
+      const maxLTD = LTVtoLTD(+leaserConfig.config.liability.initial) - 100; // -10%
 
       await testOpening(
         currentLeaseCurrency,
         currentDownpaymentCurrency,
         currentDownpaymentCurrencyToIBC,
-        maxLTV,
+        maxLTD,
       );
     });
 
