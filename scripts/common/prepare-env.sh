@@ -6,21 +6,21 @@ source "$SCRIPT_DIR"/cmd.sh
 
 HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && cd .. && pwd)
 
-addKey() {
+_addKey() {
   local -r name="$1"
   local -r accounts_dir="$2"
 
   echo 'y' | run_cmd "$accounts_dir" keys add "$name" --keyring-backend "test"
 }
 
-exportKey() {
+_exportKey() {
   local -r name="$1"
   local -r accounts_dir="$2"
 
   echo 'y' | run_cmd "$accounts_dir" keys export "$name" --unsafe --unarmored-hex --keyring-backend "test"
 }
 
-getValidatorAddress() {
+_getValidatorAddress() {
   local -r index="$1"
   local -r accounts_dir="$2"
   local -r nolus_net="$3"
@@ -44,20 +44,20 @@ local -r test_treasury=${12}
 local -r test_vesting=${13}
 local -r test_gov=${14}
 local -r no_price_currency=${15}
+local -r active_lease_address=${16}
 
-addKey "test-user-1" "$accounts_dir"
-addKey "test-user-2" "$accounts_dir"
+_addKey "test-user-1" "$accounts_dir"
+_addKey "test-user-2" "$accounts_dir"
 
-local -r user_1_priv_key=$(exportKey "$main_accounts_key" "$accounts_dir")
-local -r user_2_priv_key=$(exportKey "test-user-1" "$accounts_dir")
-local -r user_3_priv_key=$(exportKey "test-user-2" "$accounts_dir")
-local -r validator_1_address=$(getValidatorAddress "0" "$accounts_dir" "$node_url")
-local -r validator_2_address=$(getValidatorAddress "1" "$accounts_dir" "$node_url")
+local -r user_1_priv_key=$(_exportKey "$main_accounts_key" "$accounts_dir")
+local -r user_2_priv_key=$(_exportKey "test-user-1" "$accounts_dir")
+local -r user_3_priv_key=$(_exportKey "test-user-2" "$accounts_dir")
+local -r validator_1_address=$(_getValidatorAddress "0" "$accounts_dir" "$node_url")
+local -r validator_2_address=$(_getValidatorAddress "1" "$accounts_dir" "$node_url")
 
 local feeder_priv_key=""
-if [ -n "$feeder_key" ];
-then
-feeder_priv_key=$(exportKey "$feeder_key" "$accounts_dir")
+if [ -n "$feeder_key" ] ; then
+  feeder_priv_key=$(_exportKey "$feeder_key" "$accounts_dir")
 fi
 
 # Get contracts addresses
@@ -72,6 +72,11 @@ local -r oracle_address=$(oracle_instance_addr)
 local -r profit_address=$(profit_instance_addr)
 local -r leaser_address=$(leaser_instance_addr)
 local -r dispatcher_address=$(rewards_dispatcher_instance_addr)
+
+local test_interest=false;
+if [ -n "$active_lease_address" ] && [ "$test_borrower" != "false" ] ; then
+  test_interest=true
+fi
 
 # Save the results
 
@@ -96,6 +101,8 @@ TREASURY_ADDRESS=${treasury_address}
 DISPATCHER_ADDRESS=${dispatcher_address}
 PROFIT_ADDRESS=${profit_address}
 
+ACTIVE_LEASE_ADDRESS=${active_lease_address}
+
 TEST_TRANSFER=${test_transfers}
 TEST_ORACLE=${test_oracle}
 TEST_STAKING=${test_staking}
@@ -104,6 +111,7 @@ TEST_LENDER=${test_lender}
 TEST_TREASURY=${test_treasury}
 TEST_VESTING=${test_vesting}
 TEST_GOV=${test_gov}
+TEST_BORROWER_INTEREST=${test_interest}
 EOF
   )
    echo "$DOT_ENV" > "$HOME_DIR/.env"

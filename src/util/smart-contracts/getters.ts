@@ -1,8 +1,9 @@
+import { TextDecoder } from 'node:util';
 import { AssetUtils } from '@nolus/nolusjs';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
 import { Event, TxResponse } from '@cosmjs/tendermint-rpc';
+import { fromUtf8 } from '@cosmjs/encoding';
 import { undefinedHandler } from '../utils';
-import { TextDecoder } from 'node:util';
 
 const textDecoder = new TextDecoder();
 
@@ -69,8 +70,11 @@ export function getTotalPaidFromRepayTx(response: TxResponse): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 6);
 }
 
-export function getMarginPaidTimeFromRepayTx(response: TxResponse): bigint {
-  return getAttributeValueFromWasmRepayEvent(response, 2);
+export function getMarginPaidTimeFromRawState(rawState: Uint8Array): bigint {
+  return BigInt(
+    JSON.parse(fromUtf8(rawState)).OpenedActive.lease.lease.loan.current_period
+      .start,
+  );
 }
 
 // export function getOnlyPaymentCurrencies(): string[] {

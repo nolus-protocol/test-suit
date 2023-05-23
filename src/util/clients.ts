@@ -63,8 +63,8 @@ export async function createWallet(): Promise<NolusWallet> {
 
 export async function txSearchByEvents(
   events: string,
-  page: number,
-  perPage: number,
+  page: number | undefined,
+  perPage: number | undefined,
 ): Promise<TxSearchResponse> {
   const tmClient = await NolusClient.getInstance().getTendermintClient();
 

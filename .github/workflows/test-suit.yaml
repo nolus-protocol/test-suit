@@ -10,6 +10,9 @@ on:
       nolus-preferred-tag:
         description: "Nolus-core preferred tag to use"
         type: string
+      active-lease-address:
+        description: "Lease with available interest"
+        type: string
       test-transfer-pipeline:
         description: "Test transfer"
         type: boolean
@@ -39,12 +42,11 @@ jobs:
   env-prep:
     environment: dev
     env:
-        FEEDERS_FILE: "feeders.json"
         ACCOUNTS_DIR: "./accounts"
         DEV_URL:  ${{ vars.DEV_URL }}
         FAUCET_MNEMONIC_DEV: ${{ secrets.FAUCET_MNEMONIC_DEV }}
-        SMART_CONTRACTS_ADMIN_MNEMONIC: ${{ secrets.SMART_CONTRACTS_ADMIN_MNEMONIC_DEV }}
         NOLUS_PREFERRED_TAG: ${{ github.event.inputs.nolus-preferred-tag || '' }}
+        ACTIVE_LEASE_ADDRESS: ${{ github.event.inputs.active-lease-address || '' }}
         TEST_TRANSFER_PIPELINE: ${{ github.event.inputs.test-transfer-pipeline || 'true' }}
         TEST_ORACLE_PIPELINE: ${{ github.event.inputs.test-oracle-pipeline || 'true' }}
         TEST_STAKING_PIPELINE: ${{ github.event.inputs.test-staking-pipeline || 'true' }}
@@ -62,26 +64,16 @@ jobs:
         run: |
           yarn prepare-env-dev \
           --mnemonic-faucet "$FAUCET_MNEMONIC_DEV" \
-          --mnemonic-contracts-owner "$SMART_CONTRACTS_ADMIN_MNEMONIC" \
           --nolus-core-version-tag "$NOLUS_PREFERRED_TAG" \
           --test-transfer-flag "$TEST_TRANSFER_PIPELINE" --test-oracle-flag "$TEST_ORACLE_PIPELINE" \
           --test-staking-flag "$TEST_STAKING_PIPELINE" --test-borrower-flag "$TEST_BORROWER_PIPELINE" \
           --test-lender-flag "$TEST_LENDER_PIPELINE" --test-treasury-flag "$TEST_TREASURY_PIPELINE" \
-          --test-vesting-flag "$TEST_VESTING_PIPELINE" --test-gov-flag "$TEST_GOV_PIPELINE"
-      - name: "Save active feeders"
-        run: |
-          yarn save-feeders --accounts-dir "$ACCOUNTS_DIR" --feeders-file "$FEEDERS_FILE" --nolus-net "$DEV_URL"
-        shell: bash
+          --test-vesting-flag "$TEST_VESTING_PIPELINE" --test-gov-flag "$TEST_GOV_PIPELINE" --active-lease-address "$ACTIVE_LEASE_ADDRESS"
       - name: "Upload .env artifact"
         uses: actions/upload-artifact@v3
         with:
           name: .env
           path: .env
-      - name: "Upload feeders artifact"
-        uses: actions/upload-artifact@v3
-        with:
-          name: active-feeders
-          path: ${{ env.FEEDERS_FILE }}
 
   test:
     runs-on: ubuntu-latest
@@ -92,10 +84,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: .env
-      - name: "Download the feeders file"
-        uses: actions/download-artifact@v3
-        with:
-          name: active-feeders
       - uses: actions/setup-node@v3
       - run: yarn
       - run: yarn run test

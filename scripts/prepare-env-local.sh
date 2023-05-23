@@ -7,6 +7,7 @@ MAIN_KEY="reserve"
 NOLUS_HOME_DIR="$HOME/.nolus"
 NO_PRICE_CURRENCY="STARS"
 FEEDER_KEY=""
+ACTIVE_LEASE_ADDRESS=""
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -20,7 +21,8 @@ while [[ $# -gt 0 ]]; do
     [--lpp-base-currency <lpp_base_currency_ticker>]
     [--home-dir <nolus_accounts_dir>]
     [--feeder-key <feeder_key_name>]
-    [--no-price-currency <no_price_currency_ticker>]" \
+    [--no-price-currency <no_price_currency_ticker>]
+    [--active-lease-address <active_lease_address>]" \
     "$0"
     exit 0
     ;;
@@ -55,6 +57,12 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
+  --active-lease-address)
+    ACTIVE_LEASE_ADDRESS="$2"
+    shift
+    shift
+    ;;
+
   *)
     echo "unknown option '$key'"
     exit 1
@@ -72,4 +80,4 @@ verify_mandatory "$FEEDER_KEY" "feeder key name"
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$LPP_BASE_CURRENCY" "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" \
-"$FEEDER_KEY" "" "" "" "" "" "" "" "" "$NO_PRICE_CURRENCY"
+"$FEEDER_KEY" "" "" "" "" "" "" "" "" "$NO_PRICE_CURRENCY" "$ACTIVE_LEASE_ADDRESS"
