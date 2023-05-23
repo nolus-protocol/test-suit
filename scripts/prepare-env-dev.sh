@@ -1,12 +1,27 @@
 #!/bin/bash
 set -euxo pipefail
 
+_downloadArtifact() {
+  local -r name="$1"
+  local -r version="$2"
+  local response
+
+  rm -rf "$name"
+
+  response=$(curl -L --output "$name" -w '%{http_code}' "$GITHUB_NOLUS_CORE_RELEASES/download/$version/$name")
+  if [[ $response -ne 200 ]]; then
+    echo "Error: failed to retrieve artifact $name, version $version. Are you sure that the artifact and the tag both exist?"
+    exit 1
+  fi
+}
+
+
 HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
 
 GITHUB_NOLUS_CORE_RELEASES="https://github.com/Nolus-Protocol/nolus-core/releases"
 NOLUS_BUILD_BINARY_ARTIFACT="nolus.tar.gz"
 
-NOLUS_DEV_NET="https://net-dev.nolus.io:26612"
+NOLUS_DEV_NET="https://dev-cl.nolus.network:26657"
 FAUCET_KEY="faucet"
 LPP_BASE_CURRENCY="USDC"
 
@@ -20,6 +35,8 @@ TEST_LENDER="true"
 TEST_TREASURY="true"
 TEST_VESTING="true"
 TEST_GOV="true"
+
+ACTIVE_LEASE_ADDRESS=""
 
 
 while [[ $# -gt 0 ]]; do
@@ -41,7 +58,8 @@ while [[ $# -gt 0 ]]; do
     [--test-lender-flag <test_lender_true_or_false>]
     [--test-treasury-flag <test_treasury_true_or_false>]
     [--test-vesting-flag <test_vesting_true_or_false>]
-    [--test-gov-flag <test_gov_true_or_false>] "\
+    [--test-gov-flag <test_gov_true_or_false>]
+    [--active-lease-address <active_lease_address>]" \
     "$0"
     exit 0
     ;;
@@ -118,6 +136,12 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
+  --active-lease-address)
+    ACTIVE_LEASE_ADDRESS="$2"
+    shift
+    shift
+    ;;
+
   *)
     echo "unknown option '$key'"
     exit 1
@@ -131,25 +155,11 @@ source "$SCRIPT_DIR"/common/verify.sh
 
 verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic"
 
-_downloadArtifact() {
-  local -r name="$1"
-  local -r version="$2"
-  local response
-
-  rm -rf "$name"
-
-  response=$(curl -L --output "$name" -w '%{http_code}' "$GITHUB_NOLUS_CORE_RELEASES/download/$version/$name")
-  if [[ $response -ne 200 ]]; then
-    echo "Error: failed to retrieve artifact $name, version $version. Are you sure the artifact and tag exist?"
-    exit 1
-  fi
-}
-
 # Get dev-network information
 
-  if [[ -z ${NOLUS_CORE_TAG} ]]; then
+if [[ -z ${NOLUS_CORE_TAG} ]]; then
     NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq '.tag_name' | tr -d '"')
-  fi
+fi
 
 _downloadArtifact "$NOLUS_BUILD_BINARY_ARTIFACT" "$NOLUS_CORE_TAG"
 tar -xvf "$NOLUS_BUILD_BINARY_ARTIFACT"
@@ -169,4 +179,4 @@ echo "$MNEMONIC_FAUCET" | run_cmd "$ACCOUNTS_DIR" keys add "$FAUCET_KEY" --recov
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$LPP_BASE_CURRENCY" "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" \
 "" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
-"$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" ""
+"$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "" "$ACTIVE_LEASE_ADDRESS"
