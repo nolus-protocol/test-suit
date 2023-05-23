@@ -17,29 +17,39 @@ export function calcUtilization( // %
   quoteBorrow: number,
   totalInterestDueByNow: number,
   lppLiquidity: number,
+  utilizationOptimalPercent: number,
 ): number {
   const totalLiabilityPast =
     totalInterestDueByNow + quoteBorrow + totalPrincipalDueByNow;
 
-  return (
-    (totalLiabilityPast / (totalLiabilityPast + (lppLiquidity - quoteBorrow))) *
-    100
-  );
+  const balance = lppLiquidity - quoteBorrow;
+  const utilizationCoeffMaxPercent =
+    (utilizationOptimalPercent / (100 - utilizationOptimalPercent)) * 100;
+
+  let utilizationCoeffPercent;
+
+  if (balance === 0) {
+    utilizationCoeffPercent = utilizationCoeffMaxPercent;
+  } else {
+    utilizationCoeffPercent = Math.min(
+      (totalLiabilityPast / balance) * 100,
+      utilizationCoeffMaxPercent,
+    );
+  }
+  return utilizationCoeffPercent;
 }
 
 export function calcQuoteAnnualInterestRate( // permille
-  utilization: number,
+  utilizationCoefPercent: number,
   utilizationOptimalPercent: number,
   baseInterestRatePercent: number,
   addonOptimalInterestRatePercent: number,
 ): number {
-  if (utilization < 1) return baseInterestRatePercent;
+  const config = addonOptimalInterestRatePercent / utilizationOptimalPercent;
+  const quoteAnnualInterestRate =
+    baseInterestRatePercent + config * utilizationCoefPercent;
 
-  const result =
-    baseInterestRatePercent +
-    (utilization / utilizationOptimalPercent) * addonOptimalInterestRatePercent;
-
-  return Math.trunc(result);
+  return Math.round(quoteAnnualInterestRate * 10);
 }
 
 export function calcInterestRate(
@@ -52,6 +62,7 @@ export function calcInterestRate(
   if (outstandingByNanoSec < interestPaidByNanoSec) return BigInt(-1);
 
   const interestPerYear = (principalDue * interestRate) / BigInt(1000);
+
   const duration = outstandingByNanoSec - interestPaidByNanoSec;
 
   return (interestPerYear * duration) / BigInt(NANOSEC_YEAR);

@@ -131,6 +131,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         +quote.borrow.amount,
         +totalInterestDueByNow.amount,
         +lppLiquidity.amount,
+        utilizationOptimal,
       );
 
       expect(
@@ -140,7 +141,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           baseInterestRate,
           addonOptimalInterestRate,
         ),
-      ).toBe(Math.trunc(quote.annual_interest_rate / 10));
+      ).toBe(quote.annual_interest_rate);
 
       expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
     });
