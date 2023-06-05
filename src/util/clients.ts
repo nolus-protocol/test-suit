@@ -75,3 +75,7 @@ export async function txSearchByEvents(
     per_page: perPage,
   });
 }
+
+export function registerNewType(client: NolusWallet, type: string, msg: any) {
+  client.registry.register(type, msg);
+}

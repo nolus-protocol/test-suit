@@ -89,7 +89,7 @@ export function NLPNS_To_LPNS(nlpns: number, price: Price): bigint {
 }
 
 export function currencyTicker_To_IBC(ticker: string): string {
-  return AssetUtils.makeIBCMinimalDenom(ticker);
+  return AssetUtils.makeIBCMinimalDenomTestnet(ticker);
 }
 
 export function currencyPriceObjToNumbers(

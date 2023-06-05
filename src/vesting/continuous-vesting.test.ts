@@ -1,32 +1,41 @@
+import Long from 'long';
+import {
+  assertIsDeliverTxSuccess,
+  DeliverTxResponse,
+  isDeliverTxFailure,
+} from '@cosmjs/stargate';
+import { EncodeObject } from '@cosmjs/proto-signing';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
 import {
   MsgCreateVestingAccount,
   protobufPackage as vestingPackage,
-} from '../util/codec/cosmos/vesting/v1beta1/tx';
-import Long from 'long';
-import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
+} from '../util/codec/vestings/tx';
 import { customFees, sleep, NATIVE_MINIMAL_DENOM } from '../util/utils';
-import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
-import { ChainConstants } from '@nolus/nolusjs/build/constants';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
-import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
+import NODE_ENDPOINT, {
+  createWallet,
+  getUser1Wallet,
+  registerNewType,
+} from '../util/clients';
 import { sendInitTransferFeeTokens } from '../util/transfer';
-import { EncodeObject } from '@cosmjs/proto-signing';
 import { runOrSkip } from '../util/testingRules';
+import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
 
 runOrSkip(process.env.TEST_VESTING as string)(
   'Continuous vesting tests',
   () => {
     const FULL_AMOUNT: Coin = { denom: NATIVE_MINIMAL_DENOM, amount: '10000' };
     const HALF_AMOUNT: Coin = { denom: NATIVE_MINIMAL_DENOM, amount: '5000' };
-    const ENDTIME_SECONDS = 50;
-    let NATIVE_TOKEN_DENOM: string;
-    let user1Wallet: NolusWallet;
+    const ENDTIME_SECONDS = 80;
+    const STARTTIME_SECONDS = 20;
+    let userWithBalanceWallet: NolusWallet;
     let vestingWallet: NolusWallet;
 
     const createVestingAccountMsg: MsgCreateVestingAccount = {
       fromAddress: '',
       toAddress: '',
       amount: [FULL_AMOUNT],
+      startTime: Long.fromNumber(0),
       endTime: Long.fromNumber(0),
       delayed: false,
     };
@@ -35,166 +44,311 @@ runOrSkip(process.env.TEST_VESTING as string)(
       value: createVestingAccountMsg,
     };
 
-    async function verifyVestingAccountBalance() {
+    async function verifyVestingAccountBalance(
+      vestingWallet: NolusWallet,
+      balanceAmount: string,
+      denom?: string,
+    ) {
       const vestingAccountBalance = await vestingWallet.getBalance(
         vestingWallet.address as string,
-        NATIVE_TOKEN_DENOM,
+        denom ? denom : NATIVE_MINIMAL_DENOM,
       );
 
-      expect(BigInt(vestingAccountBalance.amount)).toBe(BigInt(0));
+      expect(vestingAccountBalance.amount).toBe(balanceAmount);
+    }
+
+    async function transferUnallocatedTokens(
+      vestingWallet: NolusWallet,
+      amount: Coin,
+      msg: string,
+    ) {
+      await sendInitTransferFeeTokens(
+        userWithBalanceWallet,
+        vestingWallet.address as string,
+      );
+
+      const result: DeliverTxResponse = await vestingWallet.transferAmount(
+        userWithBalanceWallet.address as string,
+        [amount],
+        customFees.transfer,
+      );
+
+      expect(result.rawLog).toContain(msg);
+    }
+
+    async function createVestingAccountWithInvalidParams(msg: RegExp) {
+      const broadcastTx = () =>
+        userWithBalanceWallet.signAndBroadcast(
+          userWithBalanceWallet.address as string,
+          [encodedMsg],
+          customFees.configs,
+        );
+
+      await expect(broadcastTx).rejects.toThrow(msg);
+
+      await verifyVestingAccountBalance(vestingWallet, '0');
     }
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
-      NATIVE_TOKEN_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
 
-      user1Wallet = await getUser1Wallet();
+      userWithBalanceWallet = await getUser1Wallet();
       vestingWallet = await createWallet();
 
-      createVestingAccountMsg.fromAddress = user1Wallet.address as string;
+      createVestingAccountMsg.fromAddress =
+        userWithBalanceWallet.address as string;
       createVestingAccountMsg.toAddress = vestingWallet.address as string;
+
+      registerNewType(
+        userWithBalanceWallet,
+        '/vestings.MsgCreateVestingAccount',
+        MsgCreateVestingAccount,
+      );
     });
 
     afterEach(() => {
+      createVestingAccountMsg.fromAddress =
+        userWithBalanceWallet.address as string;
       createVestingAccountMsg.toAddress = vestingWallet.address as string;
       createVestingAccountMsg.amount = [FULL_AMOUNT];
     });
 
-    test('creation a continuous vesting account with 0 amount - should produce an error', async () => {
+    test('create a continuous vesting account with 0 amount - should produce an error', async () => {
       createVestingAccountMsg.amount = [
         { denom: NATIVE_MINIMAL_DENOM, amount: '0' },
       ];
-      const broadcastTx = () =>
-        user1Wallet.signAndBroadcast(
-          user1Wallet.address as string,
-          [encodedMsg],
-          customFees.configs,
-        );
 
-      await expect(broadcastTx).rejects.toThrow(/^.*0unls: invalid coins.*/);
-
-      await verifyVestingAccountBalance();
+      await createVestingAccountWithInvalidParams(/^.*0unls: invalid coins*/);
     });
 
-    test('creation a continuous vesting account with invalid "to" address - should produce an error', async () => {
+    test('create a continuous vesting account with invalid "from" address - should produce an error', async () => {
+      createVestingAccountMsg.fromAddress =
+        'wasm1gzkmn2lfm56m0q0l4rmjamq7rlwpfjrp7k78xw';
+
+      await createVestingAccountWithInvalidParams(/^.*invalid checksum.*/);
+    });
+
+    test('create a continuous vesting account with invalid "to" address - should produce an error', async () => {
       createVestingAccountMsg.toAddress =
         'wasm1gzkmn2lfm56m0q0l4rmjamq7rlwpfjrp7k78xw';
 
-      const broadcastTx = () =>
-        user1Wallet.signAndBroadcast(
-          user1Wallet.address as string,
-          [encodedMsg],
-          customFees.configs,
-        );
-
-      await expect(broadcastTx).rejects.toThrow(/^.*invalid checksum.*/);
-
-      await verifyVestingAccountBalance();
+      await createVestingAccountWithInvalidParams(/^.*invalid checksum.*/);
     });
 
-    test('creation a continuous vesting account with 0 EndTime - should produce an error', async () => {
-      const broadcastTx = () =>
-        user1Wallet.signAndBroadcast(
-          user1Wallet.address as string,
-          [encodedMsg],
-          customFees.configs,
-        );
+    test('create a continuous vesting account with StartTime = 0 - should produce an error', async () => {
+      createVestingAccountMsg.startTime = Long.fromNumber(0);
 
-      await expect(broadcastTx).rejects.toThrow(
-        /^.* invalid end time: invalid request.*/,
+      await createVestingAccountWithInvalidParams(/^.*invalid start time.*/);
+    });
+
+    test('create a continuous vesting account with EndTime = 0 - should produce an error', async () => {
+      createVestingAccountMsg.startTime = Long.fromNumber(
+        new Date().getTime() / 1000 + STARTTIME_SECONDS,
       );
 
-      await verifyVestingAccountBalance();
+      await createVestingAccountWithInvalidParams(/^.*invalid end time.*/);
     });
 
-    test('the successful scenario for creation a continuous vesting account - should work as expected', async () => {
-      // create vesting account
-      createVestingAccountMsg.endTime = Long.fromNumber(
+    test('create a continuous vesting account with EndTime < StartTime - should produce an error', async () => {
+      createVestingAccountMsg.startTime = Long.fromNumber(
         new Date().getTime() / 1000 + ENDTIME_SECONDS,
       );
+      createVestingAccountMsg.endTime = Long.fromNumber(
+        new Date().getTime() / 1000 + STARTTIME_SECONDS,
+      );
 
-      const result = await user1Wallet.signAndBroadcast(
-        user1Wallet.address as string,
+      await createVestingAccountWithInvalidParams(/^.*invalid start time.*/);
+    });
+
+    test('create a continuous vesting account with EndTime = StartTime - should produce an error', async () => {
+      createVestingAccountMsg.startTime = Long.fromNumber(
+        new Date().getTime() / 1000 + ENDTIME_SECONDS,
+      );
+      createVestingAccountMsg.endTime = createVestingAccountMsg.startTime;
+
+      await createVestingAccountWithInvalidParams(/^.*invalid start time.*/);
+    });
+
+    test('create a continuous vesting account with StartTime and EndTime in the future - should work as expected', async () => {
+      createVestingAccountMsg.startTime = Long.fromNumber(
+        new Date().getTime() / 1000 + STARTTIME_SECONDS,
+      );
+      createVestingAccountMsg.endTime = Long.fromNumber(
+        +createVestingAccountMsg.startTime + ENDTIME_SECONDS,
+      );
+
+      const result = await userWithBalanceWallet.signAndBroadcast(
+        userWithBalanceWallet.address as string,
         [encodedMsg],
         customFees.configs,
       );
       expect(assertIsDeliverTxSuccess(result)).toBeUndefined();
 
-      const vestingAccountBalanceBefore = await vestingWallet.getBalance(
-        vestingWallet.address as string,
-        NATIVE_TOKEN_DENOM,
+      await verifyVestingAccountBalance(vestingWallet, FULL_AMOUNT.amount);
+
+      await transferUnallocatedTokens(
+        vestingWallet,
+        HALF_AMOUNT,
+        `smaller than ${HALF_AMOUNT.amount}${HALF_AMOUNT.denom}: insufficient funds`,
       );
 
-      expect(vestingAccountBalanceBefore.amount).toBe(FULL_AMOUNT.amount);
+      await sleep(STARTTIME_SECONDS);
 
-      // send some tokens - non-vesting coins - would be immediately transferable
-      const sendInitTokensResult = await sendInitTransferFeeTokens(
-        user1Wallet,
+      await verifyVestingAccountBalance(vestingWallet, FULL_AMOUNT.amount);
+
+      await transferUnallocatedTokens(
+        vestingWallet,
+        HALF_AMOUNT,
+        `smaller than ${HALF_AMOUNT.amount}${HALF_AMOUNT.denom}: insufficient funds`,
+      );
+
+      await sleep(ENDTIME_SECONDS / 2);
+
+      await transferUnallocatedTokens(
+        vestingWallet,
+        FULL_AMOUNT,
+        `smaller than ${FULL_AMOUNT.amount}${FULL_AMOUNT.denom}: insufficient funds`,
+      );
+
+      await sendInitTransferFeeTokens(
+        userWithBalanceWallet,
         vestingWallet.address as string,
       );
 
-      expect(assertIsDeliverTxSuccess(sendInitTokensResult)).toBeUndefined();
-
-      let sendFailTx = await vestingWallet.transferAmount(
-        user1Wallet.address as string,
+      await vestingWallet.transferAmount(
+        userWithBalanceWallet.address as string,
         [HALF_AMOUNT],
         customFees.transfer,
-        '',
-      );
-      expect(isDeliverTxFailure(sendFailTx)).toBeTruthy();
-      expect(sendFailTx.rawLog).toMatch(
-        /^.*smaller than 5000unls: insufficient funds.*/,
-      );
-      await sleep(ENDTIME_SECONDS / 2 + 1); // > half
-
-      // half the tokens have already been distributed
-      sendFailTx = await vestingWallet.transferAmount(
-        user1Wallet.address as string,
-        [FULL_AMOUNT],
-        customFees.transfer,
-        '',
       );
 
-      expect(isDeliverTxFailure(sendFailTx)).toBeTruthy();
-      expect(sendFailTx.rawLog).toMatch(
-        /^.*smaller than 10000unls: insufficient funds.*/,
-      );
+      const expectedAmount =
+        BigInt(FULL_AMOUNT.amount) - BigInt(HALF_AMOUNT.amount);
 
-      assertIsDeliverTxSuccess(
-        await vestingWallet.transferAmount(
-          user1Wallet.address as string,
-          [HALF_AMOUNT],
-          customFees.transfer,
-          '',
-        ),
-      );
-
-      const vestingAccountBalanceAfter = await vestingWallet.getBalance(
-        vestingWallet.address as string,
-        NATIVE_TOKEN_DENOM,
-      );
-
-      expect(BigInt(vestingAccountBalanceAfter.amount)).toBe(
-        BigInt(vestingAccountBalanceBefore.amount) -
-          BigInt(HALF_AMOUNT.amount) -
-          BigInt(customFees.transfer.amount[0].amount) * BigInt(2),
+      await verifyVestingAccountBalance(
+        vestingWallet,
+        expectedAmount.toString(),
       );
     });
 
-    test('try creation same continuous vesting account twice - should produce an error', async () => {
-      // create vesting account
+    test('create a continuous vesting account with StartTime in the past (non-native vesting) - should work as expected', async () => {
+      createVestingAccountMsg.startTime = Long.fromNumber(
+        new Date().getTime() / 1000 - ENDTIME_SECONDS,
+      );
+
       createVestingAccountMsg.endTime = Long.fromNumber(
         new Date().getTime() / 1000 + ENDTIME_SECONDS,
       );
 
-      const broadcastTx = await user1Wallet.signAndBroadcast(
-        user1Wallet.address as string,
+      createVestingAccountMsg.amount = [
+        {
+          denom: currencyTicker_To_IBC(process.env.LPP_BASE_CURRENCY as string),
+          amount: FULL_AMOUNT.amount,
+        },
+      ];
+
+      const vestingWallet = await createWallet();
+      createVestingAccountMsg.toAddress = vestingWallet.address as string;
+
+      await userWithBalanceWallet.signAndBroadcast(
+        userWithBalanceWallet.address as string,
         [encodedMsg],
         customFees.configs,
       );
-      expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
-      expect(broadcastTx.rawLog).toEqual(
-        `failed to execute message; message index: 0: account ${vestingWallet.address} already exists: invalid request`,
+
+      await verifyVestingAccountBalance(
+        vestingWallet,
+        FULL_AMOUNT.amount,
+        createVestingAccountMsg.amount[0].denom,
+      );
+
+      await sendInitTransferFeeTokens(
+        userWithBalanceWallet,
+        vestingWallet.address as string,
+      );
+
+      const transferHalfBalance = {
+        denom: currencyTicker_To_IBC(process.env.LPP_BASE_CURRENCY as string),
+        amount: HALF_AMOUNT.amount,
+      };
+
+      await vestingWallet.transferAmount(
+        userWithBalanceWallet.address as string,
+        [transferHalfBalance],
+        customFees.transfer,
+      );
+
+      await verifyVestingAccountBalance(
+        vestingWallet,
+        HALF_AMOUNT.amount,
+        createVestingAccountMsg.amount[0].denom,
+      );
+
+      await sleep(ENDTIME_SECONDS);
+
+      await sendInitTransferFeeTokens(
+        userWithBalanceWallet,
+        vestingWallet.address as string,
+      );
+
+      await vestingWallet.transferAmount(
+        userWithBalanceWallet.address as string,
+        [transferHalfBalance],
+        customFees.transfer,
+      );
+
+      await verifyVestingAccountBalance(
+        vestingWallet,
+        '0',
+        createVestingAccountMsg.amount[0].denom,
+      );
+    });
+
+    test('create a continuous vesting account with StartTime and EndTime in the past - should work as expected', async () => {
+      createVestingAccountMsg.startTime = Long.fromNumber(
+        new Date().getTime() / 1000 - ENDTIME_SECONDS,
+      );
+
+      createVestingAccountMsg.endTime = Long.fromNumber(
+        new Date().getTime() / 1000 - STARTTIME_SECONDS,
+      );
+
+      const vestingWallet = await createWallet();
+      createVestingAccountMsg.toAddress = vestingWallet.address as string;
+
+      await userWithBalanceWallet.signAndBroadcast(
+        userWithBalanceWallet.address as string,
+        [encodedMsg],
+        customFees.configs,
+      );
+
+      await verifyVestingAccountBalance(vestingWallet, FULL_AMOUNT.amount);
+
+      await sendInitTransferFeeTokens(
+        userWithBalanceWallet,
+        vestingWallet.address as string,
+      );
+
+      const sendFailTx = await vestingWallet.transferAmount(
+        userWithBalanceWallet.address as string,
+        [FULL_AMOUNT],
+        customFees.transfer,
+      );
+
+      expect(isDeliverTxFailure(sendFailTx)).toBeFalsy();
+
+      await verifyVestingAccountBalance(vestingWallet, '0');
+    });
+
+    test('try to create the same continuous vesting account twice - should produce an error', async () => {
+      const result: DeliverTxResponse =
+        await userWithBalanceWallet.signAndBroadcast(
+          userWithBalanceWallet.address as string,
+          [encodedMsg],
+          customFees.configs,
+        );
+
+      expect(result.rawLog).toContain(
+        `account ${vestingWallet.address} already exists`,
       );
     });
   },

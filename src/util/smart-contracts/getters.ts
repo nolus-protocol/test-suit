@@ -31,15 +31,15 @@ function getAttributeValueFromWasmRepayEvent(
 }
 
 export function getLeaseGroupCurrencies(): string[] {
-  return AssetUtils.getCurrenciesByGroup('Lease');
+  return AssetUtils.getCurrenciesByGroupTestnet('Lease');
 }
 
 export function getLpnGroupCurrencies(): string[] {
-  return AssetUtils.getCurrenciesByGroup('Lpn');
+  return AssetUtils.getCurrenciesByGroupTestnet('Lpn');
 }
 
 export function getPaymentGroupCurrencies(): string[] {
-  return AssetUtils.getCurrenciesByGroup('Payment');
+  return AssetUtils.getCurrenciesByGroupTestnet('Payment');
 }
 
 export function getLeaseAddressFromOpenLeaseResponse(
