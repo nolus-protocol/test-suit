@@ -91,7 +91,8 @@ export async function waitLeaseInProgressToBeNull(
     if (
       fullState.opened?.in_progress === null ||
       fullState.paid?.in_progress === null ||
-      fullState.closed
+      fullState.closed ||
+      fullState.liquidated
     ) {
       console.log('Lease state in_progress = null!');
       return undefined;
