@@ -102,9 +102,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await userWithBalanceWallet.transferAmount(
         payerWallet.address as string,
-        [payment, defaultTip],
+        [payment],
         customFees.transfer,
       );
+
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
         payerWallet.address as string,
@@ -118,10 +119,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         lppCurrencyToIBC,
       );
 
-      await leaseInstance.repayLease(payerWallet, customFees.exec, [
-        payment,
-        defaultTip,
-      ]);
+      await userWithBalanceWallet.transferAmount(
+        leaseAddress as string,
+        [defaultTip],
+        customFees.transfer,
+      );
+
+      await leaseInstance.repayLease(payerWallet, customFees.exec, [payment]);
 
       expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
 
@@ -180,12 +184,17 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         BigInt(leaseStateBeforeRepay.principal_due.amount) - principalPaid,
       );
 
+      const transferredAmount =
+        payment.denom === NATIVE_MINIMAL_DENOM
+          ? addCoins(payment, customFees.exec.amount[0])
+          : payment;
+
       await verifyTransferAfterRepay(
         payerWallet,
         BigInt(payerBalanceBeforeRepay.amount),
         BigInt(profitBalanceBeforeRepay.amount),
         paymentCurrencyToIBC,
-        payment,
+        transferredAmount,
         BigInt(marginInterestPaid),
       );
 
@@ -203,15 +212,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
 
       if (+payment.amount > 0) {
-        let paymentList: Coin[];
-
-        if (payment.denom === defaultTip.denom)
-          paymentList = [addCoins(payment, defaultTip)];
-        else paymentList = [payment, defaultTip];
-
         await userWithBalanceWallet.transferAmount(
           borrowerWallet.address as string,
-          paymentList,
+          [payment, defaultTip],
           customFees.transfer,
         );
       }
@@ -358,6 +361,48 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
+    test('the successful lease repayment scenario - payment currency === native - should work as expected', async () => {
+      const leaseStateBeforeThirdRepay = (await leaseInstance.getLeaseStatus())
+        .opened;
+
+      expect(leaseStateBeforeThirdRepay).toBeDefined();
+
+      if (!leaseStateBeforeThirdRepay) {
+        undefinedHandler();
+        return;
+      }
+
+      paymentCurrency = NATIVE_TICKER;
+      paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
+
+      const paymentAmountLPN =
+        +leaseStateBeforeThirdRepay.principal_due.amount / 2;
+
+      const paymentCurrencyPriceObj = await oracleInstance.getPriceFor(
+        paymentCurrency,
+      );
+
+      const [
+        minToleranceCurrencyPrice,
+        exactCurrencyPrice,
+        maxToleranceCurrencyPrice,
+      ] = currencyPriceObjToNumbers(paymentCurrencyPriceObj, 1);
+
+      const paymentAmount = Math.trunc(paymentAmountLPN * exactCurrencyPrice);
+      expect(paymentAmount).toBeGreaterThan(0);
+
+      const secondPayment = {
+        denom: paymentCurrencyToIBC,
+        amount: paymentAmount.toString(),
+      };
+
+      await testRepayment(
+        borrowerWallet,
+        leaseStateBeforeThirdRepay,
+        secondPayment,
+      );
+    });
+
     test('the borrower tries to pay a lease with more amount than he owns - should produce an error', async () => {
       const forBalance = 5;
 
@@ -406,9 +451,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    // TO DO: update PaymentCurrency && error msg
+    // TO DO
     // test('the borrower tries to pay a lease with unsupported payment currency- should produce an error', async () => {
-    //   const invalidPaymentCurrency = NATIVE_MINIMAL_DENOM;
+    //   const invalidPaymentCurrency = ???;
 
     //   await testRepaymentWithInvalidParams(
     //     { denom: invalidPaymentCurrency, amount: '11' },

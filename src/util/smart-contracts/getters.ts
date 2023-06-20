@@ -4,6 +4,7 @@ import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
 import { Event, TxResponse } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
 import { undefinedHandler } from '../utils';
+import { GROUPS } from '@nolus/nolusjs/build/types/Networks';
 
 const textDecoder = new TextDecoder();
 
@@ -30,16 +31,30 @@ function getAttributeValueFromWasmRepayEvent(
   );
 }
 
-export function getLeaseGroupCurrencies(): string[] {
-  return AssetUtils.getCurrenciesByGroupTestnet('Lease');
+export function getLeaseGroupCurrencies(): string[] | string {
+  return AssetUtils.getCurrenciesByGroupTestnet(GROUPS.Lease);
 }
 
-export function getLpnGroupCurrencies(): string[] {
-  return AssetUtils.getCurrenciesByGroupTestnet('Lpn');
+export function getLpnGroupCurrencies(): string[] | string {
+  return AssetUtils.getCurrenciesByGroupTestnet(GROUPS.Lpn);
+}
+
+export function getNativeGroupCurrencies(): string[] | string {
+  return AssetUtils.getCurrenciesByGroupTestnet(GROUPS.Native);
 }
 
 export function getPaymentGroupCurrencies(): string[] {
-  return AssetUtils.getCurrenciesByGroupTestnet('Payment');
+  const nativeCurrency = getNativeGroupCurrencies();
+  const lpnCurrencies = getLpnGroupCurrencies();
+  const leaseCurrencies = getLeaseGroupCurrencies();
+
+  const allCurencies: string[] = ([] as string[]).concat(
+    Array.isArray(nativeCurrency) ? nativeCurrency : [nativeCurrency],
+    Array.isArray(lpnCurrencies) ? lpnCurrencies : [lpnCurrencies],
+    Array.isArray(leaseCurrencies) ? leaseCurrencies : [leaseCurrencies],
+  );
+
+  return allCurencies;
 }
 
 export function getLeaseAddressFromOpenLeaseResponse(
@@ -73,7 +88,7 @@ export function getTotalPaidFromRepayTx(response: TxResponse): bigint {
 export function getMarginPaidTimeFromRawState(rawState: Uint8Array): bigint {
   return BigInt(
     JSON.parse(fromUtf8(rawState)).OpenedActive.lease.lease.loan.current_period
-      .start,
+      .period.start,
   );
 }
 

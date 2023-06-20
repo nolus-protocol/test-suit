@@ -7,7 +7,6 @@ import {
   defaultTip,
   NATIVE_MINIMAL_DENOM,
   NATIVE_TICKER,
-  noProvidedPriceFor,
   undefinedHandler,
 } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
@@ -23,15 +22,16 @@ import {
   getCurrencyOtherThan,
   getLeaseAddressFromOpenLeaseResponse,
   getLeaseGroupCurrencies,
-  getPaymentGroupCurrencies,
 } from '../util/smart-contracts/getters';
 import {
   checkLeaseBalance,
+  findPriceLowerThanOneLPN,
   returnAmountToTheMainAccount,
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
+import { addCoins, Coin } from '@cosmjs/amino';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Open a lease',
@@ -63,11 +63,27 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       downpaymentCurrencyToIBC: string,
       ltd?: number,
     ) {
+      let fundsList: Coin[];
+
+      if (downpaymentCurrencyToIBC === defaultTip.denom)
+        fundsList = [
+          addCoins(
+            { denom: downpaymentCurrencyToIBC, amount: downpayment },
+            defaultTip,
+          ),
+        ];
+      else {
+        fundsList = [
+          { denom: downpaymentCurrencyToIBC, amount: downpayment },
+          defaultTip,
+        ];
+      }
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
+        fundsList,
         customFees.transfer,
       );
+
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
         borrowerWallet.address as string,
@@ -394,7 +410,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const currentDownpaymentCurrency = getCurrencyOtherThan([
         currentLeaseCurrency,
         lppCurrency,
+        NATIVE_TICKER,
       ]);
+
       expect(currentDownpaymentCurrency).not.toBe('undefined');
 
       const currentDownpaymentCurrencyToIBC = currencyTicker_To_IBC(
@@ -407,6 +425,24 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         currentDownpaymentCurrencyToIBC,
       );
     });
+
+    // TO DO - issue: duplicate denomination
+    // test('the successful scenario for opening a lease - downpayment currency === native - should work as expected', async () => {
+    //   const currentLeaseCurrency = leaseCurrency;
+    //   const currentDownpaymentCurrency = NATIVE_TICKER;
+
+    //   expect(currentDownpaymentCurrency).not.toBe('undefined');
+
+    //   const currentDownpaymentCurrencyToIBC = currencyTicker_To_IBC(
+    //     currentDownpaymentCurrency,
+    //   );
+
+    //   await testOpening(
+    //     currentLeaseCurrency,
+    //     currentDownpaymentCurrency,
+    //     currentDownpaymentCurrencyToIBC,
+    //   );
+    // });
 
     test('the successful scenario for opening a lease - downpayment currency === lease currency- should work as expected', async () => {
       // !!! leaseCurrency balance > 0 is required for the main account
@@ -448,7 +484,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         `Found currency '${lppCurrency}' which is not defined in the lease currency group`,
       );
 
-      // TO DO - update paymentOnlyCurrency when we have one
       const paymentOnlyCurrency = NATIVE_TICKER;
       await testOpeningWithInvalidParams(
         paymentOnlyCurrency,
@@ -484,29 +519,18 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     // );
 
     // runTestIfLocal(
-    //   'the borrower tries to open a lease with unsupported down payment currency - should produce an error',
+    //   'the borrower tries to open a lease with an insufficient down payment (<1LPN) - should produce an error',
     //   async () => {
-    //     await testOpeningWithInvalidParams(
-    //       leaseCurrency,
-    //       'unls',
-    //       '10',
-    //       `Found currency unsupported which is not defined in the payment currency group`,
-    //     );
+    //     const dpCurrency = await findPriceLowerThanOneLPN(oracleInstance);
+    //     if (typeof dpCurrency != 'undefined') {
+    //       await testOpeningWithInvalidParams(
+    //         dpCurrency,
+    //         downpaymentCurrencyToIBC,
+    //         '1',
+    //         'TO DO',
+    //       );
+    //     }
     //   },
-    // );
-
-    // TO DO - issue #40
-    // runTestIfLocal(
-    //   'the borrower tries to open a lease  with an insufficient down payment (<1LPN) - should produce an error',
-    // const dpCurrency = await findPriceLowerThanOneLPN(oracleInstance);
-    // if (typeof dpCurrency != 'undefined') {
-    //   await testOpeningWithInvalidParams(
-    //     dpCurrency,
-    //     downpaymentCurrencyToIBC,
-    //     '1',
-    //     'TO DO',
-    //   );
-    // }
     // );
 
     test('the borrower tries to open a lease with 0 down payment - should produce an error', async () => {
