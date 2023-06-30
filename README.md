@@ -84,3 +84,5 @@ yarn run fund-main-account <mnemonic_of_osmosis_account_you_have_preloaded> <add
 ```sh
 yarn test
 ```
+
+* In **manually/** can be found tests which require specific configuration to work as expected. They require to be run in isolation. The requirements can be found in the relevant files there.
