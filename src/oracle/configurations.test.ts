@@ -16,7 +16,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     let oracleInstance: NolusContracts.Oracle;
     let initConfig: OracleConfig;
     let baseAsset: string;
-    let leaseCurrencies: string[];
+    let leaseCurrencies: string[] | string;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
     async function trySendPropToUpdateConfig(
