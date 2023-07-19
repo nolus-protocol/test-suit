@@ -8,7 +8,7 @@ import { GROUPS } from '@nolus/nolusjs/build/types/Networks';
 
 const textDecoder = new TextDecoder();
 
-function findWasmEventPosition(response: any, eType: string): number {
+export function findWasmEventPosition(response: any, eType: string): number {
   const events = response.events;
   const index = events.findIndex((e: Event) => e.type === eType);
 
