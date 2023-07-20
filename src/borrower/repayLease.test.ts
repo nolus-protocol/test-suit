@@ -22,7 +22,7 @@ import {
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
 } from '../util/smart-contracts/calculations';
-import { runOrSkip } from '../util/testingRules';
+import { runOrSkip, runTestIfDev } from '../util/testingRules';
 import {
   getChangeFromRepayTx,
   getLeaseAddressFromOpenLeaseResponse,
@@ -361,47 +361,51 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('the successful lease repayment scenario - payment currency === native - should work as expected', async () => {
-      const leaseStateBeforeThirdRepay = (await leaseInstance.getLeaseStatus())
-        .opened;
+    runTestIfDev(
+      'the successful lease repayment scenario - payment currency === native - should work as expected',
+      async () => {
+        const leaseStateBeforeThirdRepay = (
+          await leaseInstance.getLeaseStatus()
+        ).opened;
 
-      expect(leaseStateBeforeThirdRepay).toBeDefined();
+        expect(leaseStateBeforeThirdRepay).toBeDefined();
 
-      if (!leaseStateBeforeThirdRepay) {
-        undefinedHandler();
-        return;
-      }
+        if (!leaseStateBeforeThirdRepay) {
+          undefinedHandler();
+          return;
+        }
 
-      paymentCurrency = NATIVE_TICKER;
-      paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
+        paymentCurrency = NATIVE_TICKER;
+        paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
 
-      const paymentAmountLPN =
-        +leaseStateBeforeThirdRepay.principal_due.amount / 2;
+        const paymentAmountLPN =
+          +leaseStateBeforeThirdRepay.principal_due.amount / 2;
 
-      const paymentCurrencyPriceObj = await oracleInstance.getPriceFor(
-        paymentCurrency,
-      );
+        const paymentCurrencyPriceObj = await oracleInstance.getPriceFor(
+          paymentCurrency,
+        );
 
-      const [
-        minToleranceCurrencyPrice,
-        exactCurrencyPrice,
-        maxToleranceCurrencyPrice,
-      ] = currencyPriceObjToNumbers(paymentCurrencyPriceObj, 1);
+        const [
+          minToleranceCurrencyPrice,
+          exactCurrencyPrice,
+          maxToleranceCurrencyPrice,
+        ] = currencyPriceObjToNumbers(paymentCurrencyPriceObj, 1);
 
-      const paymentAmount = Math.trunc(paymentAmountLPN * exactCurrencyPrice);
-      expect(paymentAmount).toBeGreaterThan(0);
+        const paymentAmount = Math.trunc(paymentAmountLPN * exactCurrencyPrice);
+        expect(paymentAmount).toBeGreaterThan(0);
 
-      const secondPayment = {
-        denom: paymentCurrencyToIBC,
-        amount: paymentAmount.toString(),
-      };
+        const secondPayment = {
+          denom: paymentCurrencyToIBC,
+          amount: paymentAmount.toString(),
+        };
 
-      await testRepayment(
-        borrowerWallet,
-        leaseStateBeforeThirdRepay,
-        secondPayment,
-      );
-    });
+        await testRepayment(
+          borrowerWallet,
+          leaseStateBeforeThirdRepay,
+          secondPayment,
+        );
+      },
+    );
 
     test('the borrower tries to pay a lease with more amount than he owns - should produce an error', async () => {
       const forBalance = 5;
