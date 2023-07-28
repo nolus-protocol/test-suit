@@ -1,32 +1,39 @@
 import { TextDecoder } from 'node:util';
-import { AssetUtils } from '@nolus/nolusjs';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
 import { Event, TxResponse } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
-import { undefinedHandler } from '../utils';
 import { GROUPS } from '@nolus/nolusjs/build/types/Networks';
+import { AssetUtils } from '@nolus/nolusjs';
+import { undefinedHandler } from '../utils';
 
 const textDecoder = new TextDecoder();
 
-export function findWasmEventPosition(response: any, eType: string): number {
+export function findWasmEventPositions(response: any, eType: string): number[] {
   const events = response.events;
-  const index = events.findIndex((e: Event) => e.type === eType);
+  const indexes: number[] = [];
 
-  return index;
+  events.forEach((element: Event, index: number) => {
+    if (element.type === eType) {
+      indexes.push(index);
+    }
+  });
+
+  return indexes;
 }
 
 function getAttributeValueFromWasmRepayEvent(
   response: TxResponse,
   attributeIndex: number,
 ): bigint {
-  const wasmEventIndex = findWasmEventPosition(
+  const wasmEventIndex = findWasmEventPositions(
     response.result,
     'wasm-ls-repay',
   );
 
   return BigInt(
     textDecoder.decode(
-      response.result.events[wasmEventIndex].attributes[attributeIndex].value,
+      response.result.events[wasmEventIndex[0]].attributes[attributeIndex]
+        .value,
     ),
   );
 }
@@ -60,9 +67,9 @@ export function getPaymentGroupCurrencies(): string[] {
 export function getLeaseAddressFromOpenLeaseResponse(
   response: ExecuteResult,
 ): string {
-  const wasmEventIndex = findWasmEventPosition(response, 'wasm');
+  const wasmEventIndex = findWasmEventPositions(response, 'wasm');
 
-  return response.events[wasmEventIndex].attributes[1].value;
+  return response.events[wasmEventIndex[0]].attributes[1].value;
 }
 
 export function getMarginInterestPaidFromRepayTx(response: TxResponse): bigint {
