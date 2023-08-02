@@ -24,13 +24,16 @@ import {
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
 
-// These tests require the network to be configured with leaser specific config:
-// Suitable values are :
-// {...,"lease_interest_rate_margin":10000000,"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},......,"lease_interest_payment":{"due_period":60000000000,"grace_period":30000000000}}
-// TO DO: minLeaseValueLPN and allowablePeviousInterestLPN in the leaser config
+// These tests require the network to be configured with Leaser specific config
 // That`s why, they are only executed locally and in isolation, and only if this requirement is met!
+// Suitable values are :
+// - for the Leaser - {...,"lease_interest_rate_margin":10000000,"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},......,"lease_interest_payment":{"due_period":60000000000,"grace_period":30000000000}}
+// TO DO: minLeaseValueLPN and allowablePeviousInterestLPN in the Leaser config
+// - working dispatcher
+// - working feeder
 
-// Before running, update alarmDispatcherPeriod(secs) below = the 'poll_period_seconds' value from the alarms-dispatcher config + 5 !
+// Before running -> update:
+// - "alarmDispatcherPeriod" = configured "poll_period_seconds" + 5 /take from the alarms-dispatcher bot config/
 describe('Lease - Time Liquidation tests', () => {
   let cosm: CosmWasmClient;
   let borrowerWallet: NolusWallet;
