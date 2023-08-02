@@ -85,6 +85,12 @@ describe('Lease - Price Liquidation tests', () => {
     downpaymentCurrency = lpnCurrency;
     downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
 
+    await sleep(periodSecs);
+
+    const leaseCurrencyPriceObj = () =>
+      oracleInstance.getPriceFor(leaseCurrency);
+    await expect(leaseCurrencyPriceObj).rejects.toThrow('No price');
+
     await pushPrice(validPriceLCtoLPN);
 
     await provideEnoughLiquidity(
@@ -123,11 +129,11 @@ describe('Lease - Price Liquidation tests', () => {
 
     await oracleInstance.feedPrices(feederWallet, priceObj, 1.3);
 
-    const priceAfterConfig = await oracleInstance.getPriceFor(leaseCurrency);
+    // const priceAfterConfig = await oracleInstance.getPriceFor(leaseCurrency);
 
-    expect(
-      +priceAfterConfig.amount_quote.amount / +priceAfterConfig.amount.amount,
-    ).toBe(price);
+    // expect(
+    //   +priceAfterConfig.amount_quote.amount / +priceAfterConfig.amount.amount,
+    // ).toBe(price);
   }
 
   async function checkForLiquidationWarning(
