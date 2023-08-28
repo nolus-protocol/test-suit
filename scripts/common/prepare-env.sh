@@ -78,6 +78,8 @@ if [ -n "$active_lease_address" ] && [ "$test_borrower" != "false" ] ; then
   test_interest=true
 fi
 
+local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"deposit_capacity":[]}' --output json --node "$node_url"  | jq '.data.amount' | tr -d '"')
+
 # Save the results
 
 DOT_ENV=$(cat <<-EOF
@@ -102,6 +104,8 @@ DISPATCHER_ADDRESS=${dispatcher_address}
 PROFIT_ADDRESS=${profit_address}
 
 ACTIVE_LEASE_ADDRESS=${active_lease_address}
+
+LENDER_DEPOSIT_CAPACITY=${lender_deposit_capacity}
 
 TEST_TRANSFER=${test_transfers}
 TEST_ORACLE=${test_oracle}

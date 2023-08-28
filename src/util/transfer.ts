@@ -35,12 +35,19 @@ export async function returnRestToMainAccount(
     sender.address as string,
     denom,
   );
+
+  await sendInitTransferFeeTokens(mainAccount, sender.address as string);
+
   const amount = {
-    amount: (
-      BigInt(senderBalance.amount) -
-      BigInt(customFees.transfer.amount[0].amount)
-    ).toString(),
+    amount: senderBalance.amount.toString(),
     denom: denom,
   };
-  await sender.transferAmount(mainAccount.address as string, [amount], 1.3);
+
+  if (+amount.amount > 0) {
+    await sender.transferAmount(
+      mainAccount.address as string,
+      [amount],
+      customFees.transfer,
+    );
+  }
 }

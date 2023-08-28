@@ -1,4 +1,5 @@
 import { NolusContracts, AssetUtils } from '@nolus/nolusjs';
+import { LppBalance } from '@nolus/nolusjs/build/contracts';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
 import { TONANOSEC } from '../utils';
 
@@ -86,6 +87,18 @@ export function NLPNS_To_LPNS(nlpns: number, price: Price): bigint {
   );
 
   return BigInt(result);
+}
+
+export function calcDepositCapacity(
+  minUtilization: number,
+  lppBalance: LppBalance,
+): number {
+  const totalDue =
+    +lppBalance.total_principal_due.amount +
+    +lppBalance.total_interest_due.amount;
+  const balance = +lppBalance.balance.amount;
+
+  return (totalDue * 100) / (minUtilization / 10) - balance - totalDue;
 }
 
 export function currencyTicker_To_IBC(ticker: string): string {
