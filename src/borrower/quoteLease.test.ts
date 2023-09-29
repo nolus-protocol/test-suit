@@ -62,7 +62,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         lppConfig.borrow_rate.addon_optimal_interest_rate / PERMILLE_TO_PERCENT; //%
 
       const leaserConfig = await leaserInstance.getLeaserConfig();
-      liabilityInitialPercent = +leaserConfig.config.liability.initial;
+      liabilityInitialPercent =
+        +leaserConfig.config.lease_position_spec.liability.initial;
 
       await provideEnoughLiquidity(
         leaserInstance,
@@ -218,7 +219,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const quoteQueryResult = () =>
         leaserInstance.leaseQuote('100', invalidPaymentCurrency, leaseCurrency);
       await expect(quoteQueryResult).rejects.toThrow(
-        /^.*Unknown currency symbol: \"unsupported\".*/,
+        `Found a symbol '${invalidPaymentCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
       );
     });
 
@@ -235,7 +236,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       async () => {
         const leaseCurrencyPriceObj = () =>
           oracleInstance.getPriceFor(noProvidedPriceFor);
-        await expect(leaseCurrencyPriceObj).rejects.toThrow('No price');
+        await expect(leaseCurrencyPriceObj).rejects.toThrow(
+          `Unsupported currency '${noProvidedPriceFor}'`,
+        );
 
         const quoteQueryResult = () =>
           leaserInstance.leaseQuote(

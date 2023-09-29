@@ -34,7 +34,7 @@ import {
 
 // Before running -> update:
 // - "alarmDispatcherPeriod" = configured "poll_period_seconds" + 5 /take from the alarms-dispatcher bot config/
-describe('Lease - Time Liquidation tests', () => {
+describe.skip('Lease - Time Liquidation tests', () => {
   let cosm: CosmWasmClient;
   let borrowerWallet: NolusWallet;
   let userWithBalanceWallet: NolusWallet;
@@ -61,6 +61,10 @@ describe('Lease - Time Liquidation tests', () => {
     leaseInstance: Lease,
     stateBefore: LeaseStatus,
   ) {
+    const leasesBefore = await leaserInstance.getCurrentOpenLeasesByOwner(
+      borrowerWallet.address as string,
+    );
+
     await sleep(mainPeriod);
 
     const stateAfterMainPeriod = (await leaseInstance.getLeaseStatus()).opened;
@@ -120,6 +124,11 @@ describe('Lease - Time Liquidation tests', () => {
       minLeaseValueLPN
     ) {
       expect(stateAfterGracePeriod.liquidated).toBeDefined();
+
+      const leasesAfter = await leaserInstance.getCurrentOpenLeasesByOwner(
+        borrowerWallet.address as string,
+      );
+      expect(leasesAfter.length).toEqual(leasesBefore.length - 1);
     } else {
       if (!stateAfterGracePeriod.opened) {
         undefinedHandler();

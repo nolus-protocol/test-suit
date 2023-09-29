@@ -34,7 +34,7 @@ const textDecoder = new TextDecoder();
 // - "alarmDispatcherPeriod" = configured "poll_period_seconds" + 5 /take from the alarms-dispatcher bot config/
 // - check and fill "validPriceLCtoLPN" (LC = "leaseCurrency")
 // - "periodSecs" = configured "sample_period_secs" /take from the Oracle smart contract config/
-describe('Lease - Price Liquidation tests', () => {
+describe.skip('Lease - Price Liquidation tests', () => {
   let cosm: CosmWasmClient;
   let borrowerWallet: NolusWallet;
   let userWithBalanceWallet: NolusWallet;
@@ -75,10 +75,13 @@ describe('Lease - Price Liquidation tests', () => {
     feederWallet = await getFeederWallet();
 
     leaserConfig = await leaserInstance.getLeaserConfig();
-    maxLiability = leaserConfig.config.liability.max;
-    w1Liability = leaserConfig.config.liability.first_liq_warn;
-    w2Liability = leaserConfig.config.liability.second_liq_warn;
-    w3Liability = leaserConfig.config.liability.third_liq_warn;
+    maxLiability = leaserConfig.config.lease_position_spec.liability.max;
+    w1Liability =
+      leaserConfig.config.lease_position_spec.liability.first_liq_warn;
+    w2Liability =
+      leaserConfig.config.lease_position_spec.liability.second_liq_warn;
+    w3Liability =
+      leaserConfig.config.lease_position_spec.liability.third_liq_warn;
 
     const lppConfig = await lppInstance.getLppConfig();
     lpnCurrency = lppConfig.lpn_ticker;
@@ -207,6 +210,10 @@ describe('Lease - Price Liquidation tests', () => {
     const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
     expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
 
+    const leasesBefore = await leaserInstance.getCurrentOpenLeasesByOwner(
+      borrowerWallet.address as string,
+    );
+
     await sendInitExecuteFeeTokens(
       userWithBalanceWallet,
       borrowerWallet.address as string,
@@ -256,6 +263,11 @@ describe('Lease - Price Liquidation tests', () => {
       );
     } else {
       expect(stateAfterLiquidation.liquidated).toBeDefined();
+
+      const leasesAfter = await leaserInstance.getCurrentOpenLeasesByOwner(
+        borrowerWallet.address as string,
+      );
+      expect(leasesAfter.length).toEqual(leasesBefore.length - 1);
     }
   });
 });

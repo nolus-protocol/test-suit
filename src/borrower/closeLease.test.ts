@@ -120,7 +120,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         `The operation 'close' is not supported in the current state`,
       );
 
-      // make a payment and try again
       const payment = {
         denom: downpaymentCurrencyToIBC,
         amount: downpayment, // amount < principal
@@ -154,16 +153,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         `The operation 'close' is not supported in the current state`,
       );
     });
-
-    // TO DO: issue #78 - https://github.com/nolus-protocol/nolus-money-market/issues/78
-    // test('an unauthorized user tries to close the lease - should produce an error', async () => {
-    //   const unauthorizedUserWallet = await createWallet();
-
-    //   const leaseState = await leaseInstance.getLeaseStatus();
-    //   expect(leaseState.opened).toBeDefined();
-
-    //   await testCloseInvalidCases(unauthorizedUserWallet, 'Unauthorized');
-    // });
 
     test('the successful scenario for lease closing - should work as expected', async () => {
       const borrowerBalanceBefore = await borrowerWallet.getBalance(
@@ -209,11 +198,19 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const leaseStateAfterRepay = await leaseInstance.getLeaseStatus();
       expect(leaseStateAfterRepay.paid).toBeDefined();
 
+      // // // TO DO: issue #78 - https://github.com/nolus-protocol/nolus-money-market/issues/78
+      // // an unauthorized user tries to close the lease
+      // const unauthorizedUserWallet = await createWallet();
+
+      // const leaseState = await leaseInstance.getLeaseStatus();
+      // expect(leaseState.opened).toBeDefined();
+
+      // await testCloseInvalidCases(unauthorizedUserWallet, 'Unauthorized');
+
       const leasesAfterRepay = await leaserInstance.getCurrentOpenLeasesByOwner(
         borrowerWallet.address as string,
       );
 
-      // close
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
         borrowerWallet.address as string,
@@ -234,7 +231,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
-      expect(leasesAfterClose.length).toEqual(leasesAfterRepay.length);
+      expect(leasesAfterClose.length).toEqual(leasesAfterRepay.length - 1);
 
       const leaseStateAfterClose = await leaseInstance.getLeaseStatus();
       expect(leaseStateAfterClose.closed).toBeDefined();
@@ -254,10 +251,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         downpaymentCurrency,
       ]);
       expect(leaseBalances).toBe(false);
+
+      await returnAmountToTheMainAccount(borrowerWallet, leaseCurrencyToIBC);
     });
 
     test('the borrower tries to close the already closed lease - should produce an error', async () => {
-      // mainLease is now closed due to the previous test
       await testCloseInvalidCases(
         borrowerWallet,
         `The operation 'close' is not supported in the current state`,

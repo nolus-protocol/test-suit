@@ -7,6 +7,7 @@ import {
   defaultTip,
   NATIVE_MINIMAL_DENOM,
   NATIVE_TICKER,
+  noProvidedPriceFor,
   undefinedHandler,
 } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
@@ -22,6 +23,8 @@ import {
   getCurrencyOtherThan,
   getLeaseAddressFromOpenLeaseResponse,
   getLeaseGroupCurrencies,
+  getLpnGroupCurrencies,
+  getNativeGroupCurrencies,
 } from '../util/smart-contracts/getters';
 import {
   checkLeaseBalance,
@@ -209,7 +212,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           calcBorrowLTD(downpaymentToLPN_max, ltd),
         );
       } else {
-        const initPercent = +leaserConfig.config.liability.initial;
+        const initPercent =
+          +leaserConfig.config.lease_position_spec.liability.initial;
 
         calcBorrowAmount_max = Math.trunc(
           calcBorrowLTV(downpaymentToLPN_min, initPercent),
@@ -466,7 +470,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         currentDownpaymentCurrency,
       );
 
-      const maxLTD = LTVtoLTD(+leaserConfig.config.liability.initial) - 100; // -10%
+      const maxLTD =
+        LTVtoLTD(+leaserConfig.config.lease_position_spec.liability.initial) -
+        100; // -10%
 
       await testOpening(
         currentLeaseCurrency,
@@ -481,7 +487,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         lppCurrency,
         downpaymentCurrencyToIBC,
         '10',
-        `Found currency '${lppCurrency}' which is not defined in the lease currency group`,
+        `Found a symbol '${lppCurrency}' pretending to be ticker of a currency pertaining to the lease group`,
       );
 
       const paymentOnlyCurrency = NATIVE_TICKER;
@@ -489,7 +495,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         paymentOnlyCurrency,
         downpaymentCurrencyToIBC,
         '10',
-        `Found currency '${paymentOnlyCurrency}' which is not defined in the lease currency group`,
+        `Found a symbol '${paymentOnlyCurrency}' pretending to be ticker of a currency pertaining to the lease group`,
       );
     });
 
@@ -499,7 +505,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     //   async () => {
     //     const leaseCurrencyPriceObj = () =>
     //       oracleInstance.getPriceFor(noProvidedPriceFor);
-    //     await expect(leaseCurrencyPriceObj).rejects.toThrow('No price');
+    //     await expect(leaseCurrencyPriceObj).rejects.toThrow(
+    //       `Unsupported currency '${noProvidedPriceFor}'`,
+    //     );
 
     //     await testOpeningWithInvalidParams(
     //       noProvidedPriceFor,
@@ -507,29 +515,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     //       '10',
     //       `TO DO`,
     //     );
-
-    //     // TO DO - no down payment currency price (when we have >1 onlyPaymentsCurrencies in the list of supported currencies)
-    //     // await testOpeningWithInvalidParams(
-    //     //   leaseCurrency,
-    //     //   noProvidedPriceForPaymentOnly,
-    //     //   '10',
-    //     //   `TO DO`,
-    //     // );
-    //   },
-    // );
-
-    // runTestIfLocal(
-    //   'the borrower tries to open a lease with an insufficient down payment (<1LPN) - should produce an error',
-    //   async () => {
-    //     const dpCurrency = await findPriceLowerThanOneLPN(oracleInstance);
-    //     if (typeof dpCurrency != 'undefined') {
-    //       await testOpeningWithInvalidParams(
-    //         dpCurrency,
-    //         downpaymentCurrencyToIBC,
-    //         '1',
-    //         'TO DO',
-    //       );
-    //     }
     //   },
     // );
 
