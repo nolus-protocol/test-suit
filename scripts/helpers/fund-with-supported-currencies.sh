@@ -19,7 +19,7 @@ LEASER_CONTRACT_ADDRESS="nolus1wn625s4jcmvk0szpl85rj5azkfc6suyvf75q6vrddscjdphtv
 declare -A  CURRENCY1=(
     [denom]="ibc/6F34E1BD664C36CE49ACC28E60D62559A5F96C4F9A6CCE4FC5A67B2852E24CFE"
     [pool_id]="5"
-    [amount]="1000000"
+    [amount]="100000"
 )
 
 #ATOM
@@ -127,7 +127,7 @@ source "$SCRIPT_DIR"/common/cmd.sh
   declare swapped_token
   for currency in ${!CURRENCY@}; do
   if [ "${currency[denom]}" != "uosmo" ]; then
-    swapped_token=$(echo 'y' | osmosisd tx gamm swap-exact-amount-in "${currency[amount]}"uosmo 100000 --swap-route-denoms "${currency[denom]}" --swap-route-pool-ids "${currency[pool_id]}" $FLAGS --output json | jq '.events[16].attributes[4].value | @base64d' | tr -d '"')
+    swapped_token=$(echo 'y' | osmosisd tx gamm swap-exact-amount-in "${currency[amount]}"uosmo 10000 --swap-route-denoms "${currency[denom]}" --swap-route-pool-ids "${currency[pool_id]}" $FLAGS --output json | jq '.events[20].attributes[4].value | @base64d' | tr -d '"')
   else
     swapped_token=${currency[amount]}${currency[denom]}
   fi
