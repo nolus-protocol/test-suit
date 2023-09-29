@@ -128,12 +128,13 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     });
 
     test('try to update swap paths with unsupported currencies - should produce an error', async () => {
+      const invalidCurrency = 'A';
       const newSwapTree: SwapTree = {
         tree: {
           value: [0, baseAsset],
           children: [
             {
-              value: [1, 'A'],
+              value: [1, invalidCurrency],
             },
           ],
         },
@@ -142,7 +143,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       await trySendPropToUpdateSwapTree(
         wallet,
         newSwapTree,
-        'not defined in the payment currency group',
+        `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
       );
     });
 
