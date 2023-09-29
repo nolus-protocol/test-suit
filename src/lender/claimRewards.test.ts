@@ -251,7 +251,7 @@ maybe('Lender tests - Claim rewards', () => {
     const rewards = { amount: '10', denom: lppCurrencyToIBC };
 
     await testDistributeRewardsInvalidCases(
-      `Found bank symbol '${lppCurrencyToIBC}' expecting '${NATIVE_MINIMAL_DENOM}'`,
+      `Found a symbol '${lppCurrencyToIBC}' pretending to be the bank symbol of the currency with ticker '${NATIVE_TICKER}'`,
       rewards,
     );
   });
