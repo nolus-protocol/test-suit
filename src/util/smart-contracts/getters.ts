@@ -39,15 +39,15 @@ function getAttributeValueFromWasmRepayEvent(
 }
 
 export function getLeaseGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupTestnet(GROUPS.Lease);
+  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lease);
 }
 
 export function getLpnGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupTestnet(GROUPS.Lpn);
+  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lpn);
 }
 
 export function getNativeGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupTestnet(GROUPS.Native);
+  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Native);
 }
 
 export function getPaymentGroupCurrencies(): string[] {

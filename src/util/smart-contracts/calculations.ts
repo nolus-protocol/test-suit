@@ -102,7 +102,7 @@ export function calcDepositCapacity(
 }
 
 export function currencyTicker_To_IBC(ticker: string): string {
-  return AssetUtils.makeIBCMinimalDenomTestnet(ticker);
+  return AssetUtils.makeIBCMinimalDenomDevnet(ticker);
 }
 
 export function currencyPriceObjToNumbers(
