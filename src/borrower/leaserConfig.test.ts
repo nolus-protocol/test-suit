@@ -4,6 +4,7 @@ import { runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
 import { customFees } from '../util/utils';
 import { sendSudoContractProposal } from '../util/gov';
+import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Leaser contract tests - Config',
@@ -152,6 +153,39 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         oneHourToNanosec - 1;
 
       await trySendPropToSetConfig('Recalculation cadence should be >= 1h');
+    });
+
+    test('try to set min_asset amount = 0 - should produce an error', async () => {
+      leaserConfigMsg.config.lease_position_spec.min_asset = {
+        amount: '0',
+        ticker: 'USDC',
+      };
+
+      await trySendPropToSetConfig('Min asset amount should be positive');
+    });
+
+    test('try to set min_asset ticker != LPN - should produce an error', async () => {
+      const invalidTicker = getLeaseGroupCurrencies()[0];
+      leaserConfigMsg.config.lease_position_spec.min_asset = {
+        amount: '100', // any amount
+        ticker: invalidTicker,
+      };
+
+      await trySendPropToSetConfig(
+        `Found a symbol '${invalidTicker}' pretending to be ticker of a currency pertaining to the lpns group`,
+      );
+    });
+
+    test('try to set min_sell_asset ticker != LPN - should produce an error', async () => {
+      const invalidTicker = getLeaseGroupCurrencies()[0];
+      leaserConfigMsg.config.lease_position_spec.min_sell_asset = {
+        amount: '100', // any amount
+        ticker: invalidTicker,
+      };
+
+      await trySendPropToSetConfig(
+        `Found a symbol '${invalidTicker}' pretending to be ticker of a currency pertaining to the lpns group`,
+      );
     });
   },
 );
