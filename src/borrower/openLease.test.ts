@@ -499,24 +499,34 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    // TO DO: issue - #69
-    // runTestIfLocal(
-    //   'the borrower tries to open lease when there is no currency price provided by the Oracle - should produce an error',
-    //   async () => {
-    //     const leaseCurrencyPriceObj = () =>
-    //       oracleInstance.getPriceFor(noProvidedPriceFor);
-    //     await expect(leaseCurrencyPriceObj).rejects.toThrow(
-    //       `Unsupported currency '${noProvidedPriceFor}'`,
-    //     );
+    runTestIfLocal(
+      'the borrower tries to open lease when there is no currency price provided by the Oracle - should produce an error',
+      async () => {
+        // // TO DO: issue - #69
+        // const leaseCurrencyPriceObj = () =>
+        //   oracleInstance.getPriceFor(noProvidedPriceFor);
+        // await expect(leaseCurrencyPriceObj).rejects.toThrow(
+        //   `Unsupported currency '${noProvidedPriceFor}'`,
+        // );
 
-    //     await testOpeningWithInvalidParams(
-    //       noProvidedPriceFor,
-    //       downpaymentCurrencyToIBC,
-    //       '10',
-    //       `TO DO`,
-    //     );
-    //   },
-    // );
+        // await testOpeningWithInvalidParams(
+        //   noProvidedPriceFor,
+        //   lppCurrencyToIBC,
+        //   '1000',
+        //   `TO DO`,
+        // );
+
+        const noProvidedPriceForToIBC =
+          currencyTicker_To_IBC(noProvidedPriceFor);
+
+        await testOpeningWithInvalidParams(
+          leaseCurrency,
+          noProvidedPriceForToIBC,
+          '1000',
+          `Failed to fetch price for the pair ${noProvidedPriceFor}/${lppContractAddress}`,
+        );
+      },
+    );
 
     test('the borrower tries to open a lease with 0 down payment - should produce an error', async () => {
       await testOpeningWithInvalidParams(
