@@ -292,7 +292,7 @@ maybe('Lender tests - Make a deposit', () => {
     await testDepositInvalidCases(
       invalidlppCurrency,
       deposit,
-      `Found bank symbol '${invalidlppCurrency}' expecting '${lppCurrencyToIBC}'`,
+      `Found a symbol '${invalidlppCurrency}' pretending to be the bank symbol of the currency with ticker '${lppCurrency}'`,
     );
   });
 
