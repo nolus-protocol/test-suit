@@ -523,7 +523,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           leaseCurrency,
           noProvidedPriceForToIBC,
           '1000',
-          `Failed to fetch price for the pair ${noProvidedPriceFor}/${lppContractAddress}`,
+          `Failed to fetch price for the pair ${noProvidedPriceFor}/${lppCurrency}`,
         );
       },
     );
