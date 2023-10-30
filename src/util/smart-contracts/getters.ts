@@ -1,6 +1,6 @@
 import { TextDecoder } from 'node:util';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
-import { Event, TxResponse } from '@cosmjs/tendermint-rpc';
+import { Attribute, Event, TxResponse } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
 import { GROUPS } from '@nolus/nolusjs/build/types/Networks';
 import { AssetUtils } from '@nolus/nolusjs';
@@ -21,20 +21,33 @@ export function findWasmEventPositions(response: any, eType: string): number[] {
   return indexes;
 }
 
+export function findAttributePositions(event: any, aType: string): number[] {
+  const attributes = event.attributes;
+  const indexes: number[] = [];
+
+  attributes.forEach((attribute: Attribute, index: number) => {
+    if (textDecoder.decode(attribute.key) === aType) {
+      indexes.push(index);
+    }
+  });
+
+  return indexes;
+}
+
 function getAttributeValueFromWasmRepayEvent(
   response: TxResponse,
-  attributeIndex: number,
+  attributeName: string,
 ): bigint {
   const wasmEventIndex = findWasmEventPositions(
     response.result,
     'wasm-ls-repay',
   );
 
+  const wasmEvent = response.result.events[wasmEventIndex[0]];
+  const attributeIndex = findAttributePositions(wasmEvent, attributeName);
+
   return BigInt(
-    textDecoder.decode(
-      response.result.events[wasmEventIndex[0]].attributes[attributeIndex]
-        .value,
-    ),
+    textDecoder.decode(wasmEvent.attributes[attributeIndex[0]].value),
   );
 }
 
@@ -73,23 +86,23 @@ export function getLeaseAddressFromOpenLeaseResponse(
 }
 
 export function getMarginInterestPaidFromRepayTx(response: TxResponse): bigint {
-  return getAttributeValueFromWasmRepayEvent(response, 10);
+  return getAttributeValueFromWasmRepayEvent(response, 'curr-margin-interest');
 }
 
 export function getLoanInterestPaidFromRepayTx(response: TxResponse): bigint {
-  return getAttributeValueFromWasmRepayEvent(response, 11);
+  return getAttributeValueFromWasmRepayEvent(response, 'curr-loan-interest');
 }
 
 export function getPrincipalPaidFromRepayTx(response: TxResponse): bigint {
-  return getAttributeValueFromWasmRepayEvent(response, 12);
+  return getAttributeValueFromWasmRepayEvent(response, 'principal');
 }
 
 export function getChangeFromRepayTx(response: TxResponse): bigint {
-  return getAttributeValueFromWasmRepayEvent(response, 13);
+  return getAttributeValueFromWasmRepayEvent(response, 'change');
 }
 
 export function getTotalPaidFromRepayTx(response: TxResponse): bigint {
-  return getAttributeValueFromWasmRepayEvent(response, 6);
+  return getAttributeValueFromWasmRepayEvent(response, 'payment-amount');
 }
 
 export function getMarginPaidTimeFromRawState(rawState: Uint8Array): bigint {
@@ -98,18 +111,6 @@ export function getMarginPaidTimeFromRawState(rawState: Uint8Array): bigint {
       .period.start,
   );
 }
-
-// export function getOnlyPaymentCurrencies(): string[] {
-//   const paymentCurrencies = getPaymentGroupCurrencies();
-//   const leaseCurrencies = getLeaseGroupCurrencies();
-//   const lpnCurrencies = getLpnGroupCurrencies();
-//   const paymentCurrenciesOnly = paymentCurrencies.filter(
-//     (currency) =>
-//       leaseCurrencies.indexOf(currency) < 0 &&
-//       lpnCurrencies.indexOf(currency) < 0,
-//   );
-//   return paymentCurrenciesOnly;
-// }
 
 export function getCurrencyOtherThan(unlikeCurrencies: string[]): string {
   const supportedCurrencies = getPaymentGroupCurrencies();

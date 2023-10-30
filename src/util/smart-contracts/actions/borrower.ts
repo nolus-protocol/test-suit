@@ -46,14 +46,6 @@ export async function returnAmountToTheMainAccount(
 export async function waitLeaseOpeningProcess(
   leaseInstance: NolusContracts.Lease,
 ): Promise<Error | undefined> {
-  const allOpeningStates = [
-    'open_ica_account',
-    'transfer_out',
-    'buy_asset',
-    'transfer_in_init',
-    'transfer_in_finish',
-  ];
-  let indexLastState = 0;
   let newState;
   let timeout = BORROWER_ATTEMPTS_TIMEOUT;
 
@@ -67,12 +59,6 @@ export async function waitLeaseOpeningProcess(
     newState = JSON.stringify(fullState.opening.in_progress);
     console.log('Lease opening is in progress: ', newState);
 
-    // TO DO
-    // const indexNewState = allOpeningStates.indexOf(newState);
-    // if (indexLastState > indexNewState) {
-    //   return new Error('The lease has been returned to its previous state');
-    // }
-    // indexLastState = indexNewState;
     timeout--;
   } while (timeout > 0);
 
