@@ -25,13 +25,14 @@ const textDecoder = new TextDecoder();
 // These tests require the network to be specifically configured
 // That`s why, they only work locally and in isolation, and only if this requirement is met!
 // Suitable values are :
-// - for the Leaser config - {...,"lease_interest_rate_margin":30,"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},......,"lease_interest_payment":{"due_period":5184000000000000,"grace_period":864000000000000}}
+// - for the Leaser config - {...,"lease_interest_rate_margin":30,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"15000","ticker":"USDC"},"min_sell_asset":{"amount":"1000","ticker":"USDC"}},..."lease_interest_payment":{"due_period":5184000000000000,"grace_period":864000000000000}}
 // - for the Oracle  config - {"config":{....,"price_config":{"min_feeders":500,"sample_period_secs":260,"samples_number":1,"discount_factor":750}},....}
+// - for the LPP - {...,"min_utilization":0}
 // - working dispatcher bot
 // - !!! non-working feeder
 
 // Before running -> update:
-// - "alarmDispatcherPeriod" = configured "poll_period_seconds" + 5 /take from the alarms-dispatcher bot config/
+// - "alarmDispatcherPeriod" = the configured "poll_period_seconds" + 5 /take from the alarms-dispatcher bot config/
 // - check and fill "validPriceLCtoLPN" (LC = "leaseCurrency")
 // - "periodSecs" = configured "sample_period_secs" /take from the Oracle smart contract config/
 describe.skip('Lease - Price Liquidation tests', () => {
@@ -59,7 +60,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
   const alarmDispatcherPeriod = 15; // DispatcherBot:poll_period_seconds + 5
   const periodSecs = 265; // Oracle:sample_period_secs + 5sec
   const leaseCurrency = 'OSMO';
-  const validPriceLCtoLPN = 0.25552;
+  const validPriceLCtoLPN = 0.1931;
   const downpayment = '1000000';
 
   beforeAll(async () => {
@@ -88,6 +89,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
     downpaymentCurrency = lpnCurrency;
     downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
 
+    console.log('Waiting for the price to expire...');
     await sleep(periodSecs);
 
     const leaseCurrencyPriceObj = () =>
@@ -240,15 +242,19 @@ describe.skip('Lease - Price Liquidation tests', () => {
     const liquidationPrice = (leaseDue * 1000) / (leaseAmount * maxLiability);
 
     // w1
+    console.log('Waiting for warning level 1...');
     await checkForLiquidationWarning(w1Price, 1);
 
     // w2
+    console.log('Waiting for warning level 2...');
     await checkForLiquidationWarning(w2Price, 2);
 
     //w3
+    console.log('Waiting for warning level 3...');
     await checkForLiquidationWarning(w3Price, 3);
 
     //max
+    console.log('Waiting for the liquidation...');
     await sleep(periodSecs);
     await pushPrice(liquidationPrice);
 

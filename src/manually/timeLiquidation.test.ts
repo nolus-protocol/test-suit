@@ -27,13 +27,13 @@ import {
 // These tests require the network to be configured with Leaser specific config
 // That`s why, they are only executed locally and in isolation, and only if this requirement is met!
 // Suitable values are :
-// - for the Leaser - {...,"lease_interest_rate_margin":10000000,"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},......,"lease_interest_payment":{"due_period":60000000000,"grace_period":30000000000}}
-// TO DO: minLeaseValueLPN and allowablePeviousInterestLPN in the Leaser config
+// - for the Leaser - {...,"lease_interest_rate_margin":10000000,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"150000","ticker":"USDC"},"min_sell_asset":{"amount":"1000","ticker":"USDC"}},..."lease_interest_payment":{"due_period":60000000000,"grace_period":30000000000}}
+// - for the LPP - {...,"min_utilization": 0}
 // - working dispatcher
 // - working feeder
 
 // Before running -> update:
-// - "alarmDispatcherPeriod" = configured "poll_period_seconds" + 5 /take from the alarms-dispatcher bot config/
+// - "alarmDispatcherPeriod" = the configured "poll_period_seconds" + 5 /take from the alarms-dispatcher bot config/
 describe.skip('Lease - Time Liquidation tests', () => {
   let cosm: CosmWasmClient;
   let borrowerWallet: NolusWallet;
@@ -41,21 +41,19 @@ describe.skip('Lease - Time Liquidation tests', () => {
   let leaserInstance: NolusContracts.Leaser;
   let oracleInstance: NolusContracts.Oracle;
   let lppInstance: NolusContracts.Lpp;
-  let leaserConfig: NolusContracts.LeaserConfig;
+  let leaserConfig: NolusContracts.LeaserConfigInfo;
   let leaseCurrency: string;
-  let leaseCurrencyToIBC: string;
   let downpaymentCurrency: string;
   let downpaymentCurrencyToIBC: string;
   let mainPeriod: number;
   let gracePeriod: number;
+  let minAssetLPN: number;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
   const alarmDispatcherPeriod = 15; // poll_period_seconds + 5
-  const minLeaseValueLPN = 15000000; // should be more; to do when possible to configurate it
-  const allowablePeviousInterestLPN = 100000; // should be less; to do when possible to configurate it
 
   async function timeLiquidationCheck(
     leaseInstance: Lease,
@@ -121,7 +119,7 @@ describe.skip('Lease - Time Liquidation tests', () => {
 
     if (
       +stateAfterMainPeriod.amount.amount / exactCurrencyPrice_LC <
-      minLeaseValueLPN
+      minAssetLPN
     ) {
       expect(stateAfterGracePeriod.liquidated).toBeDefined();
 
@@ -197,21 +195,18 @@ describe.skip('Lease - Time Liquidation tests', () => {
     borrowerWallet = await createWallet();
     userWithBalanceWallet = await getUser1Wallet();
 
-    leaserConfig = await leaserInstance.getLeaserConfig();
-    mainPeriod =
-      leaserConfig.config.lease_interest_payment.due_period / TONANOSEC;
-    gracePeriod =
-      leaserConfig.config.lease_interest_payment.grace_period / TONANOSEC;
-
+    leaserConfig = (await leaserInstance.getLeaserConfig()).config;
+    mainPeriod = leaserConfig.lease_interest_payment.due_period / TONANOSEC;
+    gracePeriod = leaserConfig.lease_interest_payment.grace_period / TONANOSEC;
+    minAssetLPN = +leaserConfig.lease_position_spec.min_asset.amount;
     const lppConfig = await lppInstance.getLppConfig();
     downpaymentCurrency = lppConfig.lpn_ticker;
     downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
     leaseCurrency = getLeaseGroupCurrencies()[0];
-    leaseCurrencyToIBC = currencyTicker_To_IBC(leaseCurrency);
   });
 
   test('partial liquidation due to expiry of the grace period - should work as expected', async () => {
-    const downpayment = 10000000;
+    const downpayment = 100000;
     const leaseInstance = await openLease(downpayment);
 
     await sendInitExecuteFeeTokens(
@@ -226,10 +221,12 @@ describe.skip('Lease - Time Liquidation tests', () => {
   test.skip('full liquidation due to expiry of the grace period - should work as expected', async () => {
     const downpayment = 10000;
     const leaseInstance = await openLease(downpayment);
+
     await sendInitExecuteFeeTokens(
       userWithBalanceWallet,
       borrowerWallet.address as string,
     );
+
     const stateBeforeFirstLiquidation = await leaseInstance.getLeaseStatus();
     await timeLiquidationCheck(leaseInstance, stateBeforeFirstLiquidation);
   });
