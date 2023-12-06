@@ -23,6 +23,8 @@ module.exports = {
     'no-restricted-globals': 'warn',
     'prefer-const': 'warn',
     'no-magic-numbers': 'warn',
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-unused-vars': 'warn',
   },
   env: {
     jest: true,
