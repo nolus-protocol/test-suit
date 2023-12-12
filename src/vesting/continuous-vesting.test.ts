@@ -1,4 +1,3 @@
-import Long from 'long';
 import {
   assertIsDeliverTxSuccess,
   DeliverTxResponse,
@@ -6,11 +5,11 @@ import {
 } from '@cosmjs/stargate';
 import { EncodeObject } from '@cosmjs/proto-signing';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
-import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
+import { Coin } from 'cosmjs-types/cosmos/base/v1beta1/coin';
 import {
   MsgCreateVestingAccount,
   protobufPackage as vestingPackage,
-} from '../util/codec/vestings/tx';
+} from '../util/codec/nolus/vestings/tx';
 import { customFees, sleep, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,
@@ -35,8 +34,8 @@ runOrSkip(process.env.TEST_VESTING as string)(
       fromAddress: '',
       toAddress: '',
       amount: [FULL_AMOUNT],
-      startTime: Long.fromNumber(0),
-      endTime: Long.fromNumber(0),
+      startTime: BigInt(0), //Long.fromNumber(0),
+      endTime: BigInt(0),
       delayed: false,
     };
     const encodedMsg: EncodeObject = {
@@ -101,7 +100,7 @@ runOrSkip(process.env.TEST_VESTING as string)(
 
       registerNewType(
         userWithBalanceWallet,
-        '/vestings.MsgCreateVestingAccount',
+        encodedMsg.typeUrl,
         MsgCreateVestingAccount,
       );
     });
@@ -136,33 +135,33 @@ runOrSkip(process.env.TEST_VESTING as string)(
     });
 
     test('create a continuous vesting account with StartTime = 0 - should produce an error', async () => {
-      createVestingAccountMsg.startTime = Long.fromNumber(0);
+      createVestingAccountMsg.startTime = BigInt(0);
 
       await createVestingAccountWithInvalidParams(/^.*invalid start time.*/);
     });
 
     test('create a continuous vesting account with EndTime = 0 - should produce an error', async () => {
-      createVestingAccountMsg.startTime = Long.fromNumber(
-        new Date().getTime() / 1000 + STARTTIME_SECONDS,
+      createVestingAccountMsg.startTime = BigInt(
+        Math.trunc(new Date().getTime() / 1000 + STARTTIME_SECONDS),
       );
 
       await createVestingAccountWithInvalidParams(/^.*invalid end time.*/);
     });
 
     test('create a continuous vesting account with EndTime < StartTime - should produce an error', async () => {
-      createVestingAccountMsg.startTime = Long.fromNumber(
-        new Date().getTime() / 1000 + ENDTIME_SECONDS,
+      createVestingAccountMsg.startTime = BigInt(
+        Math.trunc(new Date().getTime() / 1000 + ENDTIME_SECONDS),
       );
-      createVestingAccountMsg.endTime = Long.fromNumber(
-        new Date().getTime() / 1000 + STARTTIME_SECONDS,
+      createVestingAccountMsg.endTime = BigInt(
+        Math.trunc(new Date().getTime() / 1000 + STARTTIME_SECONDS),
       );
 
       await createVestingAccountWithInvalidParams(/^.*invalid start time.*/);
     });
 
     test('create a continuous vesting account with EndTime = StartTime - should produce an error', async () => {
-      createVestingAccountMsg.startTime = Long.fromNumber(
-        new Date().getTime() / 1000 + ENDTIME_SECONDS,
+      createVestingAccountMsg.startTime = BigInt(
+        Math.trunc(new Date().getTime() / 1000 + ENDTIME_SECONDS),
       );
       createVestingAccountMsg.endTime = createVestingAccountMsg.startTime;
 
@@ -170,12 +169,11 @@ runOrSkip(process.env.TEST_VESTING as string)(
     });
 
     test('create a continuous vesting account with StartTime and EndTime in the future - should work as expected', async () => {
-      createVestingAccountMsg.startTime = Long.fromNumber(
-        new Date().getTime() / 1000 + STARTTIME_SECONDS,
+      createVestingAccountMsg.startTime = BigInt(
+        Math.trunc(new Date().getTime() / 1000 + STARTTIME_SECONDS),
       );
-      createVestingAccountMsg.endTime = Long.fromNumber(
-        +createVestingAccountMsg.startTime + ENDTIME_SECONDS,
-      );
+      createVestingAccountMsg.endTime =
+        createVestingAccountMsg.startTime + BigInt(ENDTIME_SECONDS);
 
       const result = await userWithBalanceWallet.signAndBroadcast(
         userWithBalanceWallet.address as string,
@@ -231,12 +229,12 @@ runOrSkip(process.env.TEST_VESTING as string)(
     });
 
     test('create a continuous vesting account with StartTime in the past (non-native vesting) - should work as expected', async () => {
-      createVestingAccountMsg.startTime = Long.fromNumber(
-        new Date().getTime() / 1000 - ENDTIME_SECONDS,
+      createVestingAccountMsg.startTime = BigInt(
+        Math.trunc(new Date().getTime() / 1000 - ENDTIME_SECONDS),
       );
 
-      createVestingAccountMsg.endTime = Long.fromNumber(
-        new Date().getTime() / 1000 + ENDTIME_SECONDS,
+      createVestingAccountMsg.endTime = BigInt(
+        Math.trunc(new Date().getTime() / 1000 + ENDTIME_SECONDS),
       );
 
       createVestingAccountMsg.amount = [
@@ -267,7 +265,7 @@ runOrSkip(process.env.TEST_VESTING as string)(
       );
 
       const transferHalfBalance = {
-        denom: currencyTicker_To_IBC(process.env.LPP_BASE_CURRENCY as string),
+        denom: createVestingAccountMsg.amount[0].denom,
         amount: HALF_AMOUNT.amount,
       };
 
@@ -304,12 +302,12 @@ runOrSkip(process.env.TEST_VESTING as string)(
     });
 
     test('create a continuous vesting account with StartTime and EndTime in the past - should work as expected', async () => {
-      createVestingAccountMsg.startTime = Long.fromNumber(
-        new Date().getTime() / 1000 - ENDTIME_SECONDS,
+      createVestingAccountMsg.startTime = BigInt(
+        Math.trunc(new Date().getTime() / 1000 - ENDTIME_SECONDS),
       );
 
-      createVestingAccountMsg.endTime = Long.fromNumber(
-        new Date().getTime() / 1000 - STARTTIME_SECONDS,
+      createVestingAccountMsg.endTime = BigInt(
+        Math.trunc(new Date().getTime() / 1000 - STARTTIME_SECONDS),
       );
 
       const vestingWallet = await createWallet();

@@ -1,4 +1,4 @@
-import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
+import { connectComet } from '@cosmjs/tendermint-rpc';
 import {
   QueryDelegationRewardsResponse,
   QueryDelegatorWithdrawAddressResponse,
@@ -15,7 +15,7 @@ let queryClient: QueryClient & DistributionExtension;
 export const distributionModule = '/cosmos.distribution.v1beta1';
 
 async function loadClient() {
-  const tendermintClient = await Tendermint34Client.connect(NODE_ENDPOINT);
+  const tendermintClient = await connectComet(NODE_ENDPOINT);
   queryClient = QueryClient.withExtensions(
     tendermintClient,
     setupDistributionExtension,

@@ -1,9 +1,10 @@
 /* eslint-disable */
-import Long from "long";
-import _m0 from "protobufjs/minimal";
-import { Coin } from "../cosmos/base/v1beta1/coin";
+// import _m0 from "protobufjs/minimal";
+import _m0, { BinaryReader, BinaryWriter } from "cosmjs-types/binary";
+import { Coin } from "cosmjs-types/cosmos/base/v1beta1/coin";
+// import { Coin } from "../cosmos/base/v1beta1/coin";
 
-export const protobufPackage = "vestings";
+export const protobufPackage = "nolus.vestings.v1beta1";
 
 /**
  * MsgCreateVestingAccount defines a message that enables creating a vesting
@@ -13,8 +14,8 @@ export interface MsgCreateVestingAccount {
   fromAddress: string;
   toAddress: string;
   amount: Coin[];
-  startTime: Long;
-  endTime: Long;
+  startTime: bigint;
+  endTime: bigint;
   delayed: boolean;
 }
 
@@ -26,11 +27,11 @@ export interface MsgCreateVestingAccountResponse {
 }
 
 function createBaseMsgCreateVestingAccount(): MsgCreateVestingAccount {
-  return { fromAddress: "", toAddress: "", amount: [], startTime: Long.ZERO, endTime: Long.ZERO, delayed: false };
+  return { fromAddress: "", toAddress: "", amount: [], startTime: BigInt(0), endTime: BigInt(0), delayed: false };
 }
 
 export const MsgCreateVestingAccount = {
-  encode(message: MsgCreateVestingAccount, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+  encode(message: MsgCreateVestingAccount, writer: _m0.BinaryWriter = BinaryWriter.create()): _m0.BinaryWriter {
     if (message.fromAddress !== "") {
       writer.uint32(10).string(message.fromAddress);
     }
@@ -40,10 +41,10 @@ export const MsgCreateVestingAccount = {
     for (const v of message.amount) {
       Coin.encode(v!, writer.uint32(26).fork()).ldelim();
     }
-    if (!message.startTime.isZero()) {
+    if (message.startTime !== BigInt(0)) {
       writer.uint32(32).int64(message.startTime);
     }
-    if (!message.endTime.isZero()) {
+    if (message.endTime != BigInt(0)) {
       writer.uint32(40).int64(message.endTime);
     }
     if (message.delayed === true) {
@@ -52,8 +53,8 @@ export const MsgCreateVestingAccount = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): MsgCreateVestingAccount {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+  decode(input: _m0.BinaryReader | Uint8Array, length?: number): MsgCreateVestingAccount {
+    const reader = input instanceof _m0.BinaryReader ? input : new _m0.BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseMsgCreateVestingAccount();
     while (reader.pos < end) {
@@ -85,14 +86,14 @@ export const MsgCreateVestingAccount = {
             break;
           }
 
-          message.startTime = reader.int64() as Long;
+          message.startTime = reader.int64() as bigint;
           continue;
         case 5:
           if (tag !== 40) {
             break;
           }
 
-          message.endTime = reader.int64() as Long;
+          message.endTime = reader.int64() as bigint;
           continue;
         case 6:
           if (tag !== 50) {
@@ -117,12 +118,12 @@ export const MsgCreateVestingAccount = {
       amount: Array.isArray(object?.amount)
         ? object.amount.map((e: any) => Coin.fromJSON(e))
         : [],
-      startTime: isSet(object.startTime)
-        ? Long.fromString(object.startTime)
-        : Long.ZERO,
-      endTime: isSet(object.endTime)
-        ? Long.fromString(object.endTime)
-        : Long.ZERO,
+        startTime: isSet(object.startTime)
+        ? BigInt(object.startTime)
+        : BigInt(0),
+      endTime: BigInt(object.endTime)
+        ? BigInt(object.endTime)
+        : BigInt(0),
       delayed: isSet(object.delayed) ? Boolean(object.delayed) : false,
     };
   },
@@ -136,8 +137,8 @@ export const MsgCreateVestingAccount = {
     } else {
       obj.amount = [];
     }
-    message.startTime !== undefined && (obj.startTime = (message.startTime || Long.ZERO).toString());
-    message.endTime !== undefined && (obj.endTime = (message.endTime || Long.ZERO).toString());
+    message.startTime !== undefined && (obj.startTime = (message.startTime || BigInt(0)).toString());
+    message.endTime !== undefined && (obj.endTime = (message.endTime || BigInt(0)).toString());
     message.delayed !== undefined && (obj.delayed = message.delayed);
     return obj;
   },
@@ -152,11 +153,11 @@ export const MsgCreateVestingAccount = {
     message.toAddress = object.toAddress ?? "";
     message.amount = object.amount?.map((e) => Coin.fromPartial(e)) || [];
     message.startTime = (object.startTime !== undefined && object.startTime !== null)
-      ? Long.fromValue(object.startTime)
-      : Long.ZERO;
+      ? BigInt(object.startTime)
+      : BigInt(0);
     message.endTime = (object.endTime !== undefined && object.endTime !== null)
-      ? Long.fromValue(object.endTime)
-      : Long.ZERO;
+      ? BigInt(object.endTime)
+      : BigInt(0)
     message.delayed = object.delayed ?? false;
     return message;
   },
@@ -167,12 +168,12 @@ function createBaseMsgCreateVestingAccountResponse(): MsgCreateVestingAccountRes
 }
 
 export const MsgCreateVestingAccountResponse = {
-  encode(_: MsgCreateVestingAccountResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+  encode(_: MsgCreateVestingAccountResponse, writer: _m0.BinaryWriter = new _m0.BinaryWriter()): _m0.BinaryWriter {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): MsgCreateVestingAccountResponse {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+  decode(input: _m0.BinaryReader | Uint8Array, length?: number): MsgCreateVestingAccountResponse {
+    const reader = input instanceof _m0.BinaryReader ? input : new _m0.BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseMsgCreateVestingAccountResponse();
     while (reader.pos < end) {
@@ -219,17 +220,37 @@ export class MsgClientImpl implements Msg {
   private readonly rpc: Rpc;
   private readonly service: string;
   constructor(rpc: Rpc, opts?: { service?: string }) {
-    this.service = opts?.service || "vestings.Msg";
+    this.service = opts?.service || "nolus.vestings.v1beta1.Msg";
     this.rpc = rpc;
     this.CreateVestingAccount = this.CreateVestingAccount.bind(this);
   }
   CreateVestingAccount(request: MsgCreateVestingAccount): Promise<MsgCreateVestingAccountResponse> {
     const data = MsgCreateVestingAccount.encode(request).finish();
     const promise = this.rpc.request(this.service, "CreateVestingAccount", data);
-    return promise.then((data) => MsgCreateVestingAccountResponse.decode(_m0.Reader.create(data)));
+    return promise.then((data) => MsgCreateVestingAccountResponse.decode(new BinaryReader(data)));
   }
 }
 
+// export class MsgClientImpl implements Msg {
+//   private readonly rpc: Rpc;
+//   constructor(rpc: Rpc) {
+//     this.rpc = rpc;
+//     this.CreateVestingAccount = this.CreateVestingAccount.bind(this);
+//   }
+//   CreateVestingAccount(
+//     request: MsgCreateVestingAccount
+//   ): Promise<MsgCreateVestingAccountResponse> {
+//     const data = MsgCreateVestingAccount.encode(request).finish();
+//     const promise = this.rpc.request(
+//       "nolus.vestings.v1beta1.Msg",
+//       "CreateVestingAccount",
+//       data
+//     );
+//     return promise.then((data) =>
+//       MsgCreateVestingAccountResponse.decode(new _m0.BinaryReader(data))
+//     );
+//   }
+// }
 interface Rpc {
   request(service: string, method: string, data: Uint8Array): Promise<Uint8Array>;
 }
@@ -245,11 +266,6 @@ export type DeepPartial<T> = T extends Builtin ? T
 type KeysOfUnion<T> = T extends T ? keyof T : never;
 export type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
-
-if (_m0.util.Long !== Long) {
-  _m0.util.Long = Long as any;
-  _m0.configure();
-}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

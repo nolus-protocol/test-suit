@@ -1,12 +1,11 @@
-import Long from 'long';
 import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
 import { EncodeObject } from '@cosmjs/proto-signing';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { Coin } from 'cosmjs-types/cosmos/base/v1beta1/coin';
 import {
   MsgCreateVestingAccount,
   protobufPackage as vestingPackage,
-} from '../util/codec/vestings/tx';
-import { Coin } from '../util/codec/cosmos/base/v1beta1/coin';
+} from '../util/codec/nolus/vestings/tx';
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
@@ -49,8 +48,10 @@ runOrSkip(process.env.TEST_STAKING as string)(
         fromAddress: userWithBalanceWallet.address as string,
         toAddress: user2Wallet.address as string,
         amount: [FULL_AMOUNT],
-        startTime: Long.fromNumber(new Date().getTime() / 1000),
-        endTime: Long.fromNumber(new Date().getTime() / 1000 + ENDTIME_SECONDS),
+        startTime: BigInt(Math.floor(new Date().getTime() / 1000)),
+        endTime: BigInt(
+          Math.floor(new Date().getTime() / 1000 + ENDTIME_SECONDS),
+        ),
         delayed: false,
       };
       const encodedMsg: EncodeObject = {
@@ -60,7 +61,7 @@ runOrSkip(process.env.TEST_STAKING as string)(
 
       registerNewType(
         userWithBalanceWallet,
-        '/vestings.MsgCreateVestingAccount',
+        `/${vestingPackage}.MsgCreateVestingAccount`,
         MsgCreateVestingAccount,
       );
 

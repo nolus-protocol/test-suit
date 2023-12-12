@@ -1,6 +1,7 @@
 import { makeCosmoshubPath } from '@cosmjs/amino';
 import { DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
 import { fromHex } from '@cosmjs/encoding';
+import { GeneratedType } from '@cosmjs/proto-signing/build/registry';
 import { TxSearchResponse } from '@cosmjs/tendermint-rpc';
 import {
   ChainConstants,
@@ -76,6 +77,10 @@ export async function txSearchByEvents(
   });
 }
 
-export function registerNewType(client: NolusWallet, type: string, msg: any) {
+export function registerNewType(
+  client: NolusWallet,
+  type: string,
+  msg: GeneratedType,
+) {
   client.registry.register(type, msg);
 }
