@@ -3,7 +3,7 @@ import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
 import { customFees } from '../util/utils';
-import { sendSudoContractProposal } from '../util/gov';
+import { sendSudoContractProposal } from '../util/proposals';
 
 runOrSkip(process.env.TEST_LENDER as string)(
   'LPP contract tests - Config',

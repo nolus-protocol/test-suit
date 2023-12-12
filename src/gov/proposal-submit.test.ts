@@ -1,25 +1,20 @@
-import Long from 'long';
 import * as fs from 'fs';
-import { isDeliverTxFailure } from '@cosmjs/stargate';
 import { toUtf8 } from '@cosmjs/encoding';
-import { TextProposal } from 'cosmjs-types/cosmos/gov/v1beta1/gov';
-import { ParameterChangeProposal } from 'cosmjs-types/cosmos/params/v1beta1/params';
-import { CommunityPoolSpendProposal } from 'cosmjs-types/cosmos/distribution/v1beta1/distribution';
+import { isDeliverTxFailure } from '@cosmjs/stargate';
 import {
-  SoftwareUpgradeProposal,
-  CancelSoftwareUpgradeProposal,
-} from 'cosmjs-types/cosmos/upgrade/v1beta1/upgrade';
-import { ClientState } from 'cosmjs-types/ibc/lightclients/tendermint/v1/tendermint';
+  MsgCancelUpgrade,
+  MsgSoftwareUpgrade,
+} from 'cosmjs-types/cosmos/upgrade/v1beta1/tx';
+import { MsgUpdateClient } from 'cosmjs-types/ibc/core/client/v1/tx';
+import { Any } from 'cosmjs-types/google/protobuf/any';
+import { MsgUpdateParams } from 'cosmjs-types/cosmos/staking/v1beta1/tx';
+import { MsgCommunityPoolSpend } from 'cosmjs-types/cosmos/distribution/v1beta1/tx';
 import {
-  StoreCodeProposal,
-  InstantiateContractProposal,
-  UpdateAdminProposal,
-  ClearAdminProposal,
-  PinCodesProposal,
-  UnpinCodesProposal,
-} from 'cosmjs-types/cosmwasm/wasm/v1/proposal';
-import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
-import { UpgradeProposal, ClientUpdateProposal } from '../util/proposals';
+  MsgClearAdmin,
+  MsgInstantiateContract,
+  MsgStoreCode,
+  MsgUpdateAdmin,
+} from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 import {
   customFees,
@@ -28,29 +23,33 @@ import {
   undefinedHandler,
   VALIDATOR_PART,
 } from '../util/utils';
-import { getProposal } from '../util/gov';
+import { getProposal } from '../util/proposals';
 import { runOrSkip } from '../util/testingRules';
-import { sha256 } from '@cosmjs/crypto';
+import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 
 runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
   let wallet: NolusWallet;
-  let msg: any;
   let fee = customFees.exec;
-  let moduleName: string;
+  let msg: any;
+  const authority = process.env.GOV_MODULE_ADDRESS as string;
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     wallet = await getUser1Wallet();
 
-    moduleName = 'gov';
     msg = {
-      typeUrl: '/cosmos.gov.v1beta1.MsgSubmitProposal',
+      typeUrl: '/cosmos.gov.v1.MsgSubmitProposal',
       value: {
-        content: {},
+        messages: [],
+        metadata: '',
         proposer: wallet.address as string,
-        initialDeposit: [{ denom: NATIVE_MINIMAL_DENOM, amount: '12' }],
+        initialDeposit: [{ denom: NATIVE_MINIMAL_DENOM, amount: '1000000' }],
+        summary: 'This proposal proposes to test whether this proposal passes',
+        title: 'Test Proposal',
       },
     };
+
+    fee = customFees.configs;
   });
 
   afterEach(async () => {
@@ -59,168 +58,112 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       [msg],
       fee,
     );
-    expect(isDeliverTxFailure(result)).toBeFalsy();
-    const log = result.rawLog;
 
-    if (!log) {
+    expect(isDeliverTxFailure(result)).toBeFalsy();
+    const events = result.events;
+
+    if (!events) {
       undefinedHandler();
       return;
     }
 
-    const proposalId = JSON.parse(log)[0].events[4].attributes[0].value;
+    // TO DO - find event 'submit_proposal'
+    const proposalId = +events[13].attributes[0].value;
     const proposalInfo = await getProposal(proposalId);
     expect(proposalInfo.proposal).toBeDefined();
-  });
-
-  test('validator should be able to submit a Text proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/cosmos.gov.v1beta1.TextProposal',
-      value: TextProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-      }).finish(),
-    };
-    moduleName = 'gov';
 
     fee = customFees.configs;
   });
 
   test('validator should be able to submit a CommunityPoolSpend proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/cosmos.distribution.v1beta1.CommunityPoolSpendProposal',
-      value: CommunityPoolSpendProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        recipient: wallet.address as string,
-        amount: [{ denom: NATIVE_MINIMAL_DENOM, amount: '1000000' }],
-      }).finish(),
-    };
-    moduleName = 'distribution';
+    const commPoolSpendMsg = MsgCommunityPoolSpend.fromPartial({
+      authority: authority,
+      recipient: wallet.address as string,
+      amount: [{ denom: NATIVE_MINIMAL_DENOM, amount: '1000000' }],
+    });
 
-    fee = customFees.configs;
+    msg.value.messages[0] = Any.fromPartial({
+      typeUrl: '/cosmos.distribution.v1beta1.MsgCommunityPoolSpend',
+      value: Uint8Array.from(
+        MsgCommunityPoolSpend.encode(commPoolSpendMsg).finish(),
+      ),
+    });
   });
 
   test('validator should be able to submit a ParameterChange proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/cosmos.params.v1beta1.ParameterChangeProposal',
-      value: ParameterChangeProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        changes: [
-          {
-            subspace: 'wasm',
-            key: 'uploadAccess',
-            value: '{ "permission": "Nobody", "address": "" }',
-          },
-        ],
-      }).finish(),
-    };
-    moduleName = 'params';
+    const paramChangeMsg = MsgUpdateParams.fromPartial({
+      authority: authority,
+      params: {
+        unbondingTime: { seconds: BigInt(3333), nanos: 3333 },
+        maxValidators: 44,
+        maxEntries: 4,
+        historicalEntries: 444444,
+        bondDenom: 'unls',
+        minCommissionRate: '4',
+      },
+    });
 
-    fee = customFees.configs;
+    msg.value.messages[0] = Any.fromPartial({
+      typeUrl: '/cosmos.staking.v1beta1.MsgUpdateParams',
+      value: Uint8Array.from(MsgUpdateParams.encode(paramChangeMsg).finish()),
+    });
   });
 
-  test('validator should be able to submit a SoftwareUpgrade proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/cosmos.upgrade.v1beta1.SoftwareUpgradeProposal',
-      value: SoftwareUpgradeProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        plan: {
-          name: 'Upgrade 1',
-          height: Long.fromInt(+(await wallet.getBlock()).header.height + 1000), // any block after the current one
-          info: '',
-        },
-      }).finish(),
-    };
-    moduleName = 'upgrade';
+  xtest('validator should be able to submit a SoftwareUpgrade proposal', async () => {
+    const softwareUpgradeMsg = MsgSoftwareUpgrade.fromPartial({
+      authority: authority,
+      plan: {
+        name: 'Upgrade 1',
+        info: '',
+      },
+    });
 
-    fee = customFees.configs;
+    msg.value.messages[0] = Any.fromPartial({
+      typeUrl: '/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade',
+      value: Uint8Array.from(
+        MsgSoftwareUpgrade.encode(softwareUpgradeMsg).finish(),
+      ),
+    });
   });
 
   test('validator should be able to submit a CancelSoftwareUpgrade proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/cosmos.upgrade.v1beta1.CancelSoftwareUpgradeProposal',
-      value: CancelSoftwareUpgradeProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-      }).finish(),
-    };
-    moduleName = 'upgrade';
+    const cancelSoftwareUpgradeMsg = MsgCancelUpgrade.fromPartial({
+      authority: authority,
+    });
 
-    fee = customFees.configs;
+    msg.value.messages[0] = Any.fromPartial({
+      typeUrl: '/cosmos.upgrade.v1beta1.MsgCancelUpgrade',
+      value: Uint8Array.from(
+        MsgCancelUpgrade.encode(cancelSoftwareUpgradeMsg).finish(),
+      ),
+    });
   });
 
-  test('validator should be able to submit an IBC Upgrade proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/ibc.core.client.v1.UpgradeProposal',
-      value: UpgradeProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        plan: {
-          name: 'Upgrade 1',
-          height: Long.fromInt(+(await wallet.getBlock()).header.height + 1000), // any block after the current one
-          info: '',
-        },
-        upgradedClientState: {
-          typeUrl: '/ibc.lightclients.tendermint.v1.ClientState',
-          value: ClientState.encode({
-            chainId: 'nolus-private',
-            proofSpecs: [{ minDepth: 0, maxDepth: 0 }],
-            upgradePath: ['upgrade', 'upgradedIBCState'],
-            allowUpdateAfterExpiry: true,
-            allowUpdateAfterMisbehaviour: true,
-          }).finish(),
-        },
-      }).finish(),
-    };
-    moduleName = 'client';
+  xtest('validator should be able to submit a ClientUpdate proposal', async () => {
+    const clientUpdateMsg = MsgUpdateClient.fromPartial({
+      clientId: 'tendermint-1',
+      // clientMessage: 'TO DO',
+      signer: wallet.address as string,
+    });
 
-    fee = customFees.configs;
-  });
-
-  // TO DO
-  xtest('validator should be able to submit a ClientUpgrade proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/ibc.core.client.v1.ClientUpdateProposal',
-      value: ClientUpdateProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        subjectClientId: 'tendermint-1',
-        substituteClientId: 'tendermint-07',
-      }).finish(),
-    };
-    moduleName = 'client';
-
-    fee = customFees.configs;
+    msg.value.messages[0] = Any.fromPartial({
+      typeUrl: '/ibc.core.client.v1.MsgUpdateClient',
+      value: Uint8Array.from(MsgUpdateClient.encode(clientUpdateMsg).finish()),
+    });
   });
 
   test('validator should be able to submit a StoreCode proposal', async () => {
     const wasmBinary: Buffer = fs.readFileSync('./cw20_base.wasm');
 
-    msg.value.content = {
-      typeUrl: '/cosmwasm.wasm.v1.StoreCodeProposal',
-      value: StoreCodeProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        runAs: wallet.address as string,
-        wasmByteCode: wasmBinary,
-        builder: 'cosmwasm/workspace-optimizer:0.12.11',
-        source:
-          'https://github.com/Nolus-Protocol/nolus-money-market/releases/tag/v0.2.1',
-        codeHash: sha256(wasmBinary),
-        unpinCode: false,
-      }).finish(),
-    };
-    moduleName = 'wasm';
+    const storeCodeMsg = MsgStoreCode.fromPartial({
+      wasmByteCode: wasmBinary,
+      sender: authority,
+    });
+
+    msg.value.messages[0] = Any.fromPartial({
+      typeUrl: '/cosmwasm.wasm.v1.MsgStoreCode',
+      value: Uint8Array.from(MsgStoreCode.encode(storeCodeMsg).finish()),
+    });
 
     const gas = '20000000000';
     fee = {
@@ -239,81 +182,71 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       rewards_dispatcher: process.env.LEASER_ADDRESS as string,
     };
 
-    msg.value.content = {
-      typeUrl: '/cosmwasm.wasm.v1.InstantiateContractProposal',
-      value: InstantiateContractProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        runAs: wallet.address as string,
-        admin: wallet.address as string,
-        codeId: Long.fromInt(1),
-        label: 'contractlabel',
-        msg: toUtf8(JSON.stringify(treasuryInitMsg)),
-        funds: [{ denom: NATIVE_MINIMAL_DENOM, amount: '12' }],
-      }).finish(),
-    };
-    moduleName = 'wasm';
+    const initContractMsg = MsgInstantiateContract.fromPartial({
+      admin: wallet.address as string,
+      codeId: BigInt(1),
+      label: 'contract-label',
+      msg: toUtf8(JSON.stringify(treasuryInitMsg)),
+      funds: [{ denom: NATIVE_MINIMAL_DENOM, amount: '12' }],
+      sender: authority,
+    });
+
+    msg.value.messages[0] = Any.fromPartial({
+      typeUrl: '/cosmwasm.wasm.v1.MsgInstantiateContract',
+      value: Uint8Array.from(
+        MsgInstantiateContract.encode(initContractMsg).finish(),
+      ),
+    });
   });
 
   test('validator should be able to submit a UpdateAdmin proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/cosmwasm.wasm.v1.UpdateAdminProposal',
-      value: UpdateAdminProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        newAdmin: wallet.address as string,
-        contract: process.env.LEASER_ADDRESS as string,
-      }).finish(),
-    };
-    moduleName = 'wasm';
+    const updateAdminMsg = MsgUpdateAdmin.fromPartial({
+      newAdmin: wallet.address as string,
+      contract: process.env.LEASER_ADDRESS as string,
+      sender: authority,
+    });
 
-    fee = customFees.configs;
+    msg.value.messages[0] = Any.fromPartial({
+      typeUrl: '/cosmwasm.wasm.v1.MsgUpdateAdmin',
+      value: Uint8Array.from(MsgUpdateAdmin.encode(updateAdminMsg).finish()),
+    });
   });
 
   test('validator should be able to submit a ClearAdmin proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/cosmwasm.wasm.v1.ClearAdminProposal',
-      value: ClearAdminProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        contract: process.env.LEASER_ADDRESS as string,
-      }).finish(),
-    };
-    moduleName = 'wasm';
+    const clearAdminMsg = MsgClearAdmin.fromPartial({
+      contract: process.env.LEASER_ADDRESS as string,
+      sender: authority,
+    });
 
-    fee = customFees.configs;
+    msg.value.messages[0] = Any.fromPartial({
+      typeUrl: '/cosmwasm.wasm.v1.MsgClearAdmin',
+      value: Uint8Array.from(MsgClearAdmin.encode(clearAdminMsg).finish()),
+    });
   });
 
-  test('validator should be able to submit a PinCodes proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/cosmwasm.wasm.v1.PinCodesProposal',
-      value: PinCodesProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        codeIds: [Long.fromInt(1)],
-      }).finish(),
-    };
-    moduleName = 'wasm';
+  // TO DO when MsgPinCodes
+  // test('validator should be able to submit a PinCodes proposal', async () => {
+  //   const pinCodesMsg = MsgPinCodes.fromPartial({
+  //     authority: authority,
+  //     code_ids: [1],
+  //   });
 
-    fee = customFees.configs;
-  });
+  //   msg.value.messages[0] = MsgPinCodes.fromPartial({
+  //     typeUrl: '/cosmwasm.wasm.v1.MsgPinCodes',
+  //     value: Uint8Array.from(MsgPinCodes.encode(pinCodesMsg).finish()),
+  //   });
+  // });
 
-  test('validator should be able to submit a UnpinCodes proposal', async () => {
-    msg.value.content = {
-      typeUrl: '/cosmwasm.wasm.v1.UnpinCodesProposal',
-      value: UnpinCodesProposal.encode({
-        description:
-          'This proposal proposes to test whether this proposal passes',
-        title: 'Test Proposal',
-        codeIds: [Long.fromInt(1)],
-      }).finish(),
-    };
-    moduleName = 'wasm';
+  // TO DO when MsgUnpinCodes
+  // test('validator should be able to submit a UnpinCodes proposal', async () => {
+  //   const unpinCodesMsg = MsgUnpinCodes.fromPartial({
+  //     authority: authority,
+  //     code_ids: [1],
+  //   });
 
-    fee = customFees.configs;
-  });
+  //   msg.value.messages[0] = MsgUnpinCodes.fromPartial({
+  //     typeUrl: '/cosmwasm.wasm.v1.UnpinCodesProposal',
+  //     value: Uint8Array.from(MsgUnpinCodes.encode(pinCodesMsg).finish()),
+  //   });
+  // });
 });

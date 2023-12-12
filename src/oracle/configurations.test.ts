@@ -5,7 +5,7 @@ import { customFees } from '../util/utils';
 import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
 import { runOrSkip } from '../util/testingRules';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
-import { sendSudoContractProposal } from '../util/gov';
+import { sendSudoContractProposal } from '../util/proposals';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 
 runOrSkip(process.env.TEST_ORACLE as string)(

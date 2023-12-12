@@ -158,7 +158,7 @@ verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic"
 # Get dev-network information
 
 if [[ -z ${NOLUS_CORE_TAG} ]]; then
-    NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq '.tag_name' | tr -d '"')
+    NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq -r '.tag_name')
 fi
 
 _downloadArtifact "$NOLUS_BUILD_BINARY_ARTIFACT" "$NOLUS_CORE_TAG"

@@ -3,7 +3,7 @@ import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
 import { runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
 import { customFees } from '../util/utils';
-import { sendSudoContractProposal } from '../util/gov';
+import { sendSudoContractProposal } from '../util/proposals';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 
 runOrSkip(process.env.TEST_BORROWER as string)(

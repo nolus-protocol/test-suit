@@ -25,7 +25,7 @@ _getValidatorAddress() {
   local -r accounts_dir="$2"
   local -r nolus_net="$3"
 
-  run_cmd "$accounts_dir" query staking validators --output json --node "$nolus_net"| jq '.validators['$index'].operator_address' | tr -d '"'
+  run_cmd "$accounts_dir" query staking validators --output json --node "$nolus_net"| jq -r '.validators['$index'].operator_address'
 }
 
 prepareEnv() {
@@ -78,9 +78,8 @@ if [ -n "$active_lease_address" ] && [ "$test_borrower" != "false" ] ; then
   test_interest=true
 fi
 
-local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"deposit_capacity":[]}' --output json --node "$node_url"  | jq '.data.amount' | tr -d '"')
-
-# Save the results
+local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"deposit_capacity":[]}' --output json --node "$node_url"  | jq -r '.data.amount')
+local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov --output json --node "$node_url"  | jq -r '.account.base_account.address')
 
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${node_url}
@@ -94,6 +93,7 @@ USER_3_PRIV_KEY=${user_3_priv_key}
 FEEDER_PRIV_KEY=${feeder_priv_key}
 VALIDATOR_1_ADDRESS=${validator_1_address}
 VALIDATOR_2_ADDRESS=${validator_2_address}
+GOV_MODULE_ADDRESS=${gov_module_address}
 
 TIMEALARMS_ADDRESS=${timealarms_address}
 ORACLE_ADDRESS=${oracle_address}
