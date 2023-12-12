@@ -1,5 +1,6 @@
 import { Coin } from '@cosmjs/proto-signing';
 import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import {
   BondStatus,
   bondStatusFromJSON,
@@ -23,7 +24,6 @@ import {
   NATIVE_MINIMAL_DENOM,
   undefinedHandler,
 } from '../util/utils';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import { ifLocal, runOrSkip } from '../util/testingRules';
 
 runOrSkip(process.env.TEST_STAKING as string)(
@@ -114,7 +114,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
     });
 
     test('the successful scenario for tokens delegation to the validator - should work as expected', async () => {
-      // get the amount of tokens delegated to the validator - before delegation
       const validatorDelegatedTokensBefore = (
         await getValidatorInformation(validatorAddress)
       ).validator?.tokens;
@@ -129,7 +128,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      // delegate tokens
       delegateMsg.value.amount.amount = delegatedAmount;
 
       const result = await stakeholderWallet.signAndBroadcast(
@@ -153,7 +151,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
         );
       }
 
-      // see the stakeholder staked tokens to the current validator - after delegation
       const stakeholderDelegationsToValAfter =
         await getDelegatorValidatorPairAmount(
           stakeholderWallet.address as string,
@@ -167,7 +164,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
 
       expect(stakeholderDelegationsToValAfter).toBe(delegatedAmount);
 
-      // see the stakeholder staked tokens
       const stakeholderDelegatedTokens = (
         await getDelegatorInformation(stakeholderWallet.address as string)
       ).delegationResponses[0]?.balance?.amount;
@@ -179,7 +175,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
 
       expect(BigInt(stakeholderDelegatedTokens)).not.toBe(BigInt(0));
 
-      // get the amount of tokens delegated to the validator - after delegation
       const validatorDelegatedTokensAfter = (
         await getValidatorInformation(validatorAddress)
       ).validator?.tokens;
@@ -194,7 +189,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
     });
 
     test('the stakeholder tries to delegate 0 tokens - should produce an error', async () => {
-      // see the stakeholder staked tokens to the current validator - before delegation
       const stakeholderDelegationsToValBefore =
         await getDelegatorValidatorPairAmount(
           stakeholderWallet.address as string,
@@ -206,7 +200,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
         return;
       }
 
-      // try to delegate 0 tokens
       delegateMsg.value.amount.amount = '0';
 
       const broadcastTx = () =>
@@ -220,7 +213,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
         /^.*invalid delegation amount.*/,
       );
 
-      // see the stakeholder staked tokens to the current validator - after delegation
       const stakeholderDelegationsToValAfter =
         await getDelegatorValidatorPairAmount(
           stakeholderWallet.address as string,
@@ -240,30 +232,23 @@ runOrSkip(process.env.TEST_STAKING as string)(
     test('the stakeholder tries to delegate tokens to non-existent validator - should produce an error', async () => {
       const invalidValidatoWallet = await getUser2Wallet();
 
-      // see the stakeholder staked tokens to the current validator
-      await expect(
-        getDelegatorValidatorPairAmount(
-          stakeholderWallet.address as string,
-          invalidValidatoWallet.address as string,
-        ),
-      ).rejects.toThrow(/^.*expected nolusvaloper, got nolus.*/);
-
-      // try to delegate tokens
       delegateMsg.value.amount.amount = delegatedAmount;
       delegateMsg.value.validatorAddress =
         invalidValidatoWallet.address as string;
 
-      const broadcastTx = await stakeholderWallet.signAndBroadcast(
-        stakeholderWallet.address as string,
-        [delegateMsg],
-        customFees.configs,
-      );
+      const broadcastTx = () =>
+        stakeholderWallet.signAndBroadcast(
+          stakeholderWallet.address as string,
+          [delegateMsg],
+          customFees.configs,
+        );
 
-      expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
+      await expect(broadcastTx).rejects.toThrow(
+        /^.*expected nolusvaloper, got nolus.*/,
+      );
     });
 
     test('the stakeholder tries to delegate tokens different than one defined by params.BondDenom - should produce an error', async () => {
-      // get BondDenom from params
       const bondDenom = (await getParamsInformation()).params?.bondDenom;
 
       if (!bondDenom) {
@@ -275,7 +260,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
 
       expect(bondDenom).not.toBe(invalidDenom);
 
-      // try to delegate tokens
       delegateMsg.value.amount.denom = invalidDenom;
       delegateMsg.value.amount.amount = delegatedAmount;
 
