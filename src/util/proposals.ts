@@ -1,15 +1,15 @@
 import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
 import { QueryProposalResponse } from 'cosmjs-types/cosmos/gov/v1beta1/query';
-import { SudoContractProposal } from 'cosmjs-types/cosmwasm/wasm/v1/proposal';
+import { Any } from 'cosmjs-types/google/protobuf/any';
 import { QueryClient, setupGovExtension, GovExtension } from '@cosmjs/stargate';
 import { DeliverTxResponse } from '@cosmjs/cosmwasm-stargate';
 import { toUtf8 } from '@cosmjs/encoding';
 import { NolusWallet } from '@nolus/nolusjs';
 import { customFees } from './utils';
+import { MsgSudoContract } from './codec/cosmos/tx';
 
 const NODE_ENDPOINT = process.env.NODE_URL as string;
 let queryClient: QueryClient & GovExtension;
-export const distributionModule = '/cosmos.distribution.v1beta1';
 
 async function loadClient() {
   const tendermintClient = await Tendermint34Client.connect(NODE_ENDPOINT);
@@ -27,26 +27,42 @@ export async function sendSudoContractProposal(
   contract: string,
   message: string,
 ): Promise<DeliverTxResponse> {
-  const msg = {
-    typeUrl: '/cosmos.gov.v1beta1.MsgSubmitProposal',
+  const authority = process.env.GOV_MODULE_ADDRESS as string;
+
+  // TO DO: Update when cosmjs-types: MsgSudoContract
+  wallet.registry.register(
+    '/cosmwasm.wasm.v1.MsgSudoContract',
+    MsgSudoContract,
+  );
+
+  const sudoContractMsg = MsgSudoContract.fromPartial({
+    authority: authority,
+    contract: contract,
+    msg: toUtf8(message),
+  });
+
+  const sudoProposal = {
+    typeUrl: '/cosmos.gov.v1.MsgSubmitProposal',
     value: {
-      content: {
-        typeUrl: '/cosmwasm.wasm.v1.SudoContractProposal',
-        value: SudoContractProposal.encode({
-          description:
-            'This proposal proposes to test whether this proposal passes',
-          title: 'Test Proposal',
-          contract: contract,
-          msg: toUtf8(message),
-        }).finish(),
-      },
+      messages: [
+        Any.fromPartial({
+          typeUrl: '/cosmwasm.wasm.v1.MsgSudoContract',
+          value: Uint8Array.from(
+            MsgSudoContract.encode(sudoContractMsg).finish(),
+          ),
+        }),
+      ],
+      metadata: '',
       proposer: wallet.address as string,
+      summary:
+        'This proposal proposes to test whether this SudoContract proposal passes',
+      title: 'Test Proposal',
     },
   };
 
   const broadcastTx = await wallet.signAndBroadcast(
     wallet.address as string,
-    [msg],
+    [sudoProposal],
     customFees.configs,
   );
 
