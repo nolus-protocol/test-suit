@@ -1,36 +1,33 @@
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
-import { customFees, NATIVE_TICKER } from '../util/utils';
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
 
 runOrSkip(process.env.TEST_TREASURY as string)(
   'Treasury tests - Request rewards',
   () => {
     let userWithBalanceWallet: NolusWallet;
-    let treasuryInstance: NolusContracts.Treasury;
     const treasuryContractAddress = process.env.TREASURY_ADDRESS as string;
-    let cosm: any;
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
-      cosm = await NolusClient.getInstance().getCosmWasmClient();
-
       userWithBalanceWallet = await getUser1Wallet();
-
-      treasuryInstance = new NolusContracts.Treasury(
-        cosm,
-        treasuryContractAddress,
-      );
     });
 
     test('an unregistered dispatcher tries to request rewards from the treasury - should produce an error', async () => {
-      const rewards = { ticker: NATIVE_TICKER, amount: '1000' };
+      const rewards = { denom: NATIVE_MINIMAL_DENOM, amount: '1000' };
+
+      const sendRewardsMsg = {
+        send_rewards: { amount: { amount: rewards.amount } },
+      };
 
       const broadcastTx = () =>
-        treasuryInstance.sendRewards(
-          userWithBalanceWallet,
-          rewards,
+        userWithBalanceWallet.executeContract(
+          treasuryContractAddress,
+          sendRewardsMsg,
           customFees.exec,
+          undefined,
+          [rewards],
         );
 
       await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
