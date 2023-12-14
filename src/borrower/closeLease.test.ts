@@ -42,7 +42,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
 
-    const downpayment = '1000';
+    const downpayment = '100000';
 
     async function testCloseInvalidCases(wallet: NolusWallet, message: string) {
       await sendInitExecuteFeeTokens(
