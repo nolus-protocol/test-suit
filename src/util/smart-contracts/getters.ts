@@ -2,7 +2,7 @@ import { TextDecoder } from 'node:util';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
 import { Attribute, Event, TxResponse } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
-import { GROUPS } from '@nolus/nolusjs/build/types/Networks';
+import { GROUPS, Protocols } from '@nolus/nolusjs/build/types/Networks';
 import { AssetUtils } from '@nolus/nolusjs';
 import { undefinedHandler } from '../utils';
 
@@ -52,15 +52,18 @@ function getAttributeValueFromWasmRepayEvent(
 }
 
 export function getLeaseGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lease);
+  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lease, Protocols.osmosis);
 }
 
 export function getLpnGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lpn);
+  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lpn, Protocols.osmosis);
 }
 
 export function getNativeGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Native);
+  return AssetUtils.getCurrenciesByGroupDevnet(
+    GROUPS.Native,
+    Protocols.osmosis,
+  );
 }
 
 export function getPaymentGroupCurrencies(): string[] {
