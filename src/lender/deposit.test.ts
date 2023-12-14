@@ -244,7 +244,7 @@ maybe('Lender tests - Make a deposit', () => {
     const customPriceAfterDeposit = getCustomPrice(
       lppBalanceImmediatlyBeforeDeposit,
       lppBalanceImmediatlyAfterDeposit,
-      priceImmediatlyBeforeDeposit.amount.ticker,
+      lppCurrency,
     );
 
     const lppLiquidityAfterDeposit = await cosm.getBalance(
