@@ -129,7 +129,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
 
       minSellAsset = +(await leaserInstance.getLeaserConfig()).config
-        .lease_position_spec.min_sell_asset.amount;
+        .lease_position_spec.min_transaction.amount;
       minAsset = +(await leaserInstance.getLeaserConfig()).config
         .lease_position_spec.min_asset.amount;
 
@@ -275,9 +275,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const leaseCurrencyPriceObj = await oracleInstance.getPriceFor(
-        leaseCurrency,
-      );
+      const leaseCurrencyPriceObj =
+        await oracleInstance.getPriceFor(leaseCurrency);
       const [
         minToleranceCurrencyPrice_LC,
         exactCurrencyPrice_LC,
@@ -313,9 +312,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseAmountBeforeClose = leaseStateBeforePartialClose.amount;
 
-      const leaseCurrencyPriceObj = await oracleInstance.getPriceFor(
-        leaseCurrency,
-      );
+      const leaseCurrencyPriceObj =
+        await oracleInstance.getPriceFor(leaseCurrency);
       const [
         minToleranceCurrencyPrice_LC,
         exactCurrencyPrice_LC,
@@ -379,9 +377,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
-      const leaseCurrencyPriceObj = await oracleInstance.getPriceFor(
-        leaseCurrency,
-      );
+      const leaseCurrencyPriceObj =
+        await oracleInstance.getPriceFor(leaseCurrency);
       const [
         minToleranceCurrencyPrice_LC,
         exactCurrencyPrice_LC,
@@ -509,9 +506,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
-      const leaseCurrencyPriceObj = await oracleInstance.getPriceFor(
-        leaseCurrency,
-      );
+      const leaseCurrencyPriceObj =
+        await oracleInstance.getPriceFor(leaseCurrency);
 
       const [
         minToleranceCurrencyPrice_LC,
@@ -646,9 +642,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
-      const leaseCurrencyPriceObj = await oracleInstance.getPriceFor(
-        leaseCurrency,
-      );
+      const leaseCurrencyPriceObj =
+        await oracleInstance.getPriceFor(leaseCurrency);
       const [
         minToleranceCurrencyPrice_LC,
         exactCurrencyPrice_LC,

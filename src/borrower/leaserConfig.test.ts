@@ -178,7 +178,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('try to set min_sell_asset ticker != LPN - should produce an error', async () => {
       const invalidTicker = getLeaseGroupCurrencies()[0];
-      leaserConfigMsg.config.lease_position_spec.min_sell_asset = {
+      leaserConfigMsg.config.lease_position_spec.min_transaction = {
         amount: '100', // any amount
         ticker: invalidTicker,
       };
