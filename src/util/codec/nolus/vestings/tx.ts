@@ -1,8 +1,6 @@
 /* eslint-disable */
-// import _m0 from "protobufjs/minimal";
 import _m0, { BinaryReader, BinaryWriter } from "cosmjs-types/binary";
 import { Coin } from "cosmjs-types/cosmos/base/v1beta1/coin";
-// import { Coin } from "../cosmos/base/v1beta1/coin";
 
 export const protobufPackage = "nolus.vestings.v1beta1";
 
@@ -231,26 +229,6 @@ export class MsgClientImpl implements Msg {
   }
 }
 
-// export class MsgClientImpl implements Msg {
-//   private readonly rpc: Rpc;
-//   constructor(rpc: Rpc) {
-//     this.rpc = rpc;
-//     this.CreateVestingAccount = this.CreateVestingAccount.bind(this);
-//   }
-//   CreateVestingAccount(
-//     request: MsgCreateVestingAccount
-//   ): Promise<MsgCreateVestingAccountResponse> {
-//     const data = MsgCreateVestingAccount.encode(request).finish();
-//     const promise = this.rpc.request(
-//       "nolus.vestings.v1beta1.Msg",
-//       "CreateVestingAccount",
-//       data
-//     );
-//     return promise.then((data) =>
-//       MsgCreateVestingAccountResponse.decode(new _m0.BinaryReader(data))
-//     );
-//   }
-// }
 interface Rpc {
   request(service: string, method: string, data: Uint8Array): Promise<Uint8Array>;
 }

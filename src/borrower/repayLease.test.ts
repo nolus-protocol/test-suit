@@ -336,9 +336,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const paymentAmountLPN =
         +leaseStateBeforeSecondRepay.principal_due.amount / 2;
 
-      const paymentCurrencyPriceObj = await oracleInstance.getPriceFor(
-        paymentCurrency,
-      );
+      const paymentCurrencyPriceObj =
+        await oracleInstance.getPriceFor(paymentCurrency);
 
       const [
         minToleranceCurrencyPrice,
@@ -381,9 +380,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         const paymentAmountLPN =
           +leaseStateBeforeThirdRepay.principal_due.amount / 2;
 
-        const paymentCurrencyPriceObj = await oracleInstance.getPriceFor(
-          paymentCurrency,
-        );
+        const paymentCurrencyPriceObj =
+          await oracleInstance.getPriceFor(paymentCurrency);
 
         const [
           minToleranceCurrencyPrice,

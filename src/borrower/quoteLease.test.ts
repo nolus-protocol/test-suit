@@ -80,9 +80,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         downpaymentCurrencyToIBC,
       );
 
-      const leaseCurrencyPriceObj = await oracleInstance.getPriceFor(
-        leaseCurrency,
-      );
+      const leaseCurrencyPriceObj =
+        await oracleInstance.getPriceFor(leaseCurrency);
 
       const [
         minToleranceCurrencyPrice,

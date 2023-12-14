@@ -66,7 +66,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
         stakeholderWallet.address as string,
         [initTransfer],
         customFees.transfer,
-        '',
       );
       expect(assertIsDeliverTxSuccess(broadcastTx)).toBeUndefined();
     });

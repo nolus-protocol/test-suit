@@ -82,7 +82,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           user2Wallet.address as string,
           [transfer1],
           customFees.transfer,
-          '',
         );
 
       const treasuryBalanceAfter = await user1Wallet.getBalance(
@@ -134,7 +133,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           user3Wallet.address as string,
           [transfer2],
           customFees.transfer,
-          '',
         );
       assertIsDeliverTxSuccess(broadcastTxResponse2);
       nextUser2Balance = await user2Wallet.getBalance(
@@ -162,7 +160,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           user1Wallet.address as string,
           [transfer3],
           customFees.transfer,
-          '',
         );
       assertIsDeliverTxSuccess(broadcastTxResponse3);
 
@@ -203,7 +200,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           user3Wallet.address as string,
           [transfer],
           customFees.transfer,
-          '',
         );
 
       await expect(broadcastTx).rejects.toThrow(/^.*0unls: invalid coins.*/);
@@ -249,7 +245,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           user3Wallet.address as string,
           [transfer],
           customFees.transfer,
-          '',
         );
 
       expect(isDeliverTxFailure(broadcastTxResponse)).toBeTruthy();
@@ -287,7 +282,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           WRONG_WALLET_ADDRESS,
           [transfer2],
           customFees.transfer,
-          '',
         );
       await expect(broadcastTx).rejects.toThrow(/^.*invalid address.*/);
 

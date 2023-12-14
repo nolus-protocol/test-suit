@@ -47,7 +47,6 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
         feederWallet.address as string,
         customFees.feedPrice.amount,
         customFees.transfer,
-        '',
       );
 
       const broadcastTx = () =>
@@ -75,7 +74,6 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
         feederWallet.address as string,
         customFees.feedPrice.amount,
         customFees.transfer,
-        '',
       );
 
       let broadcastTx = () =>

@@ -75,7 +75,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           user2Wallet.address as string,
           [transfer],
           customFees.transfer,
-          '',
         );
       assertIsDeliverTxSuccess(sendTokensResponse);
 
@@ -99,7 +98,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           user3Wallet.address as string,
           [transfer],
           customFees.transfer,
-          '',
         );
       assertIsDeliverTxSuccess(sendTokensResponse1);
 
@@ -147,7 +145,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           user1Wallet.address as string,
           [transfer],
           customFees.transfer,
-          '',
         );
       assertIsDeliverTxSuccess(sendTokensResponse2);
 
@@ -189,7 +186,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           user3Wallet.address as string,
           [transfer],
           customFees.transfer,
-          '',
         );
       await expect(broadcastTx).rejects.toThrow(/^.*invalid coins.*/);
 
@@ -224,7 +220,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
           WRONG_WALLET_ADDRESS,
           [transfer],
           customFees.transfer,
-          '',
         );
       await expect(broadcastTx).rejects.toThrow(/^.*invalid address.*/);
 

@@ -81,7 +81,6 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       delegatorWallet.address as string,
       [initTransfer],
       customFees.transfer,
-      '',
     );
     assertIsDeliverTxSuccess(broadcastTx);
   });

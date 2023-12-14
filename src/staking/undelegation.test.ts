@@ -59,7 +59,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
         delegatorWallet.address as string,
         [initTransfer],
         customFees.transfer,
-        '',
       );
       expect(assertIsDeliverTxSuccess(broadcastTx)).toBeUndefined();
 

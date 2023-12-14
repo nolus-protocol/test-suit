@@ -11,7 +11,6 @@ export async function sendInitTransferFeeTokens(
     receiverAdr,
     customFees.transfer.amount,
     customFees.transfer,
-    '',
   );
 }
 
@@ -23,7 +22,6 @@ export async function sendInitExecuteFeeTokens(
     receiverAdr,
     customFees.exec.amount,
     customFees.transfer,
-    '',
   );
 }
 export async function returnRestToMainAccount(

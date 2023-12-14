@@ -233,9 +233,8 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
         ).toString(),
       };
 
-      [marginInterestPaid, loanInterestPaid, principalPaid] = await repay(
-        paymentPrincipal,
-      );
+      [marginInterestPaid, loanInterestPaid, principalPaid] =
+        await repay(paymentPrincipal);
 
       expect(marginInterestPaid).toBe(CMD_afterFirstRepay);
       expect(loanInterestPaid).toBe(CID_afterFirstRepay);
