@@ -28,7 +28,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       samplesNumber?: number,
       discountFactor?: number,
     ): Promise<void> {
-      const priceConfig_orState = orState.config.price_config;
+      const priceConfig_orState = orState.price_config;
 
       const priceConfig = {
         update_config: {
@@ -122,7 +122,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
       initConfig = await oracleInstance.getConfig();
-      baseAsset = initConfig.config.base_asset;
+      baseAsset = initConfig.base_asset;
 
       leaseCurrencies = getLeaseGroupCurrencies();
     });
