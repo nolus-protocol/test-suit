@@ -18,7 +18,9 @@ import {
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
 import {
   customFees,
+  GAS_LIMIT,
   GASPRICE,
+  MIN_DEPOSIT_AMOUNT,
   NATIVE_MINIMAL_DENOM,
   undefinedHandler,
   VALIDATOR_PART,
@@ -43,7 +45,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
         messages: [],
         metadata: '',
         proposer: wallet.address as string,
-        initialDeposit: [{ denom: NATIVE_MINIMAL_DENOM, amount: '1000000' }],
+        initialDeposit: [MIN_DEPOSIT_AMOUNT],
         summary: 'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
       },
@@ -165,7 +167,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       value: Uint8Array.from(MsgStoreCode.encode(storeCodeMsg).finish()),
     });
 
-    const gas = '20000000000';
+    const gas = GAS_LIMIT;
     fee = {
       gas: gas,
       amount: [
