@@ -258,15 +258,15 @@ maybe('Staking Nolus tokens - Redelegation', () => {
   test('the delegator tries to redelegate tokens to non-existent validator - should produce an error', async () => {
     redelegateMsg.value.validatorDstAddress = delegatorWallet.address as string;
 
-    const broadcastTx = await delegatorWallet.signAndBroadcast(
-      delegatorWallet.address as string,
-      [redelegateMsg],
-      customFees.configs,
-    );
+    const broadcastTx = () =>
+      delegatorWallet.signAndBroadcast(
+        delegatorWallet.address as string,
+        [redelegateMsg],
+        customFees.configs,
+      );
 
-    expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
-    expect(broadcastTx.rawLog).toEqual(
-      'failed to execute message; message index: 0: invalid Bech32 prefix; expected nolusvaloper, got nolus',
+    await expect(broadcastTx).rejects.toThrow(
+      /^.*expected nolusvaloper, got nolus.*/,
     );
   });
 
