@@ -5,8 +5,9 @@ import { QueryClient, setupGovExtension, GovExtension } from '@cosmjs/stargate';
 import { DeliverTxResponse } from '@cosmjs/cosmwasm-stargate';
 import { toUtf8 } from '@cosmjs/encoding';
 import { NolusWallet } from '@nolus/nolusjs';
-import { customFees } from './utils';
+import { NATIVE_MINIMAL_DENOM, customFees, MIN_DEPOSIT_AMOUNT } from './utils';
 import { MsgSudoContract } from './codec/cosmos/tx';
+import { getUser1Wallet } from './clients';
 
 const NODE_ENDPOINT = process.env.NODE_URL as string;
 let queryClient: QueryClient & GovExtension;
@@ -28,6 +29,16 @@ export async function sendSudoContractProposal(
   message: string,
 ): Promise<DeliverTxResponse> {
   const authority = process.env.GOV_MODULE_ADDRESS as string;
+
+  const userWithBalanceWallet = await getUser1Wallet();
+
+  const deposit = { denom: NATIVE_MINIMAL_DENOM, amount: MIN_DEPOSIT_AMOUNT };
+
+  await userWithBalanceWallet.transferAmount(
+    wallet.address as string,
+    [deposit],
+    customFees.transfer,
+  );
 
   // TO DO: Update when cosmjs-types: MsgSudoContract
   wallet.registry.register(
@@ -57,6 +68,7 @@ export async function sendSudoContractProposal(
       summary:
         'This proposal proposes to test whether this SudoContract proposal passes',
       title: 'Test Proposal',
+      initialDeposit: [deposit],
     },
   };
 

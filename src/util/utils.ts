@@ -9,6 +9,9 @@ export const NATIVE_MINIMAL_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
 export const NATIVE_TICKER = ChainConstants.COIN_DENOM.toUpperCase();
 export const GASPRICE = 0.0025;
 
+export const MIN_DEPOSIT_AMOUNT = '2500000';
+export const GAS_LIMIT = '100000000';
+
 export const VALIDATOR_PART = 0.6; // 60%
 const alarmsOccurred = 100;
 
