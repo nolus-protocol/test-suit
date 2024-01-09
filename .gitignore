@@ -1,11 +1,6 @@
 node_modules/
 .env
-setup-dev-network.zip
 nolus.tar.gz
-build-binary.zip
-contracts.tar.gz
-deploy:cargo.zip
 accounts
 nolusd
-contracts-info.json
-deploy-contracts-genesis.sh
+deploy-platform.sh
