@@ -9,7 +9,7 @@ import { Coin } from 'cosmjs-types/cosmos/base/v1beta1/coin';
 import {
   MsgCreateVestingAccount,
   protobufPackage as vestingPackage,
-} from '../util/codec/nolus/vestings/tx';
+} from '../util/codec/nolus/msgCreateVestingAccount/tx';
 import { customFees, sleep, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,

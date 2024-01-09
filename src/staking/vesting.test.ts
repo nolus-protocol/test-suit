@@ -5,7 +5,7 @@ import { Coin } from 'cosmjs-types/cosmos/base/v1beta1/coin';
 import {
   MsgCreateVestingAccount,
   protobufPackage as vestingPackage,
-} from '../util/codec/nolus/vestings/tx';
+} from '../util/codec/nolus/msgCreateVestingAccount/tx';
 import NODE_ENDPOINT, {
   createWallet,
   getUser1Wallet,
