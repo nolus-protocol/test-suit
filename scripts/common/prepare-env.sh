@@ -29,22 +29,26 @@ _getValidatorAddress() {
 }
 
 prepareEnv() {
-local -r lpp_base_currency=$1
-local -r node_url=$2
-local -r node_env=$3
-local -r accounts_dir=$4
-local -r main_accounts_key=$5
-local -r feeder_key=$6
-local -r test_transfers=$7
-local -r test_oracle=$8
-local -r test_staking=$9
-local -r test_borrower=${10}
-local -r test_lender=${11}
-local -r test_treasury=${12}
-local -r test_vesting=${13}
-local -r test_gov=${14}
-local -r no_price_currency=${15}
-local -r active_lease_address=${16}
+local -r node_url="$1"
+local -r node_env="$2"
+local -r accounts_dir="$3"
+local -r main_accounts_key="$4"
+local -r feeder_key="$5"
+local -r protocol="$6"
+local -r admin_contract_address="$7"
+local -r treasury_address="$8"
+local -r timealarms_address="$9"
+local -r dispatcher_address="${10}"
+local -r no_price_currency="${11}"
+local -r active_lease_address="${12}"
+local -r test_transfers="${13}"
+local -r test_oracle=${14}
+local -r test_staking=${15}
+local -r test_borrower=${16}
+local -r test_lender=${17}
+local -r test_treasury=${18}
+local -r test_vesting=${19}
+local -r test_gov=${20}
 
 _addKey "test-user-1" "$accounts_dir"
 _addKey "test-user-2" "$accounts_dir"
@@ -60,47 +64,51 @@ if [ -n "$feeder_key" ] ; then
   feeder_priv_key=$(_exportKey "$feeder_key" "$accounts_dir")
 fi
 
-# Get contracts addresses
+# Get Protocol contracts
 
-curl https://raw.githubusercontent.com/Nolus-Protocol/nolus-money-market/main/scripts/deploy-contracts-genesis.sh >> deploy-contracts-genesis.sh
-source $HOME_DIR/deploy-contracts-genesis.sh
+local -r protocol_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"protocol":{"protocol":"'"$protocol"'"}}' --output json --node "$node_url")
+local -r dex_network=$(echo "$protocol_info" | jq -r '.data.network')
+local -r protocol_contracts=$(echo "$protocol_info" | jq -r '.data.contracts')
+local -r lpp_address=$(echo "$protocol_contracts" | jq -r '.lpp')
+local -r leaser_address=$(echo "$protocol_contracts" | jq -r '.leaser')
+local -r oracle_address=$(echo "$protocol_contracts" | jq -r '.oracle')
+local -r profit_address=$(echo "$protocol_contracts" | jq -r '.profit')
 
-local -r treasury_address=$(treasury_instance_addr)
-local -r lpp_address=$(lpp_instance_addr)
-local -r timealarms_address=$(timealarms_instance_addr)
-local -r oracle_address=$(oracle_instance_addr)
-local -r profit_address=$(profit_instance_addr)
-local -r leaser_address=$(leaser_instance_addr)
-local -r dispatcher_address=$(rewards_dispatcher_instance_addr)
+local -r protocol_currency=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"config":[]}' --output json --node "$node_url" | jq -r '.data.lpn_ticker')
+
+local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"deposit_capacity":[]}' --output json --node "$node_url"  | jq -r '.data.amount')
+
+local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov --output json --node "$node_url"  | jq -r '.account.base_account.address')
 
 local test_interest=false;
 if [ -n "$active_lease_address" ] && [ "$test_borrower" != "false" ] ; then
   test_interest=true
 fi
 
-local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"deposit_capacity":[]}' --output json --node "$node_url"  | jq -r '.data.amount')
-local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov --output json --node "$node_url"  | jq -r '.account.base_account.address')
-
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${node_url}
 ENV=${node_env}
-LPP_BASE_CURRENCY=${lpp_base_currency}
-NO_PRICE_CURRENCY=${no_price_currency}
 
 USER_1_PRIV_KEY=${user_1_priv_key}
 USER_2_PRIV_KEY=${user_2_priv_key}
 USER_3_PRIV_KEY=${user_3_priv_key}
 FEEDER_PRIV_KEY=${feeder_priv_key}
+
 VALIDATOR_1_ADDRESS=${validator_1_address}
 VALIDATOR_2_ADDRESS=${validator_2_address}
 GOV_MODULE_ADDRESS=${gov_module_address}
 
+DEX_NETWORK=${dex_network}
+LPP_BASE_CURRENCY=${protocol_currency}
+NO_PRICE_CURRENCY=${no_price_currency}
+
+ADMIN_CONTRACT_ADDRESS=${admin_contract_address}
+TREASURY_ADDRESS=${treasury_address}
 TIMEALARMS_ADDRESS=${timealarms_address}
+DISPATCHER_ADDRESS=${dispatcher_address}
 ORACLE_ADDRESS=${oracle_address}
 LEASER_ADDRESS=${leaser_address}
 LPP_ADDRESS=${lpp_address}
-TREASURY_ADDRESS=${treasury_address}
-DISPATCHER_ADDRESS=${dispatcher_address}
 PROFIT_ADDRESS=${profit_address}
 
 ACTIVE_LEASE_ADDRESS=${active_lease_address}

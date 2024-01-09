@@ -15,18 +15,24 @@ _downloadArtifact() {
   fi
 }
 
-
 HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
 
 GITHUB_NOLUS_CORE_RELEASES="https://github.com/Nolus-Protocol/nolus-core/releases"
 NOLUS_BUILD_BINARY_ARTIFACT="nolus.tar.gz"
+FAUCET_KEY="faucet"
 
 NOLUS_DEV_NET="https://dev-cl.nolus.network:26657"
-FAUCET_KEY="faucet"
-LPP_BASE_CURRENCY="USDC"
-
 NOLUS_CORE_TAG=""
 MNEMONIC_FAUCET=""
+
+ADMIN_CONTRACT_ADDRESS="nolus1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jsqxf8nd"
+TREASURY_ADDRESS="nolus14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0k0puz"
+TIMEALARMS_ADDRESS="nolus1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqmx7chl"
+DISPATCHER_ADDRESS="nolus1tqwwyth34550lg2437m05mjnjp8w7h5ka7m70jtzpxn4uh2ktsmqtctwnn"
+
+PROTOCOL=""
+ACTIVE_LEASE_ADDRESS=""
+
 TEST_TRANSFER="true"
 TEST_ORACLE="true"
 TEST_STAKING="true"
@@ -35,9 +41,6 @@ TEST_LENDER="true"
 TEST_TREASURY="true"
 TEST_VESTING="true"
 TEST_GOV="true"
-
-ACTIVE_LEASE_ADDRESS=""
-
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -48,9 +51,14 @@ while [[ $# -gt 0 ]]; do
     printf \
     "Usage: %s
     [--nolus-dev-net <nolus_dev_url>]
-    [--lpp-base-currency <lpp_base_currency_ticker>]
     [--nolus-core-version-tag <nolus_core_preferred_tag>]
     [--mnemonic-faucet <mnemonic_phrase>]
+    [--admin-contract-address <admin_contract_address>]
+    [--treasury-address <treasury_contract_address>]
+    [--timealarms-address <timealarms_contract_address>]
+    [--dispatcher-address <dispatcher_contract_address>]
+    [--protocol <protocol_name_to_test>]
+    [--active-lease-address <active_lease_address>]
     [--test-transfer-flag <test_transfer_true_or_false>]
     [--test-oracle-flag <test_oracle_true_or_false>]
     [--test-staking-flag <test_staking_true_or_false>]
@@ -58,20 +66,13 @@ while [[ $# -gt 0 ]]; do
     [--test-lender-flag <test_lender_true_or_false>]
     [--test-treasury-flag <test_treasury_true_or_false>]
     [--test-vesting-flag <test_vesting_true_or_false>]
-    [--test-gov-flag <test_gov_true_or_false>]
-    [--active-lease-address <active_lease_address>]" \
+    [--test-gov-flag <test_gov_true_or_false>]" \
     "$0"
     exit 0
     ;;
 
   --nolus-dev-net)
     NOLUS_DEV_NET="$2"
-    shift
-    shift
-    ;;
-
-  --lpp-base-currency)
-    LPP_BASE_CURRENCY="$2"
     shift
     shift
     ;;
@@ -84,6 +85,42 @@ while [[ $# -gt 0 ]]; do
 
   --mnemonic-faucet)
     MNEMONIC_FAUCET="$2"
+    shift
+    shift
+    ;;
+
+  --admin-contract-address)
+    ADMIN_CONTRACT_ADDRESS="$2"
+    shift
+    shift
+    ;;
+
+  --treasury-address)
+    TREASURY_ADDRESS="$2"
+    shift
+    shift
+    ;;
+
+  --timelarms-address)
+    TIMEALARMS_ADDRESS="$2"
+    shift
+    shift
+    ;;
+
+  --dispatcher-address)
+    DISPATCHER_ADDRESS="$2"
+    shift
+    shift
+    ;;
+
+  --protocol)
+    PROTOCOL="$2"
+    shift
+    shift
+    ;;
+
+  --active-lease-address)
+    ACTIVE_LEASE_ADDRESS="$2"
     shift
     shift
     ;;
@@ -136,12 +173,6 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  --active-lease-address)
-    ACTIVE_LEASE_ADDRESS="$2"
-    shift
-    shift
-    ;;
-
   *)
     echo "unknown option '$key'"
     exit 1
@@ -154,8 +185,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR"/common/verify.sh
 
 verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic"
-
-# Get dev-network information
+verify_mandatory "$PROTOCOL" "protocol name"
 
 if [[ -z ${NOLUS_CORE_TAG} ]]; then
     NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq -r '.tag_name')
@@ -164,7 +194,6 @@ fi
 _downloadArtifact "$NOLUS_BUILD_BINARY_ARTIFACT" "$NOLUS_CORE_TAG"
 tar -xvf "$NOLUS_BUILD_BINARY_ARTIFACT"
 
-# Home dir
 export PATH
 PATH=$HOME_DIR:$PATH
 rm -rf "$HOME_DIR/accounts"
@@ -174,9 +203,8 @@ ACCOUNTS_DIR="$HOME_DIR/accounts"
 source "$SCRIPT_DIR"/common/cmd.sh
 echo "$MNEMONIC_FAUCET" | run_cmd "$ACCOUNTS_DIR" keys add "$FAUCET_KEY" --recover --keyring-backend "test"
 
-# Prepare .env
-
 source "$SCRIPT_DIR"/common/prepare-env.sh
-prepareEnv "$LPP_BASE_CURRENCY" "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" \
-"" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" "$TEST_BORROWER" \
-"$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "" "$ACTIVE_LEASE_ADDRESS"
+prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" "" "$PROTOCOL" \
+"$ADMIN_CONTRACT_ADDRESS" "$TREASURY_ADDRESS" "$TIMEALARMS_ADDRESS" "$DISPATCHER_ADDRESS" \
+"" "$ACTIVE_LEASE_ADDRESS" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
+"$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV"
