@@ -8,6 +8,24 @@ import { undefinedHandler } from '../utils';
 
 const textDecoder = new TextDecoder();
 
+export function getProtocol() {
+  const protocolEnv = process.env.DEX_NETWORK;
+
+  let protocol;
+  switch (protocolEnv?.toLowerCase()) {
+    case 'osmosis':
+      protocol = Protocols.osmosis;
+      break;
+    case 'neutron':
+      protocol = Protocols.neutron;
+      break;
+    default:
+      throw new Error('No match');
+  }
+
+  return protocol;
+}
+
 export function findWasmEventPositions(response: any, eType: string): number[] {
   const events = response.events;
   const indexes: number[] = [];
@@ -52,18 +70,15 @@ function getAttributeValueFromWasmRepayEvent(
 }
 
 export function getLeaseGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lease, Protocols.osmosis);
+  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lease, getProtocol());
 }
 
 export function getLpnGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lpn, Protocols.osmosis);
+  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lpn, getProtocol());
 }
 
 export function getNativeGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupDevnet(
-    GROUPS.Native,
-    Protocols.osmosis,
-  );
+  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Native, getProtocol());
 }
 
 export function getPaymentGroupCurrencies(): string[] {

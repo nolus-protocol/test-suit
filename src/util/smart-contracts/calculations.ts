@@ -3,6 +3,7 @@ import { LppBalance } from '@nolus/nolusjs/build/contracts';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
 import { Networks, Protocols } from '@nolus/nolusjs/build/types/Networks';
 import { TONANOSEC } from '../utils';
+import { getProtocol } from './getters';
 
 const NANOSEC_YEAR = 365 * 24 * 60 * 60 * TONANOSEC;
 
@@ -109,7 +110,7 @@ export function currencyTicker_To_IBC(ticker: string): string {
   return AssetUtils.makeIBCMinimalDenomDevnet(
     ticker,
     Networks.NOLUS,
-    Protocols.osmosis,
+    getProtocol(),
   );
 }
 
