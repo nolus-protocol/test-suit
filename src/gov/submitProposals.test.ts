@@ -45,7 +45,9 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
         messages: [],
         metadata: '',
         proposer: wallet.address as string,
-        initialDeposit: [MIN_DEPOSIT_AMOUNT],
+        initialDeposit: [
+          { denom: NATIVE_MINIMAL_DENOM, amount: MIN_DEPOSIT_AMOUNT },
+        ],
         summary: 'This proposal proposes to test whether this proposal passes',
         title: 'Test Proposal',
       },
