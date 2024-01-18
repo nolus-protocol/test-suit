@@ -131,6 +131,10 @@ export function getMarginPaidTimeFromRawState(rawState: Uint8Array): bigint {
 }
 
 export function getCurrencyOtherThan(unlikeCurrencies: string[]): string {
+  if (unlikeCurrencies.includes('USDC')) {
+    unlikeCurrencies.push('USDC_AXELAR');
+  }
+
   const supportedCurrencies = getPaymentGroupCurrencies();
   const currencyTicker = supportedCurrencies.find(
     (currency) => !unlikeCurrencies.includes(currency),
