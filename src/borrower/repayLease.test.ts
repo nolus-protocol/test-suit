@@ -152,7 +152,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         getMarginInterestPaidFromRepayTx(repayTxResponse);
       const principalPaid = getPrincipalPaidFromRepayTx(repayTxResponse);
 
-      const leaseStateAfterRepay = (await leaseInstance.getLeaseStatus())
+      const leaseStateAfterRepay: any = (await leaseInstance.getLeaseStatus())
         .opened;
 
       if (!leaseStateAfterRepay) {
@@ -160,10 +160,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const PID_afterRepay = leaseStateAfterRepay.previous_interest_due.amount;
-      const PMD_afterRepay = leaseStateAfterRepay.previous_margin_due.amount;
-      const CID_afterRepay = leaseStateAfterRepay.current_interest_due.amount;
-      const CMD_afterRepay = leaseStateAfterRepay.current_margin_due.amount;
+      const PID_afterRepay = leaseStateAfterRepay.overdue_interest.amount;
+      const PMD_afterRepay = leaseStateAfterRepay.overdue_margin.amount;
+      const CID_afterRepay = leaseStateAfterRepay.due_interest.amount;
+      const CMD_afterRepay = leaseStateAfterRepay.due_margin.amount;
 
       const leasePrincipalAfterRepay = BigInt(
         leaseStateAfterRepay.principal_due.amount,

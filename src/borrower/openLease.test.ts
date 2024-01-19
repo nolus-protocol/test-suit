@@ -302,7 +302,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       borrowerWallet: NolusWallet,
     ) {
       const excess = 1000;
-      const currentLeaseState = await leaseInstance.getLeaseStatus();
+      const currentLeaseState: any = await leaseInstance.getLeaseStatus();
 
       if (!currentLeaseState.opened) {
         undefinedHandler();
@@ -311,10 +311,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const paymentAmount =
         +currentLeaseState.opened?.principal_due.amount +
-        +currentLeaseState.opened?.current_interest_due.amount +
-        +currentLeaseState.opened?.current_margin_due.amount +
-        +currentLeaseState.opened?.previous_interest_due.amount +
-        +currentLeaseState.opened?.previous_margin_due.amount +
+        +currentLeaseState.opened?.due_interest.amount +
+        +currentLeaseState.opened?.due_margin.amount +
+        +currentLeaseState.opened?.overdue_interest.amount +
+        +currentLeaseState.opened?.overdue_margin.amount +
         excess;
 
       const payment = {

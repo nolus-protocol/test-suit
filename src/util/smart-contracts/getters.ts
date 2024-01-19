@@ -6,8 +6,6 @@ import { GROUPS, Protocols } from '@nolus/nolusjs/build/types/Networks';
 import { AssetUtils } from '@nolus/nolusjs';
 import { undefinedHandler } from '../utils';
 
-const textDecoder = new TextDecoder();
-
 export function getProtocol() {
   const protocolEnv = process.env.DEX_NETWORK;
 
@@ -44,7 +42,7 @@ export function findAttributePositions(event: any, aType: string): number[] {
   const indexes: number[] = [];
 
   attributes.forEach((attribute: Attribute, index: number) => {
-    if (textDecoder.decode(attribute.key) === aType) {
+    if (attribute.key.toString() === aType) {
       indexes.push(index);
     }
   });
@@ -64,9 +62,7 @@ function getAttributeValueFromWasmRepayEvent(
   const wasmEvent = response.result.events[wasmEventIndex[0]];
   const attributeIndex = findAttributePositions(wasmEvent, attributeName);
 
-  return BigInt(
-    textDecoder.decode(wasmEvent.attributes[attributeIndex[0]].value),
-  );
+  return BigInt(wasmEvent.attributes[attributeIndex[0]].value.toString());
 }
 
 export function getLeaseGroupCurrencies(): string[] | string {
@@ -104,11 +100,11 @@ export function getLeaseAddressFromOpenLeaseResponse(
 }
 
 export function getMarginInterestPaidFromRepayTx(response: TxResponse): bigint {
-  return getAttributeValueFromWasmRepayEvent(response, 'curr-margin-interest');
+  return getAttributeValueFromWasmRepayEvent(response, 'due-margin-interest');
 }
 
 export function getLoanInterestPaidFromRepayTx(response: TxResponse): bigint {
-  return getAttributeValueFromWasmRepayEvent(response, 'curr-loan-interest');
+  return getAttributeValueFromWasmRepayEvent(response, 'due-loan-interest');
 }
 
 export function getPrincipalPaidFromRepayTx(response: TxResponse): bigint {

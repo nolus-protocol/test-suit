@@ -339,7 +339,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially - should work as expected', async () => {
-      const leaseStateBeforePartialClose = (
+      const leaseStateBeforePartialClose: any = (
         await leaseInstance.getLeaseStatus()
       ).opened;
 
@@ -352,10 +352,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseObligationsBeforePartialClose =
         +leaseStateBeforePartialClose.principal_due.amount +
-        +leaseStateBeforePartialClose.current_interest_due.amount +
-        +leaseStateBeforePartialClose.current_margin_due.amount +
-        +leaseStateBeforePartialClose.previous_interest_due.amount +
-        +leaseStateBeforePartialClose.previous_margin_due.amount;
+        +leaseStateBeforePartialClose.due_interest.amount +
+        +leaseStateBeforePartialClose.due_margin.amount +
+        +leaseStateBeforePartialClose.overdue_interest.amount +
+        +leaseStateBeforePartialClose.overdue_margin.amount;
 
       const borrowerBalanceBeforeLPN = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
@@ -416,8 +416,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
       expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
 
-      const leaseStateAfterPartialClose = (await leaseInstance.getLeaseStatus())
-        .opened;
+      const leaseStateAfterPartialClose: any = (
+        await leaseInstance.getLeaseStatus()
+      ).opened;
 
       expect(leaseStateAfterPartialClose).toBeDefined();
 
@@ -428,10 +429,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseObligationsAfterPartialClose =
         +leaseStateAfterPartialClose.principal_due.amount +
-        +leaseStateAfterPartialClose.current_interest_due.amount +
-        +leaseStateAfterPartialClose.current_margin_due.amount +
-        +leaseStateAfterPartialClose.previous_interest_due.amount +
-        +leaseStateAfterPartialClose.previous_margin_due.amount;
+        +leaseStateAfterPartialClose.due_interest.amount +
+        +leaseStateAfterPartialClose.due_margin.amount +
+        +leaseStateAfterPartialClose.overdue_interest.amount +
+        +leaseStateAfterPartialClose.overdue_margin.amount;
 
       expect(+leaseStateAfterPartialClose.amount.amount).toBe(
         +leaseStateBeforePartialClose.amount.amount - amountToCloseValue,
@@ -468,7 +469,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially by sending an amount which covers the obligations - should work as expected', async () => {
-      const leaseStateBeforePartialClose = (
+      const leaseStateBeforePartialClose: any = (
         await leaseInstance.getLeaseStatus()
       ).opened;
 
@@ -481,10 +482,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseObligationsBeforePartialClose =
         +leaseStateBeforePartialClose.principal_due.amount +
-        +leaseStateBeforePartialClose.current_interest_due.amount +
-        +leaseStateBeforePartialClose.current_margin_due.amount +
-        +leaseStateBeforePartialClose.previous_interest_due.amount +
-        +leaseStateBeforePartialClose.previous_margin_due.amount;
+        +leaseStateBeforePartialClose.due_interest.amount +
+        +leaseStateBeforePartialClose.due_margin.amount +
+        +leaseStateBeforePartialClose.overdue_interest.amount +
+        +leaseStateBeforePartialClose.overdue_margin.amount;
 
       const borrowerBalanceBeforeLPN = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
@@ -611,8 +612,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         )
       ).length;
 
-      const leaseStateBeforeFullClose = (await leaseInstance.getLeaseStatus())
-        .opened;
+      const leaseStateBeforeFullClose: any = (
+        await leaseInstance.getLeaseStatus()
+      ).opened;
 
       if (!leaseStateBeforeFullClose) {
         undefinedHandler();
@@ -622,10 +624,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const leaseAmountBeforeClose = leaseStateBeforeFullClose.amount;
       const leaseObligations =
         +leaseStateBeforeFullClose.principal_due.amount +
-        +leaseStateBeforeFullClose.current_interest_due.amount +
-        +leaseStateBeforeFullClose.current_margin_due.amount +
-        +leaseStateBeforeFullClose.previous_interest_due.amount +
-        +leaseStateBeforeFullClose.previous_margin_due.amount;
+        +leaseStateBeforeFullClose.due_interest.amount +
+        +leaseStateBeforeFullClose.due_margin.amount +
+        +leaseStateBeforeFullClose.overdue_interest.amount +
+        +leaseStateBeforeFullClose.overdue_margin.amount;
 
       const borrowerBalanceBeforeLPN = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
