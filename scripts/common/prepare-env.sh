@@ -82,8 +82,6 @@ local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov 
 
 local -r leaser_config=$(run_cmd "$accounts_dir" q wasm contract-state smart "$leaser_address" '{"config":{}}' --output json --node "$node_url")
 local -r lease_code_id=$(echo "$leaser_config" | jq -r '.data.config.lease_code_id')
-local -r min_transaction_amount=$(echo "$leaser_config" | jq -r '.data.config.lease_position_spec.min_transaction.amount')
-local -r min_asset_amount=$(echo "$leaser_config" | jq -r '.data.config.lease_position_spec.min_asset.amount')
 
 local test_interest=false;
 if [ -n "$active_lease_address" ] && [ "$test_borrower" != "false" ] ; then
@@ -117,8 +115,6 @@ LPP_ADDRESS=${lpp_address}
 PROFIT_ADDRESS=${profit_address}
 LEASE_CODE_ID=${lease_code_id}
 
-MIN_ASSET_AMOUNT=${min_asset_amount}
-MIN_TRANSACTION_AMOUNT=${min_transaction_amount}
 LENDER_DEPOSIT_CAPACITY=${lender_deposit_capacity}
 
 ACTIVE_LEASE_ADDRESS=${active_lease_address}
