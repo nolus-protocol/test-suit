@@ -119,3 +119,23 @@ export async function findPriceLowerThanOneLPN(
 
   return result;
 }
+
+export async function calcMinAllowablePaymentAmount(
+  leaserInstance: NolusContracts.Leaser,
+  oracleInstance: NolusContracts.Oracle,
+  paymentCurrencyTicker: string,
+  preferredPaymentAmount: string,
+): Promise<string> {
+  const minTransactionAmount = +(await leaserInstance.getLeaserConfig()).config
+    .lease_position_spec.min_transaction.amount;
+
+  const priceObj = await oracleInstance.getPriceFor(paymentCurrencyTicker);
+  const price = +priceObj.amount.amount / +priceObj.amount_quote.amount;
+
+  const additionAmount = 20;
+  const payment = Math.floor(
+    price * +minTransactionAmount + additionAmount,
+  ).toString();
+
+  return payment > preferredPaymentAmount ? payment : preferredPaymentAmount;
+}

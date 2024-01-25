@@ -15,6 +15,7 @@ import {
 } from '../util/smart-contracts/getters';
 import { runOrSkip, runTestIfLocal } from '../util/testingRules';
 import {
+  calcMinAllowablePaymentAmount,
   returnAmountToTheMainAccount,
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
@@ -104,7 +105,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
       expect(leaseAddress).not.toBe('');
-      console.log(leaseAddress);
 
       return leaseAddress;
     }
@@ -348,8 +348,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const leaseAmountBeforePartialClose = leaseStateBeforePartialClose.amount;
-
       const leaseObligationsBeforePartialClose =
         +leaseStateBeforePartialClose.principal_due.amount +
         +leaseStateBeforePartialClose.current_interest_due.amount +
@@ -385,15 +383,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         maxToleranceCurrencyPrice_LC,
       ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
 
-      const amountToCloseValue = Math.trunc(
-        Math.max(
-          minSellAsset,
-          Math.min(
-            leaseObligationsBeforePartialClose * exactCurrencyPrice_LC,
-            +leaseAmountBeforePartialClose.amount -
-              minAsset * exactCurrencyPrice_LC,
-          ),
-        ),
+      const amountToCloseValue = await calcMinAllowablePaymentAmount(
+        leaserInstance,
+        oracleInstance,
+        leaseCurrency,
+        '10000',
       );
 
       const closedAmountToLPN_min = Math.trunc(
@@ -434,7 +428,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         +leaseStateAfterPartialClose.previous_margin_due.amount;
 
       expect(+leaseStateAfterPartialClose.amount.amount).toBe(
-        +leaseStateBeforePartialClose.amount.amount - amountToCloseValue,
+        +leaseStateBeforePartialClose.amount.amount - +amountToCloseValue,
       );
 
       expect(BigInt(leaseObligationsAfterPartialClose)).toBeGreaterThanOrEqual(
@@ -517,8 +511,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const amountToCloseValue = Math.max(
         minSellAsset,
-        Math.floor(leaseObligationsBeforePartialClose * exactCurrencyPrice_LC) +
-          1,
+        Math.floor(
+          leaseObligationsBeforePartialClose * maxToleranceCurrencyPrice_LC,
+        ),
       );
 
       const closedAmountToLPN_min = Math.trunc(
