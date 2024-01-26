@@ -61,6 +61,7 @@ yarn run fund-main-account "<mnemonic_of_dex_account_you_have_preloaded>" "<addr
 ```
 
 * There must also be a native currency balance on the DEX network for the account whose information is passed to the script
+
 ### Run
 
 ```sh
@@ -68,3 +69,55 @@ yarn test
 ```
 
 * In **manually/** can be found tests which require specific configuration to work as expected. They require to be run in isolation. The requirements can be found in the relevant files there.
+
+## Compatibility
+
+Example of suitable values when testing:
+
+### Smart contracts
+
+#### Leaser
+
+```json
+{"data":{"config":{....,"lease_interest_rate_margin":40,"lease_position_spec":{"liability":{"initial":600,"healthy":830,"first_liq_warn":850,"second_liq_warn":865,"third_liq_warn":880,"max":900,"recalc_time":432000000000000},"min_asset":{"amount":"150","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},"lease_interest_payment":{"due_period":1209600000000000,"grace_period":172800000000000},....}}}
+```
+
+#### Oracle
+
+```json
+{"data":{....,"price_config":{"min_feeders":500,"sample_period_secs":10,"samples_number":12,"discount_factor":750}}}
+```
+
+#### LPP
+
+```json
+{"data":{....,"borrow_rate":{"base_interest_rate":100,"utilization_optimal":750,"addon_optimal_interest_rate":20},"min_utilization":0}}
+```
+
+#### Profit
+
+```json
+{"data":{"cadence_hours":7200}}
+```
+
+### Services
+
+#### Feeder
+
+```toml
+tick_seconds = 60
+between_tx_margin_seconds = 5
+query_delivered_tx_tick_seconds = 15
+
+....
+```
+
+#### Alarms dispatcher
+
+```toml
+poll_period_seconds = 60
+between_tx_margin_seconds = 5
+query_delivered_tx_tick_seconds = 15
+
+....
+```
