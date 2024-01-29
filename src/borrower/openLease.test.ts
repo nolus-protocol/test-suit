@@ -65,19 +65,22 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       downpaymentCurrency: string,
       downpaymentCurrencyToIBC: string,
       ltd?: number,
+      dp?: string,
     ) {
       let fundsList: Coin[];
+
+      const downpaymentAmount = dp ? dp : downpayment;
 
       if (downpaymentCurrencyToIBC === defaultTip.denom)
         fundsList = [
           addCoins(
-            { denom: downpaymentCurrencyToIBC, amount: downpayment },
+            { denom: downpaymentCurrencyToIBC, amount: downpaymentAmount },
             defaultTip,
           ),
         ];
       else {
         fundsList = [
-          { denom: downpaymentCurrencyToIBC, amount: downpayment },
+          { denom: downpaymentCurrencyToIBC, amount: downpaymentAmount },
           defaultTip,
         ];
       }
@@ -129,7 +132,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await provideEnoughLiquidity(
         leaserInstance,
         lppInstance,
-        downpayment,
+        downpaymentAmount,
         downpaymentCurrency,
         leaseCurrency,
       );
@@ -144,7 +147,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrency,
         customFees.exec,
         ltd,
-        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
+        [
+          { denom: downpaymentCurrencyToIBC, amount: downpaymentAmount },
+          defaultTip,
+        ],
       );
 
       const leasesAfter = await leaserInstance.getCurrentOpenLeasesByOwner(
@@ -178,8 +184,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const downpaymentToLPN_min = +downpayment / minToleranceCurrencyPrice_PC;
-      const downpaymentToLPN_max = +downpayment / maxToleranceCurrencyPrice_PC;
+      const downpaymentToLPN_min =
+        +downpaymentAmount / minToleranceCurrencyPrice_PC;
+      const downpaymentToLPN_max =
+        +downpaymentAmount / maxToleranceCurrencyPrice_PC;
 
       expect(BigInt(leaseAmount)).toBeGreaterThanOrEqual(
         BigInt(
@@ -240,7 +248,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
 
       expect(BigInt(borrowerBalanceAfter_PC.amount)).toBe(
-        BigInt(borrowerBalanceBefore_PC.amount) - BigInt(downpayment),
+        BigInt(borrowerBalanceBefore_PC.amount) - BigInt(downpaymentAmount),
       );
 
       if (downpaymentCurrency != leaseCurrency) {
@@ -408,6 +416,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the successful scenario for opening a lease - downpayment currency !== lpn currency !== lease currency- should work as expected', async () => {
+      const currentDPAmount = '1000000';
+
       const currentLeaseCurrency = leaseCurrency;
       const currentDownpaymentCurrency = getCurrencyOtherThan([
         currentLeaseCurrency,
@@ -425,6 +435,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         currentLeaseCurrency,
         currentDownpaymentCurrency,
         currentDownpaymentCurrencyToIBC,
+        undefined,
+        currentDPAmount,
       );
     });
 

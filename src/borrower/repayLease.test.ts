@@ -62,7 +62,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     const profitContractAddress = process.env.PROFIT_ADDRESS as string;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
-    const downpayment = '10000';
+    const downpayment = '100000';
     let paymentsCount = 0;
 
     async function verifyTransferAfterRepay(

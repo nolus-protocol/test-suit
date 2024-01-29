@@ -49,6 +49,7 @@ local -r test_lender=${17}
 local -r test_treasury=${18}
 local -r test_vesting=${19}
 local -r test_gov=${20}
+local -r test_admin=${21}
 
 _addKey "test-user-1" "$accounts_dir"
 _addKey "test-user-2" "$accounts_dir"
@@ -80,6 +81,9 @@ local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state
 
 local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov --output json --node "$node_url"  | jq -r '.account.base_account.address')
 
+local -r leaser_config=$(run_cmd "$accounts_dir" q wasm contract-state smart "$leaser_address" '{"config":{}}' --output json --node "$node_url")
+local -r lease_code_id=$(echo "$leaser_config" | jq -r '.data.config.lease_code_id')
+
 local test_interest=false;
 if [ -n "$active_lease_address" ] && [ "$test_borrower" != "false" ] ; then
   test_interest=true
@@ -110,10 +114,11 @@ ORACLE_ADDRESS=${oracle_address}
 LEASER_ADDRESS=${leaser_address}
 LPP_ADDRESS=${lpp_address}
 PROFIT_ADDRESS=${profit_address}
-
-ACTIVE_LEASE_ADDRESS=${active_lease_address}
+LEASE_CODE_ID=${lease_code_id}
 
 LENDER_DEPOSIT_CAPACITY=${lender_deposit_capacity}
+
+ACTIVE_LEASE_ADDRESS=${active_lease_address}
 
 TEST_TRANSFER=${test_transfers}
 TEST_ORACLE=${test_oracle}
@@ -123,6 +128,7 @@ TEST_LENDER=${test_lender}
 TEST_TREASURY=${test_treasury}
 TEST_VESTING=${test_vesting}
 TEST_GOV=${test_gov}
+TEST_ADMIN=${test_admin}
 TEST_BORROWER_INTEREST=${test_interest}
 EOF
   )

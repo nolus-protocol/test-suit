@@ -41,6 +41,7 @@ TEST_LENDER="true"
 TEST_TREASURY="true"
 TEST_VESTING="true"
 TEST_GOV="true"
+TEST_ADMIN="true"
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -66,7 +67,8 @@ while [[ $# -gt 0 ]]; do
     [--test-lender-flag <test_lender_true_or_false>]
     [--test-treasury-flag <test_treasury_true_or_false>]
     [--test-vesting-flag <test_vesting_true_or_false>]
-    [--test-gov-flag <test_gov_true_or_false>]" \
+    [--test-gov-flag <test_gov_true_or_false>]
+    [--test-admin-flag <test_admin_true_or_false>]" \
     "$0"
     exit 0
     ;;
@@ -173,6 +175,11 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
+  --test-admin-flag)
+    TEST_ADMIN="$2"
+    shift
+    shift
+    ;;
   *)
     echo "unknown option '$key'"
     exit 1
@@ -207,4 +214,4 @@ source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" "" "$PROTOCOL" \
 "$ADMIN_CONTRACT_ADDRESS" "$TREASURY_ADDRESS" "$TIMEALARMS_ADDRESS" "$DISPATCHER_ADDRESS" \
 "" "$ACTIVE_LEASE_ADDRESS" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
-"$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV"
+"$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN"

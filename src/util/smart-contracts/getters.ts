@@ -1,4 +1,3 @@
-import { TextDecoder } from 'node:util';
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
 import { Attribute, Event, TxResponse } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
