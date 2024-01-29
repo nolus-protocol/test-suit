@@ -49,6 +49,7 @@ local -r test_lender=${17}
 local -r test_treasury=${18}
 local -r test_vesting=${19}
 local -r test_gov=${20}
+local -r test_admin=${21}
 
 _addKey "test-user-1" "$accounts_dir"
 _addKey "test-user-2" "$accounts_dir"
@@ -127,6 +128,7 @@ TEST_LENDER=${test_lender}
 TEST_TREASURY=${test_treasury}
 TEST_VESTING=${test_vesting}
 TEST_GOV=${test_gov}
+TEST_ADMIN=${test_admin}
 TEST_BORROWER_INTEREST=${test_interest}
 EOF
   )
