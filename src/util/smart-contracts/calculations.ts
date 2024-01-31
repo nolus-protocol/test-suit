@@ -1,7 +1,7 @@
 import { NolusContracts, AssetUtils } from '@nolus/nolusjs';
 import { LppBalance } from '@nolus/nolusjs/build/contracts';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
-import { Networks, Protocols } from '@nolus/nolusjs/build/types/Networks';
+import { Networks } from '@nolus/nolusjs/build/types/Networks';
 import { TONANOSEC } from '../utils';
 import { getProtocol } from './getters';
 
@@ -61,8 +61,11 @@ export function calcInterestRate(
   interestPaidByNanoSec: bigint, //until when (date) the interest is paid (nanosec)
   outstandingByNanoSec: bigint, //now (nanosec)
 ): bigint {
-  if (outstandingByNanoSec === interestPaidByNanoSec) return BigInt(0);
-  if (outstandingByNanoSec < interestPaidByNanoSec) return BigInt(-1);
+  if (
+    outstandingByNanoSec === interestPaidByNanoSec ||
+    outstandingByNanoSec < interestPaidByNanoSec
+  )
+    return BigInt(0);
 
   const interestPerYear = (principalDue * interestRate) / BigInt(1000);
 
