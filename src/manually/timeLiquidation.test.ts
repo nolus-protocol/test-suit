@@ -1,4 +1,3 @@
-import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import {
   customFees,
@@ -6,14 +5,16 @@ import {
   undefinedHandler,
   TONANOSEC,
   defaultTip,
+  NATIVE_MINIMAL_DENOM,
 } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { Lease, LeaseStatus } from '@nolus/nolusjs/build/contracts';
 import {
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
 } from '../util/smart-contracts/calculations';
+import { sendInitExecuteFeeTokens } from '../util/transfer';
+import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
 import {
   getLeaseAddressFromOpenLeaseResponse,
   getLeaseGroupCurrencies,
@@ -27,13 +28,11 @@ import {
 // These tests require the network to be configured with Leaser specific config
 // That`s why, they are only executed locally and in isolation, and only if this requirement is met!
 // Suitable values are :
-// - for the Leaser - {...,"lease_interest_rate_margin":10000000,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"150000","ticker":"USDC"},"min_sell_asset":{"amount":"1000","ticker":"USDC"}},..."lease_interest_payment":{"due_period":60000000000,"grace_period":30000000000}}
+// - for the Leaser - {...,"lease_interest_rate_margin":10000000,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"15000","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},..."lease_interest_payment":{"due_period":240000000000,"grace_period":30000000000}}
 // - for the LPP - {...,"min_utilization": 0}
-// - working dispatcher
+// - non-working dispatcher
 // - working feeder
 
-// Before running -> update:
-// - "alarmDispatcherPeriod" = the configured "poll_period_seconds" + 5 /take from the alarms-dispatcher bot config/
 describe.skip('Lease - Time Liquidation tests', () => {
   let cosm: CosmWasmClient;
   let borrowerWallet: NolusWallet;
@@ -45,15 +44,13 @@ describe.skip('Lease - Time Liquidation tests', () => {
   let leaseCurrency: string;
   let downpaymentCurrency: string;
   let downpaymentCurrencyToIBC: string;
-  let mainPeriod: number;
-  let gracePeriod: number;
+  let duePeriod: number;
   let minAssetLPN: number;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
-
-  const alarmDispatcherPeriod = 15; // poll_period_seconds + 5
+  const timealarmsContractAddress = process.env.TIMEALARMS_ADDRESS as string;
 
   async function timeLiquidationCheck(
     leaseInstance: Lease,
@@ -63,40 +60,43 @@ describe.skip('Lease - Time Liquidation tests', () => {
       borrowerWallet.address as string,
     );
 
-    await sleep(mainPeriod);
+    await sleep(duePeriod);
 
-    const stateAfterMainPeriod = (await leaseInstance.getLeaseStatus()).opened;
-    if (!stateAfterMainPeriod) {
+    const stateAfterDuePeriod: any = (await leaseInstance.getLeaseStatus())
+      .opened;
+    if (!stateAfterDuePeriod) {
       undefinedHandler();
       return;
     }
 
-    const PMD_afterMainPeriod = stateAfterMainPeriod.previous_margin_due.amount;
+    const IOD_afterDuePeriod = stateAfterDuePeriod.overdue_interest.amount;
+    const MOD_afterDuePeriod = stateAfterDuePeriod.overdue_margin.amount;
+    const ID_afterDuePeriod = stateAfterDuePeriod.due_interest.amount;
+    const MD_afterDuePeriod = stateAfterDuePeriod.due_margin.amount;
+    const interestLPN =
+      +IOD_afterDuePeriod +
+      +MOD_afterDuePeriod +
+      +ID_afterDuePeriod +
+      +MD_afterDuePeriod;
 
-    expect(PMD_afterMainPeriod).not.toBe('0');
+    expect(MOD_afterDuePeriod).not.toBe('0');
 
     expect(stateBefore.opened?.amount.amount).toBe(
-      stateAfterMainPeriod.amount.amount,
+      stateAfterDuePeriod.amount.amount,
     );
 
-    await sleep(gracePeriod);
+    await dispatchAlarms();
 
-    const stateRightAfterGracePeriod = (await leaseInstance.getLeaseStatus())
-      .opened;
-    if (!stateRightAfterGracePeriod) {
-      undefinedHandler();
-      return;
-    }
-
-    const PID_afterGracePeriod =
-      stateRightAfterGracePeriod.previous_interest_due.amount;
-    const PMD_afterGracePeriod =
-      stateRightAfterGracePeriod.previous_margin_due.amount;
-    const previousInterestLPN = +PID_afterGracePeriod + +PMD_afterGracePeriod;
-
-    await sleep(alarmDispatcherPeriod);
+    const intervalId = setInterval(async () => {
+      try {
+        await dispatchAlarms();
+      } catch (error) {
+        console.error(error);
+      }
+    }, 7000);
 
     await waitLeaseInProgressToBeNull(leaseInstance);
+    clearInterval(intervalId);
 
     const leaseCurrencyPriceObj =
       await oracleInstance.getPriceFor(leaseCurrency);
@@ -106,35 +106,51 @@ describe.skip('Lease - Time Liquidation tests', () => {
       maxToleranceCurrencyPrice_LC,
     ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
 
-    const stateAfterGracePeriod = await leaseInstance.getLeaseStatus();
-    if (!stateAfterGracePeriod) {
-      undefinedHandler();
-      return;
-    }
+    const stateAfterLiquidation = await leaseInstance.getLeaseStatus();
 
-    const previousInterestToLeaseCurrency = Math.trunc(
-      previousInterestLPN * exactCurrencyPrice_LC,
+    const interestToLeaseCurrency = Math.trunc(
+      interestLPN * exactCurrencyPrice_LC,
     );
 
     if (
-      +stateAfterMainPeriod.amount.amount / exactCurrencyPrice_LC <
+      +stateAfterDuePeriod.amount.amount / exactCurrencyPrice_LC <
       minAssetLPN
     ) {
-      expect(stateAfterGracePeriod.liquidated).toBeDefined();
+      expect(stateAfterLiquidation.liquidated).toBeDefined();
 
       const leasesAfter = await leaserInstance.getCurrentOpenLeasesByOwner(
         borrowerWallet.address as string,
       );
       expect(leasesAfter.length).toEqual(leasesBefore.length - 1);
     } else {
-      if (!stateAfterGracePeriod.opened) {
+      if (!stateAfterLiquidation.opened) {
         undefinedHandler();
         return;
       }
-      expect(+stateAfterGracePeriod.opened?.amount.amount).toBeLessThanOrEqual(
-        +stateAfterMainPeriod.amount.amount - previousInterestToLeaseCurrency,
+
+      expect(+stateAfterLiquidation.opened?.amount.amount).toBeLessThanOrEqual(
+        +stateAfterDuePeriod.amount.amount - interestToLeaseCurrency,
       );
     }
+  }
+
+  async function dispatchAlarms() {
+    const dispatchAlarmMsg = { dispatch_alarms: { max_count: 32000000 } };
+
+    await userWithBalanceWallet.execute(
+      userWithBalanceWallet.address as string,
+      timealarmsContractAddress,
+      dispatchAlarmMsg,
+      {
+        gas: '200000000',
+        amount: [
+          {
+            amount: '200000000',
+            denom: NATIVE_MINIMAL_DENOM,
+          },
+        ],
+      },
+    );
   }
 
   async function openLease(downpayment: number): Promise<NolusContracts.Lease> {
@@ -195,8 +211,7 @@ describe.skip('Lease - Time Liquidation tests', () => {
     userWithBalanceWallet = await getUser1Wallet();
 
     leaserConfig = (await leaserInstance.getLeaserConfig()).config;
-    mainPeriod = leaserConfig.lease_interest_payment.due_period / TONANOSEC;
-    gracePeriod = leaserConfig.lease_interest_payment.grace_period / TONANOSEC;
+    duePeriod = leaserConfig.lease_interest_payment.due_period / TONANOSEC;
     minAssetLPN = +leaserConfig.lease_position_spec.min_asset.amount;
     const lppConfig = await lppInstance.getLppConfig();
     downpaymentCurrency = lppConfig.lpn_ticker;
@@ -204,21 +219,8 @@ describe.skip('Lease - Time Liquidation tests', () => {
     leaseCurrency = getLeaseGroupCurrencies()[0];
   });
 
-  test('partial liquidation due to expiry of the grace period - should work as expected', async () => {
-    const downpayment = 100000;
-    const leaseInstance = await openLease(downpayment);
-
-    await sendInitExecuteFeeTokens(
-      userWithBalanceWallet,
-      borrowerWallet.address as string,
-    );
-
-    const stateBeforeFirstLiquidation = await leaseInstance.getLeaseStatus();
-    await timeLiquidationCheck(leaseInstance, stateBeforeFirstLiquidation);
-  });
-
-  test.skip('full liquidation due to expiry of the grace period - should work as expected', async () => {
-    const downpayment = 10000;
+  test('partial liquidation due to expiry of due_period - should work as expected', async () => {
+    const downpayment = 1000000;
     const leaseInstance = await openLease(downpayment);
 
     await sendInitExecuteFeeTokens(
