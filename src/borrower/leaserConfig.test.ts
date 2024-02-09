@@ -158,7 +158,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     test('try to set min_asset amount = 0 - should produce an error', async () => {
       leaserConfigMsg.config.lease_position_spec.min_asset = {
         amount: '0',
-        ticker: 'USDC',
+        ticker: process.env.LPP_BASE_CURRENCY,
       };
 
       await trySendPropToSetConfig('Min asset amount should be positive');
