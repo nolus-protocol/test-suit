@@ -1,4 +1,3 @@
-import { TextDecoder } from 'node:util';
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import NODE_ENDPOINT, {
@@ -20,12 +19,10 @@ import {
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
 
-const textDecoder = new TextDecoder();
-
 // These tests require the network to be specifically configured
 // That`s why, they only work locally and in isolation, and only if this requirement is met!
 // Suitable values are :
-// - for the Leaser config - {...,"lease_interest_rate_margin":30,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"15000","ticker":"USDC"},"min_sell_asset":{"amount":"1000","ticker":"USDC"}},..."lease_interest_payment":{"due_period":5184000000000000,"grace_period":864000000000000}}
+// - for the Leaser config - {...,"lease_interest_rate_margin":30,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"150","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},..."lease_interest_payment":{"due_period":5184000000000000,"grace_period":864000000000000}}
 // - for the Oracle  config - {"config":{....,"price_config":{"min_feeders":500,"sample_period_secs":260,"samples_number":1,"discount_factor":750}},....}
 // - for the LPP - {...,"min_utilization":0}
 // - working dispatcher bot
@@ -132,7 +129,11 @@ describe.skip('Lease - Price Liquidation tests', () => {
       customFees.transfer,
     );
 
-    await oracleInstance.feedPrices(feederWallet, priceObj, 1.3);
+    await oracleInstance.feedPrices(
+      feederWallet,
+      priceObj,
+      customFees.feedPrice,
+    );
 
     // const priceAfterConfig = await oracleInstance.getPriceFor(leaseCurrency);
 
@@ -172,11 +173,9 @@ describe.skip('Lease - Price Liquidation tests', () => {
     );
 
     expect(
-      +textDecoder.decode(
-        repayTxResponse[0].result.events[
-          wasmEventIndex[wasmEventIndex.length - 1]
-        ].attributes[4].value,
-      ),
+      +repayTxResponse[0].result.events[
+        wasmEventIndex[wasmEventIndex.length - 1]
+      ].attributes[4].value,
     ).toBe(warningLevel);
   }
 
@@ -221,7 +220,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
       borrowerWallet.address as string,
     );
 
-    const stateBeforeLiquidation = await leaseInstance.getLeaseStatus();
+    const stateBeforeLiquidation: any = await leaseInstance.getLeaseStatus();
     if (!stateBeforeLiquidation.opened) {
       undefinedHandler();
       return;
@@ -230,10 +229,10 @@ describe.skip('Lease - Price Liquidation tests', () => {
     const leaseAmount = +stateBeforeLiquidation.opened?.amount.amount;
     const leaseDue =
       +stateBeforeLiquidation.opened?.principal_due.amount +
-      +stateBeforeLiquidation.opened?.current_interest_due.amount +
-      +stateBeforeLiquidation.opened?.current_margin_due.amount +
-      +stateBeforeLiquidation.opened?.previous_interest_due.amount +
-      +stateBeforeLiquidation.opened?.previous_margin_due.amount;
+      +stateBeforeLiquidation.opened?.due_interest.amount +
+      +stateBeforeLiquidation.opened?.due_margin.amount +
+      +stateBeforeLiquidation.opened?.overdue_interest.amount +
+      +stateBeforeLiquidation.opened?.overdue_margin.amount;
 
     const w1Price = (leaseDue * 1000) / (leaseAmount * w1Liability);
     const w2Price = (leaseDue * 1000) / (leaseAmount * w2Liability);
