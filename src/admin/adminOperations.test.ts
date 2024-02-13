@@ -45,8 +45,6 @@ runOrSkip(process.env.TEST_ADMIN as string)('Admin contract tests', () => {
   });
 
   test('an unregistered account tries to register a protocol - should produce an error', async () => {
-    const existingProtocol = await adminInstance.getProtocol(protocols[0]);
-
     const registerPtotocolMsg = {
       register_protocol: {
         name: 'test',
