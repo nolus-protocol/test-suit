@@ -198,14 +198,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const leaseStateAfterRepay = await leaseInstance.getLeaseStatus();
       expect(leaseStateAfterRepay.paid).toBeDefined();
 
-      // // // TO DO: issue #78 - https://github.com/nolus-protocol/nolus-money-market/issues/78
-      // // an unauthorized user tries to close the lease
-      // const unauthorizedUserWallet = await createWallet();
+      // an unauthorized user tries to close the lease
+      const unauthorizedUserWallet = await createWallet();
 
-      // const leaseState = await leaseInstance.getLeaseStatus();
-      // expect(leaseState.opened).toBeDefined();
-
-      // await testCloseInvalidCases(unauthorizedUserWallet, 'Unauthorized');
+      await testCloseInvalidCases(unauthorizedUserWallet, 'Unauthorized');
 
       const leasesAfterRepay = await leaserInstance.getCurrentOpenLeasesByOwner(
         borrowerWallet.address as string,
