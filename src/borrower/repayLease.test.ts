@@ -7,6 +7,7 @@ import {
   defaultTip,
   NATIVE_MINIMAL_DENOM,
   NATIVE_TICKER,
+  noProvidedPriceFor,
   undefinedHandler,
 } from '../util/utils';
 import NODE_ENDPOINT, {
@@ -22,7 +23,7 @@ import {
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
 } from '../util/smart-contracts/calculations';
-import { runOrSkip, runTestIfDev } from '../util/testingRules';
+import { runOrSkip, runTestIfDev, runTestIfLocal } from '../util/testingRules';
 import {
   getChangeFromRepayTx,
   getLeaseAddressFromOpenLeaseResponse,
@@ -453,15 +454,31 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    // TO DO
-    // test('the borrower tries to pay a lease with unsupported payment currency- should produce an error', async () => {
-    //   const invalidPaymentCurrency = ???;
+    runTestIfLocal(
+      'the borrower tries to pay when there is no payment currency price provided by the Oracle - should produce an error',
+      async () => {
+        const leaseCurrencyPriceObj = () =>
+          oracleInstance.getPriceFor(noProvidedPriceFor);
+        await expect(leaseCurrencyPriceObj).rejects.toThrow(
+          `Unsupported currency '${noProvidedPriceFor}'`,
+        );
+        const noProvidedPriceForToIBC =
+          currencyTicker_To_IBC(noProvidedPriceFor);
 
-    //   await testRepaymentWithInvalidParams(
-    //     { denom: invalidPaymentCurrency, amount: '11' },
-    //     'sentFunds: invalid coins',
-    //   ); // any amount
-    // });
+        const borrowerBalance = await borrowerWallet.getBalance(
+          borrowerWallet.address as string,
+          noProvidedPriceForToIBC,
+        );
+
+        await testRepaymentWithInvalidParams(
+          {
+            denom: noProvidedPriceForToIBC,
+            amount: borrowerBalance.amount,
+          },
+          `Failed to fetch price for the pair ${noProvidedPriceFor}/${lppCurrency}`,
+        );
+      },
+    );
 
     test('a user other than the lease owner tries to pay - should work as expected', async () => {
       const newUserWallet = await createWallet();
