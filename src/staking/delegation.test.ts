@@ -20,11 +20,11 @@ import {
 } from '../util/staking';
 import {
   customFees,
-  GASPRICE,
   NATIVE_MINIMAL_DENOM,
   undefinedHandler,
 } from '../util/utils';
 import { ifLocal, runOrSkip } from '../util/testingRules';
+import { calcFeeProfit } from '../util/transfer';
 
 runOrSkip(process.env.TEST_STAKING as string)(
   'Staking Nolus tokens - Delegation',
@@ -35,8 +35,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
     let validatorAddress: string;
 
     const delegatedAmount = '13';
-    const percision = 100000;
-    const gasPriceInteger = GASPRICE * percision;
 
     const delegateMsg = {
       typeUrl: `${stakingModule}.MsgDelegate`,
@@ -144,9 +142,7 @@ runOrSkip(process.env.TEST_STAKING as string)(
       if (ifLocal()) {
         expect(BigInt(treasuryBalanceAfter.amount)).toBe(
           BigInt(treasuryBalanceBefore.amount) +
-            BigInt(customFees.configs.amount[0].amount) -
-            (BigInt(customFees.configs.gas) * BigInt(gasPriceInteger)) /
-              BigInt(percision),
+            BigInt(calcFeeProfit(customFees.configs)),
         );
       }
 

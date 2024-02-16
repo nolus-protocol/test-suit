@@ -4,13 +4,13 @@ import {
   DeliverTxResponse,
 } from '@cosmjs/stargate';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
-import { sendInitTransferFeeTokens } from '../util/transfer';
+import { calcFeeProfit, sendInitTransferFeeTokens } from '../util/transfer';
 import NODE_ENDPOINT, {
   getUser1Wallet,
   getUser2Wallet,
   getUser3Wallet,
 } from '../util/clients';
-import { customFees, GASPRICE, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { ifLocal, runOrSkip } from '../util/testingRules';
 import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
 
@@ -25,9 +25,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
     const treasuryAddress = process.env.TREASURY_ADDRESS as string;
     const existingCurrencyTicker = process.env.LPP_BASE_CURRENCY as string;
     const existingCurrencyIbc = currencyTicker_To_IBC(existingCurrencyTicker);
-
-    const percision = 100000;
-    const gasPriceInteger = GASPRICE * percision;
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
@@ -109,9 +106,7 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
       if (ifLocal()) {
         expect(BigInt(treasuryBalanceAfter.amount)).toBe(
           BigInt(treasuryBalanceBefore.amount) +
-            BigInt(customFees.transfer.amount[0].amount) -
-            (BigInt(customFees.transfer.gas) * BigInt(gasPriceInteger)) /
-              BigInt(percision),
+            BigInt(calcFeeProfit(customFees.transfer)),
         );
       }
 

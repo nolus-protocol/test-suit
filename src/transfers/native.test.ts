@@ -11,7 +11,7 @@ import NODE_ENDPOINT, {
 } from '../util/clients';
 import { customFees, GASPRICE, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { NolusWallet, NolusClient } from '@nolus/nolusjs';
-import { sendInitTransferFeeTokens } from '../util/transfer';
+import { calcFeeProfit, sendInitTransferFeeTokens } from '../util/transfer';
 import { ifLocal, runOrSkip } from '../util/testingRules';
 
 runOrSkip(process.env.TEST_TRANSFER as string)(
@@ -25,9 +25,6 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
     let transfer3: Coin;
     const transferAmount = 10;
     const treasuryAddress = process.env.TREASURY_ADDRESS as string;
-
-    const percision = 100000;
-    const gasPriceInteger = GASPRICE * percision;
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
@@ -92,9 +89,7 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
       if (ifLocal()) {
         expect(BigInt(treasuryBalanceAfter.amount)).toBe(
           BigInt(treasuryBalanceBefore.amount) +
-            BigInt(customFees.transfer.amount[0].amount) -
-            (BigInt(customFees.transfer.gas) * BigInt(gasPriceInteger)) /
-              BigInt(percision),
+            BigInt(calcFeeProfit(customFees.transfer)),
         );
       }
 

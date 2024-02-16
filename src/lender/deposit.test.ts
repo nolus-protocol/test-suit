@@ -8,6 +8,7 @@ import {
   undefinedHandler,
 } from '../util/utils';
 import {
+  calcFeeProfit,
   returnRestToMainAccount,
   sendInitExecuteFeeTokens,
 } from '../util/transfer';
@@ -16,7 +17,7 @@ import {
   currencyTicker_To_IBC,
   LPNS_To_NLPNS,
 } from '../util/smart-contracts/calculations';
-import { runIfLenderDepositRestriction } from '../util/testingRules';
+import { ifLocal, runIfLenderDepositRestriction } from '../util/testingRules';
 
 const maybe =
   (process.env.TEST_LENDER as string).toLowerCase() !== 'false' &&
@@ -406,6 +407,13 @@ maybe('Lender tests - Make a deposit', () => {
         lenderWallet.address as string,
       );
 
+      const treasuryAddress = process.env.TREASURY_ADDRESS as string;
+
+      const treasuryBalanceBefore = await lenderWallet.getBalance(
+        treasuryAddress,
+        NATIVE_MINIMAL_DENOM,
+      );
+
       await lppInstance.deposit(lenderWallet, customFees.exec, [
         { denom: lppCurrencyToIBC, amount: deposit.toString() },
       ]);
@@ -414,6 +422,18 @@ maybe('Lender tests - Make a deposit', () => {
         lppContractAddress,
         lppCurrencyToIBC,
       );
+
+      const treasuryBalanceAfter = await lenderWallet.getBalance(
+        treasuryAddress,
+        NATIVE_MINIMAL_DENOM,
+      );
+
+      if (ifLocal()) {
+        expect(BigInt(treasuryBalanceAfter.amount)).toBe(
+          BigInt(treasuryBalanceBefore.amount) +
+            BigInt(calcFeeProfit(customFees.exec)),
+        );
+      }
 
       expect(BigInt(lppLiquidityAfter.amount)).toBe(
         BigInt(lppLiquidityBefore.amount) + BigInt(deposit),

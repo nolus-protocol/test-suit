@@ -1,7 +1,7 @@
-import { DeliverTxResponse } from '@cosmjs/stargate';
+import { Coin, DeliverTxResponse } from '@cosmjs/stargate';
 import { NolusWallet } from '@nolus/nolusjs';
 import { getUser1Wallet } from './clients';
-import { customFees } from './utils';
+import { GASPRICE, customFees } from './utils';
 
 export async function sendInitTransferFeeTokens(
   client: NolusWallet,
@@ -24,6 +24,7 @@ export async function sendInitExecuteFeeTokens(
     customFees.transfer,
   );
 }
+
 export async function returnRestToMainAccount(
   sender: NolusWallet,
   denom: string,
@@ -48,4 +49,15 @@ export async function returnRestToMainAccount(
       customFees.transfer,
     );
   }
+}
+
+export function calcFeeProfit(fee: any): number {
+  const percision = 100000;
+  const gasPriceInteger = GASPRICE * percision;
+
+  const profit = Math.trunc(
+    +fee.amount[0].amount - (+fee.gas * gasPriceInteger) / percision,
+  );
+
+  return profit;
 }
