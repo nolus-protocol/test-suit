@@ -67,7 +67,7 @@ fi
 
 # Get Protocol contracts
 
-local -r protocol_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"protocol":{"protocol":"'"$protocol"'"}}' --output json --node "$node_url")
+local -r protocol_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"protocol":"'"$protocol"'"}' --output json --node "$node_url")
 local -r dex_network=$(echo "$protocol_info" | jq -r '.data.network')
 local -r protocol_contracts=$(echo "$protocol_info" | jq -r '.data.contracts')
 local -r lpp_address=$(echo "$protocol_contracts" | jq -r '.lpp')
