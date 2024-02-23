@@ -46,16 +46,15 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaserConfigMsg = JSON.parse(JSON.stringify(configBefore));
       leaserConfigMsg.config.lease_code_id = undefined;
       leaserConfigMsg.config.dex = undefined;
-      leaserConfigMsg.config.lpp_addr = undefined;
+      leaserConfigMsg.config.lpp = undefined;
       leaserConfigMsg.config.market_price_oracle = undefined;
       leaserConfigMsg.config.profit = undefined;
       leaserConfigMsg.config.time_alarms = undefined;
     });
 
     afterEach(async () => {
-      leaserConfigMsg.config.lease_interest_payment = JSON.parse(
-        JSON.stringify(configBefore.config.lease_interest_payment),
-      );
+      leaserConfigMsg.config.lease_due_period =
+        configBefore.config.lease_due_period;
       leaserConfigMsg.config.lease_position_spec = JSON.parse(
         JSON.stringify(configBefore.config.lease_position_spec),
       );
@@ -136,15 +135,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaserConfigMsg.config.lease_position_spec.liability.max;
 
       await trySendPropToSetConfig('Third liquidation % should be < max %');
-    });
-
-    test('try to set grace period > interest period - should produce an error', async () => {
-      leaserConfigMsg.config.lease_interest_payment.grace_period =
-        leaserConfigMsg.config.lease_interest_payment.due_period + 1;
-
-      await trySendPropToSetConfig(
-        'The interest due period should be longer than grace period to avoid overlapping',
-      );
     });
 
     test('try to set recalc period < 1hour - should produce an error', async () => {
