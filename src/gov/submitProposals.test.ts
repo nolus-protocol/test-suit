@@ -94,6 +94,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
     });
   });
 
+  // UPDATE to be tax params update
   test('validator should be able to submit a ParameterChange proposal', async () => {
     const paramChangeMsg = MsgUpdateParams.fromPartial({
       authority: authority,
@@ -118,7 +119,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       authority: authority,
       plan: {
         name: 'Upgrade 1',
-        info: '',
+        height: BigInt(11111),
       },
     });
 
@@ -227,6 +228,14 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       value: Uint8Array.from(MsgClearAdmin.encode(clearAdminMsg).finish()),
     });
   });
+
+  // test('validator should be able to submit a ExecuteContract proposal and run from authorized address', async () => {
+  //   // TO DO
+  // });
+
+  // test('validator should be able to submit a MigrateContract proposal and run from authorized address', async () => {
+  //   // TO DO
+  // });
 
   // TO DO when MsgPinCodes
   // test('validator should be able to submit a PinCodes proposal', async () => {

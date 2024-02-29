@@ -221,7 +221,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
       borrowerWallet.address as string,
     );
 
-    const stateBeforeLiquidation: any = await leaseInstance.getLeaseStatus();
+    const stateBeforeLiquidation = await leaseInstance.getLeaseStatus();
     if (!stateBeforeLiquidation.opened) {
       undefinedHandler();
       return;

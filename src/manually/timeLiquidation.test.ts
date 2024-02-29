@@ -62,8 +62,7 @@ describe.skip('Lease - Time Liquidation tests', () => {
 
     await sleep(duePeriod);
 
-    const stateAfterDuePeriod: any = (await leaseInstance.getLeaseStatus())
-      .opened;
+    const stateAfterDuePeriod = (await leaseInstance.getLeaseStatus()).opened;
     if (!stateAfterDuePeriod) {
       undefinedHandler();
       return;

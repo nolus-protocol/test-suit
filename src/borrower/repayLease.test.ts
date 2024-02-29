@@ -153,7 +153,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         getMarginInterestPaidFromRepayTx(repayTxResponse);
       const principalPaid = getPrincipalPaidFromRepayTx(repayTxResponse);
 
-      const leaseStateAfterRepay: any = (await leaseInstance.getLeaseStatus())
+      const leaseStateAfterRepay = (await leaseInstance.getLeaseStatus())
         .opened;
 
       if (!leaseStateAfterRepay) {

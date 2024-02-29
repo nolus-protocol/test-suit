@@ -124,7 +124,7 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
     });
 
     test('the existing lease should have a properly calculated interest', async () => {
-      const leaseState: any = (await leaseInstance.getLeaseStatus()).opened;
+      const leaseState = (await leaseInstance.getLeaseStatus()).opened;
 
       if (!leaseState) {
         undefinedHandler();
@@ -203,8 +203,7 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
     });
 
     test('repayment of debts must be in proper sequence', async () => {
-      const leaseStateBefore: any = (await leaseInstance.getLeaseStatus())
-        .opened;
+      const leaseStateBefore = (await leaseInstance.getLeaseStatus()).opened;
 
       if (!leaseStateBefore) {
         undefinedHandler();
@@ -232,9 +231,8 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
         marginAndLoanInteresPayment,
       );
 
-      const leaseStateAfterFirstRepay: any = (
-        await leaseInstance.getLeaseStatus()
-      ).opened;
+      const leaseStateAfterFirstRepay = (await leaseInstance.getLeaseStatus())
+        .opened;
 
       if (!leaseStateAfterFirstRepay) {
         undefinedHandler();
@@ -276,8 +274,7 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
       expect(loanInterestPaid).toBe(CID_afterFirstRepay);
       expect(principalPaid).toBe(payPrincipalAmount);
 
-      const leaseStateFinish: any = (await leaseInstance.getLeaseStatus())
-        .opened;
+      const leaseStateFinish = (await leaseInstance.getLeaseStatus()).opened;
 
       if (!leaseStateFinish) {
         undefinedHandler();

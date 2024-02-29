@@ -339,7 +339,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially - should work as expected', async () => {
-      const leaseStateBeforePartialClose: any = (
+      const leaseStateBeforePartialClose = (
         await leaseInstance.getLeaseStatus()
       ).opened;
 
@@ -410,9 +410,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
       expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
 
-      const leaseStateAfterPartialClose: any = (
-        await leaseInstance.getLeaseStatus()
-      ).opened;
+      const leaseStateAfterPartialClose = (await leaseInstance.getLeaseStatus())
+        .opened;
 
       expect(leaseStateAfterPartialClose).toBeDefined();
 
@@ -463,7 +462,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially by sending an amount which covers the obligations - should work as expected', async () => {
-      const leaseStateBeforePartialClose: any = (
+      const leaseStateBeforePartialClose = (
         await leaseInstance.getLeaseStatus()
       ).opened;
 
@@ -607,9 +606,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         )
       ).length;
 
-      const leaseStateBeforeFullClose: any = (
-        await leaseInstance.getLeaseStatus()
-      ).opened;
+      const leaseStateBeforeFullClose = (await leaseInstance.getLeaseStatus())
+        .opened;
 
       if (!leaseStateBeforeFullClose) {
         undefinedHandler();

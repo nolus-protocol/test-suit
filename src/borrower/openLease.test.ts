@@ -310,7 +310,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       borrowerWallet: NolusWallet,
     ) {
       const excess = 1000;
-      const currentLeaseState: any = await leaseInstance.getLeaseStatus();
+      const currentLeaseState = await leaseInstance.getLeaseStatus();
 
       if (!currentLeaseState.opened) {
         undefinedHandler();
