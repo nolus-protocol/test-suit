@@ -18,6 +18,7 @@ import {
 import {
   customFees,
   NATIVE_MINIMAL_DENOM,
+  sleep,
   undefinedHandler,
 } from '../util/utils';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
@@ -74,7 +75,7 @@ maybe('Staking Nolus tokens - Redelegation', () => {
 
     const initTransfer: Coin = {
       denom: NATIVE_MINIMAL_DENOM,
-      amount: delegatedAmount + customFees.transfer.amount[0].amount,
+      amount: delegatedAmount + customFees.configs.amount[0].amount,
     };
 
     const broadcastTx = await user1Wallet.transferAmount(
@@ -307,6 +308,7 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     redelegateMsg.value.amount.amount = loopRedelegateAmount.toString();
 
     for (let i = 0; i < loopIteration; i++) {
+      await sleep(10);
       const redelegationResult = await delegatorWallet.signAndBroadcast(
         delegatorWallet.address as string,
         [redelegateMsg],

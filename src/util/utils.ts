@@ -58,10 +58,10 @@ export const customFees = {
     ],
   },
   configs: {
-    gas: '300000',
+    gas: '500000',
     amount: [
       {
-        amount: Math.floor((300000 * GASPRICE) / VALIDATOR_PART).toString(),
+        amount: Math.floor((500000 * GASPRICE) / VALIDATOR_PART).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],
