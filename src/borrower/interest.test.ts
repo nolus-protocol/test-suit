@@ -115,8 +115,9 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
       lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
 
       const leaserInstance = new NolusContracts.Leaser(cosm, leaserAddress);
-      duePeriod = (await leaserInstance.getLeaserConfig()).config
-        .lease_interest_payment.due_period;
+      duePeriod = +(
+        await leaserInstance.getLeaserConfig()
+      ).config.lease_due_period.toString();
 
       userWithBalanceWallet = await getUser1Wallet();
       borrowerWallet = await createWallet();
