@@ -28,7 +28,7 @@ import {
 // These tests require the network to be configured with Leaser specific config
 // That`s why, they are only executed locally and in isolation, and only if this requirement is met!
 // Suitable values are :
-// - for the Leaser - {...,"lease_interest_rate_margin":10000000,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"15000","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},..."lease_interest_payment":{"due_period":240000000000,"grace_period":30000000000}}
+// - for the Leaser - {...,"lease_interest_rate_margin":10000000,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"15000","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},...,"lease_due_period":240000000000}
 // - for the LPP - {...,"min_utilization": 0}
 // - non-working dispatcher
 // - working feeder
@@ -211,7 +211,7 @@ describe.skip('Lease - Time Liquidation tests', () => {
     userWithBalanceWallet = await getUser1Wallet();
 
     leaserConfig = (await leaserInstance.getLeaserConfig()).config;
-    duePeriod = leaserConfig.lease_interest_payment.due_period / TONANOSEC;
+    duePeriod = +leaserConfig.lease_due_period.toString() / TONANOSEC;
     minAssetLPN = +leaserConfig.lease_position_spec.min_asset.amount;
     const lppConfig = await lppInstance.getLppConfig();
     downpaymentCurrency = lppConfig.lpn_ticker;
