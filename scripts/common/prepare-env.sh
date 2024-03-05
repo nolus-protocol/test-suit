@@ -35,21 +35,17 @@ local -r accounts_dir="$3"
 local -r main_accounts_key="$4"
 local -r feeder_key="$5"
 local -r protocol="$6"
-local -r admin_contract_address="$7"
-local -r treasury_address="$8"
-local -r timealarms_address="$9"
-local -r dispatcher_address="${10}"
-local -r no_price_currency="${11}"
-local -r active_lease_address="${12}"
-local -r test_transfers="${13}"
-local -r test_oracle=${14}
-local -r test_staking=${15}
-local -r test_borrower=${16}
-local -r test_lender=${17}
-local -r test_treasury=${18}
-local -r test_vesting=${19}
-local -r test_gov=${20}
-local -r test_admin=${21}
+local -r no_price_currency="$7"
+local -r active_lease_address="$8"
+local -r test_transfers="$9"
+local -r test_oracle="${10}"
+local -r test_staking="${11}"
+local -r test_borrower="${12}"
+local -r test_lender="${13}"
+local -r test_treasury="${14}"
+local -r test_vesting="${15}"
+local -r test_gov="${16}"
+local -r test_admin="${17}"
 
 _addKey "test-user-1" "$accounts_dir"
 _addKey "test-user-2" "$accounts_dir"
@@ -64,6 +60,14 @@ local feeder_priv_key=""
 if [ -n "$feeder_key" ] ; then
   feeder_priv_key=$(_exportKey "$feeder_key" "$accounts_dir")
 fi
+
+# Get platform contracts
+local -r admin_contract_address='nolus1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrq8welhp'
+
+local -r platform_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"platform":{}}' --output json --node "$node_url" | jq '.data')
+local -r timealarms_address=$(echo "$platform_info" | jq -r '.timealarms')
+local -r treasury_address=$(echo "$platform_info" | jq -r '.treasury')
+local -r rewards_dispatcher_address=$(echo "$platform_info" | jq -r '.rewards_dispatcher')
 
 # Get Protocol contracts
 
@@ -109,7 +113,7 @@ NO_PRICE_CURRENCY=${no_price_currency}
 ADMIN_CONTRACT_ADDRESS=${admin_contract_address}
 TREASURY_ADDRESS=${treasury_address}
 TIMEALARMS_ADDRESS=${timealarms_address}
-DISPATCHER_ADDRESS=${dispatcher_address}
+DISPATCHER_ADDRESS=${rewards_dispatcher_address}
 ORACLE_ADDRESS=${oracle_address}
 LEASER_ADDRESS=${leaser_address}
 LPP_ADDRESS=${lpp_address}

@@ -77,18 +77,7 @@ source "$SCRIPT_DIR"/common/verify.sh
 verify_mandatory "$FEEDER_KEY" "feeder key"
 verify_mandatory "$PROTOCOL" "protocol name"
 
-# Get Platform contracts
-HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
-curl https://raw.githubusercontent.com/Nolus-Protocol/nolus-money-market/main/scripts/deploy-platform.sh >> deploy-platform.sh
-source $HOME_DIR/deploy-platform.sh
-
-ADMIN_CONTRACT_ADDRESS=$(admin_contract_instance_addr)
-TREASURY_ADDRESS=$(treasury_instance_addr)
-TIMEALARMS_ADDRESS=$(timealarms_instance_addr)
-DISPATCHER_ADDRESS=$(rewards_dispatcher_instance_addr)
-
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" \
-"$FEEDER_KEY" "$PROTOCOL" "$ADMIN_CONTRACT_ADDRESS" "$TREASURY_ADDRESS" \
-"$TIMEALARMS_ADDRESS" "$DISPATCHER_ADDRESS" "$NO_PRICE_CURRENCY" "$ACTIVE_LEASE_ADDRESS" \
+"$FEEDER_KEY" "$PROTOCOL" "$NO_PRICE_CURRENCY" "$ACTIVE_LEASE_ADDRESS" \
 "" "" "" "" "" "" "" "" ""

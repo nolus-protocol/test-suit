@@ -25,11 +25,6 @@ NOLUS_DEV_NET="https://dev-cl.nolus.network:26657"
 NOLUS_CORE_TAG=""
 MNEMONIC_FAUCET=""
 
-ADMIN_CONTRACT_ADDRESS="nolus1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jsqxf8nd"
-TREASURY_ADDRESS="nolus14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0k0puz"
-TIMEALARMS_ADDRESS="nolus1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqmx7chl"
-DISPATCHER_ADDRESS="nolus1tqwwyth34550lg2437m05mjnjp8w7h5ka7m70jtzpxn4uh2ktsmqtctwnn"
-
 PROTOCOL=""
 ACTIVE_LEASE_ADDRESS=""
 
@@ -54,10 +49,6 @@ while [[ $# -gt 0 ]]; do
     [--nolus-dev-net <nolus_dev_url>]
     [--nolus-core-version-tag <nolus_core_preferred_tag>]
     [--mnemonic-faucet <mnemonic_phrase>]
-    [--admin-contract-address <admin_contract_address>]
-    [--treasury-address <treasury_contract_address>]
-    [--timealarms-address <timealarms_contract_address>]
-    [--dispatcher-address <dispatcher_contract_address>]
     [--protocol <protocol_name_to_test>]
     [--active-lease-address <active_lease_address>]
     [--test-transfer-flag <test_transfer_true_or_false>]
@@ -87,30 +78,6 @@ while [[ $# -gt 0 ]]; do
 
   --mnemonic-faucet)
     MNEMONIC_FAUCET="$2"
-    shift
-    shift
-    ;;
-
-  --admin-contract-address)
-    ADMIN_CONTRACT_ADDRESS="$2"
-    shift
-    shift
-    ;;
-
-  --treasury-address)
-    TREASURY_ADDRESS="$2"
-    shift
-    shift
-    ;;
-
-  --timelarms-address)
-    TIMEALARMS_ADDRESS="$2"
-    shift
-    shift
-    ;;
-
-  --dispatcher-address)
-    DISPATCHER_ADDRESS="$2"
     shift
     shift
     ;;
@@ -212,6 +179,5 @@ echo "$MNEMONIC_FAUCET" | run_cmd "$ACCOUNTS_DIR" keys add "$FAUCET_KEY" --recov
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" "" "$PROTOCOL" \
-"$ADMIN_CONTRACT_ADDRESS" "$TREASURY_ADDRESS" "$TIMEALARMS_ADDRESS" "$DISPATCHER_ADDRESS" \
 "" "$ACTIVE_LEASE_ADDRESS" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
 "$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN"
