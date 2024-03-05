@@ -47,6 +47,8 @@ local -r test_vesting="${15}"
 local -r test_gov="${16}"
 local -r test_admin="${17}"
 
+local -r flags="--output json --node $node_url"
+
 _addKey "test-user-1" "$accounts_dir"
 _addKey "test-user-2" "$accounts_dir"
 
@@ -61,17 +63,23 @@ if [ -n "$feeder_key" ] ; then
   feeder_priv_key=$(_exportKey "$feeder_key" "$accounts_dir")
 fi
 
+local -r gov_min_deposit_native=$(run_cmd "$accounts_dir" q gov params $flags | jq -r '.deposit_params.min_deposit[0].amount')
+
+local -r fee_rate=$(run_cmd "$accounts_dir" q tax params $flags | jq '.params.fee_rate')
+local -r validator_fee_part=$((100-"$fee_rate"))
+
 # Get platform contracts
+
 local -r admin_contract_address='nolus1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrq8welhp'
 
-local -r platform_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"platform":{}}' --output json --node "$node_url" | jq '.data')
+local -r platform_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"platform":{}}' $flags | jq '.data')
 local -r timealarms_address=$(echo "$platform_info" | jq -r '.timealarms')
 local -r treasury_address=$(echo "$platform_info" | jq -r '.treasury')
-local -r rewards_dispatcher_address=$(echo "$platform_info" | jq -r '.rewards_dispatcher')
+local -r rewards_dispatcher_address=$(echo "$platform_info" | jq -r '.dispatcher')
 
 # Get Protocol contracts
 
-local -r protocol_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"protocol":"'"$protocol"'"}' --output json --node "$node_url")
+local -r protocol_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"protocol":"'"$protocol"'"}' $flags)
 local -r dex_network=$(echo "$protocol_info" | jq -r '.data.network')
 local -r protocol_contracts=$(echo "$protocol_info" | jq -r '.data.contracts')
 local -r lpp_address=$(echo "$protocol_contracts" | jq -r '.lpp')
@@ -79,13 +87,13 @@ local -r leaser_address=$(echo "$protocol_contracts" | jq -r '.leaser')
 local -r oracle_address=$(echo "$protocol_contracts" | jq -r '.oracle')
 local -r profit_address=$(echo "$protocol_contracts" | jq -r '.profit')
 
-local -r protocol_currency=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"config":[]}' --output json --node "$node_url" | jq -r '.data.lpn_ticker')
+local -r protocol_currency=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"config":[]}' $flags | jq -r '.data.lpn_ticker')
 
-local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"deposit_capacity":[]}' --output json --node "$node_url"  | jq -r '.data.amount')
+local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"deposit_capacity":[]}' $flags  | jq -r '.data.amount')
 
-local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov --output json --node "$node_url"  | jq -r '.account.base_account.address')
+local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov $flags | jq -r '.account.base_account.address')
 
-local -r leaser_config=$(run_cmd "$accounts_dir" q wasm contract-state smart "$leaser_address" '{"config":{}}' --output json --node "$node_url")
+local -r leaser_config=$(run_cmd "$accounts_dir" q wasm contract-state smart "$leaser_address" '{"config":{}}' $flags)
 local -r lease_code_id=$(echo "$leaser_config" | jq -r '.data.config.lease_code_id')
 
 local test_interest=false;
@@ -109,6 +117,10 @@ GOV_MODULE_ADDRESS=${gov_module_address}
 DEX_NETWORK=${dex_network}
 LPP_BASE_CURRENCY=${protocol_currency}
 NO_PRICE_CURRENCY=${no_price_currency}
+
+
+GOV_MIN_DEPOSIT_NATIVE=${gov_min_deposit_native}
+VALIDATOR_FEE_PART=${validator_fee_part}
 
 ADMIN_CONTRACT_ADDRESS=${admin_contract_address}
 TREASURY_ADDRESS=${treasury_address}
