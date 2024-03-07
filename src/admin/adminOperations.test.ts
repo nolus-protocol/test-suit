@@ -80,4 +80,41 @@ runOrSkip(process.env.TEST_ADMIN as string)('Admin contract tests', () => {
       'Protocol set of contracts already exists for this protocol name',
     );
   });
+
+  test('user tries to propose the registration of a DEX admin address that is not valid', async () => {
+    const changeDexAdminMsg = {
+      change_dex_admin: {
+        new_dex_admin: 'osss1qxx93k3hdxmej43jjdvpl23rm5mhexcfhkf6zj',
+      },
+    };
+
+    const broadcastTx = await sendSudoContractProposal(
+      userWithBalanceWallet,
+      adminContractAddress,
+      JSON.stringify(changeDexAdminMsg),
+    );
+
+    expect(broadcastTx.rawLog).toContain('Invalid address');
+  });
+
+  test('the migration can only be cancaled by the DEX admin', async () => {
+    const endOfMigrationMsg = {
+      end_of_migration: {},
+    };
+
+    await userWithBalanceWallet.transferAmount(
+      userWithBalanceWallet.address as string,
+      customFees.configs.amount,
+      customFees.transfer,
+    );
+
+    const broadcastTx = () =>
+      userWithBalanceWallet.executeContract(
+        adminContractAddress,
+        endOfMigrationMsg,
+        customFees.configs,
+      );
+
+    await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
+  });
 });
