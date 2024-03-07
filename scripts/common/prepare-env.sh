@@ -46,6 +46,9 @@ local -r test_treasury="${14}"
 local -r test_vesting="${15}"
 local -r test_gov="${16}"
 local -r test_admin="${17}"
+local -r test_profit="${18}"
+local -r test_dispatcher="${19}"
+local -r test_timealarms="${20}"
 
 local -r flags="--output json --node $node_url"
 
@@ -146,6 +149,9 @@ TEST_VESTING=${test_vesting}
 TEST_GOV=${test_gov}
 TEST_ADMIN=${test_admin}
 TEST_BORROWER_INTEREST=${test_interest}
+TEST_PROFIT=${test_profit}
+TEST_DISPATCHER=${test_dispatcher}
+TEST_TIMEALARMS=${test_timealarms}
 EOF
   )
    echo "$DOT_ENV" > "$HOME_DIR/.env"

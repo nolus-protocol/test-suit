@@ -37,6 +37,9 @@ TEST_TREASURY="true"
 TEST_VESTING="true"
 TEST_GOV="true"
 TEST_ADMIN="true"
+TEST_PROFIT="true"
+TEST_DISPATCHER="true"
+TEST_TIMEALARMS="true"
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -59,7 +62,10 @@ while [[ $# -gt 0 ]]; do
     [--test-treasury-flag <test_treasury_true_or_false>]
     [--test-vesting-flag <test_vesting_true_or_false>]
     [--test-gov-flag <test_gov_true_or_false>]
-    [--test-admin-flag <test_admin_true_or_false>]" \
+    [--test-admin-flag <test_admin_true_or_false>]
+    [--test-profit-flag <test_profit_true_or_false>]
+    [--test-dispatcher-flag <test_dispatcher_true_or_false>
+    [--test-timealarms-flag <test_timealarms_true_or_false>]" \
     "$0"
     exit 0
     ;;
@@ -147,6 +153,24 @@ while [[ $# -gt 0 ]]; do
     shift
     shift
     ;;
+
+  --test-profit-flag)
+    TEST_PROFIT="$2"
+    shift
+    shift
+    ;;
+
+  --test-dispatcher-flag)
+    TEST_DISPATCHER="$2"
+    shift
+    shift
+    ;;
+
+  --test-timealarms-flag)
+    TEST_TIMEALARMS="$2"
+    shift
+    shift
+    ;;
   *)
     echo "unknown option '$key'"
     exit 1
@@ -180,4 +204,5 @@ echo "$MNEMONIC_FAUCET" | run_cmd "$ACCOUNTS_DIR" keys add "$FAUCET_KEY" --recov
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" "" "$PROTOCOL" \
 "" "$ACTIVE_LEASE_ADDRESS" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
-"$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN"
+"$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN" \
+"$TEST_PROFIT" "$TEST_DISPATCHER" "$TEST_TIMEALARMS"
