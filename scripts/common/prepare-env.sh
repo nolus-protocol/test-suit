@@ -118,9 +118,9 @@ VALIDATOR_2_ADDRESS=${validator_2_address}
 GOV_MODULE_ADDRESS=${gov_module_address}
 
 DEX_NETWORK=${dex_network}
+PROTOCOL=${protocol}
 LPP_BASE_CURRENCY=${protocol_currency}
 NO_PRICE_CURRENCY=${no_price_currency}
-
 
 GOV_MIN_DEPOSIT_NATIVE=${gov_min_deposit_native}
 VALIDATOR_FEE_PART=${validator_fee_part}

@@ -1,26 +1,12 @@
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
 import { Attribute, Event, TxResponse } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
-import { GROUPS, Protocols } from '@nolus/nolusjs/build/types/Networks';
+import { GROUPS } from '@nolus/nolusjs/build/types/Networks';
 import { AssetUtils } from '@nolus/nolusjs';
 import { undefinedHandler } from '../utils';
 
 export function getProtocol() {
-  const protocolEnv = process.env.DEX_NETWORK;
-
-  let protocol;
-  switch (protocolEnv?.toLowerCase()) {
-    case 'osmosis':
-      protocol = Protocols.osmosis;
-      break;
-    case 'neutron':
-      protocol = Protocols.neutron;
-      break;
-    default:
-      throw new Error('No match');
-  }
-
-  return protocol;
+  return process.env.PROTOCOL as string;
 }
 
 export function findWasmEventPositions(response: any, eType: string): number[] {
