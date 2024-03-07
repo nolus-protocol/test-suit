@@ -5,7 +5,7 @@ import { runOrSkip } from '../util/testingRules';
 import { sendSudoContractProposal } from '../util/proposals';
 
 runOrSkip(process.env.TEST_TREASURY as string)(
-  'Treasury tests - Request rewards',
+  'Treasury tests - Permissions',
   () => {
     let userWithBalanceWallet: NolusWallet;
     const treasuryContractAddress = process.env.TREASURY_ADDRESS as string;
