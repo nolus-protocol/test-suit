@@ -600,6 +600,20 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await expect(openLoan).rejects.toThrow(/^.*No such contract.*/);
     });
 
+    test('the lpp "repay loan" functionality should be used only by the lease contract', async () => {
+      const lppRepayLoanMsg = {};
+
+      const repayLoan = () =>
+        userWithBalanceWallet.execute(
+          userWithBalanceWallet.address as string,
+          lppContractAddress,
+          lppRepayLoanMsg,
+          customFees.exec,
+        );
+
+      await expect(repayLoan).rejects.toThrow(/^.*No such contract.*/);
+    });
+
     test('the lease instance can be created only by the leaser contract', async () => {
       const leaseInitMsg = {
         currency: 'OSMO',
