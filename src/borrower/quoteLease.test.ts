@@ -14,7 +14,6 @@ import {
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 import { noProvidedPriceFor, PERMILLE_TO_PERCENT } from '../util/utils';
-import { findPriceLowerThanOneLPN } from '../util/smart-contracts/actions/borrower';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Quote lease',
@@ -61,9 +60,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       addonOptimalInterestRate =
         lppConfig.borrow_rate.addon_optimal_interest_rate / PERMILLE_TO_PERCENT; //%
 
-      const leaserConfig = await leaserInstance.getLeaserConfig();
+      const leaserConfig = (await leaserInstance.getLeaserConfig()).config;
       liabilityInitialPercent =
-        +leaserConfig.config.lease_position_spec.liability.initial;
+        +leaserConfig.lease_position_spec.liability.initial;
 
       await provideEnoughLiquidity(
         leaserInstance,
@@ -257,29 +256,5 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         // );
       },
     );
-
-    // TO DO - issue #40
-    // runTestIfLocal(
-    //   'the borrower tries to apply for a lease with an insufficient down payment (<1LPN) - should produce an error',
-    //   async () => {
-    //     const dpCurrency = await findPriceLowerThanOneLPN(oracleInstance);
-
-    //     if (typeof dpCurrency != 'undefined') {
-    //       const quoteQueryResult = () =>
-    //         leaserInstance.leaseQuote(
-    //           '1',
-    //           dpCurrency,
-    //           leaseCurrency,
-    //         );
-    //       await expect(quoteQueryResult).rejects.toThrow(
-    //         /^.*TO DO.*/,
-    //       );
-    //     }
-    //   },
-    // );
-
-    // TO DO
-    // test('the borrower tries to apply for a lease whose total value is too small - should produce an error', async () => {
-    // });
   },
 );
