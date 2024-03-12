@@ -51,12 +51,12 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let downpaymentCurrencyToIBC: string;
     let paymentCurrency: string;
     let paymentCurrencyToIBC: string;
+    let cosm: CosmWasmClient;
     let lppInstance: NolusContracts.Lpp;
     let oracleInstance: NolusContracts.Oracle;
     let leaserInstance: NolusContracts.Leaser;
-    let cosm: CosmWasmClient;
-    let leaseAddress: string;
     let leaseInstance: NolusContracts.Lease;
+    let leaseAddress: string;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -459,6 +459,35 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       };
 
       await testRepayment(newUserWallet, leaseStateBeforeRepay, payment);
+    });
+
+    test('the borrower tries to pay less than the "min_transaction" - should produce an error', async () => {
+      const minTransaction = (await leaserInstance.getLeaserConfig()).config
+        .lease_position_spec.min_transaction.amount;
+
+      const paymentCurrency = leaseCurrency;
+      const paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
+      const paymentCurrencyPriceObj =
+        await oracleInstance.getPriceFor(paymentCurrency);
+      const [
+        minToleranceCurrencyPrice_PC,
+        exactCurrencyPrice_PC,
+        maxToleranceCurrencyPrice_PC,
+      ] = currencyPriceObjToNumbers(paymentCurrencyPriceObj, 1);
+
+      const paymentAmount = Math.trunc(
+        (+minTransaction - 1) * minToleranceCurrencyPrice_PC,
+      );
+
+      const payment = {
+        amount: paymentAmount.toString(),
+        denom: paymentCurrencyToIBC,
+      };
+
+      await testRepaymentWithInvalidParams(
+        payment,
+        'Insufficient payment amount',
+      );
     });
 
     test('the borrower tries to repay the lease at once and to pay excess', async () => {
