@@ -55,6 +55,10 @@ jobs:
         TEST_TREASURY_PIPELINE: ${{ github.event.inputs.test-treasury-pipeline || 'true' }}
         TEST_VESTING_PIPELINE: ${{ github.event.inputs.test-vesting-pipeline || 'true' }}
         TEST_GOV_PIPELINE: ${{ github.event.inputs.test-gov-pipeline || 'true' }}
+        TEST_PROFIT_PIPELINE: ${{ github.event.inputs.test-profit-pipeline || 'true' }}
+        TEST_DISPATCHER_PIPELINE: ${{ github.event.inputs.test-dispatcher-pipeline || 'true' }}
+        TEST_TIMEALARMS_PIPELINE: ${{ github.event.inputs.test-timealarms-pipeline || 'true' }}
+        TEST_RESERVE_PIPELINE: ${{ github.event.inputs.test-reserve-pipeline || 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: "Install jq"
@@ -68,7 +72,9 @@ jobs:
           --test-transfer-flag "$TEST_TRANSFER_PIPELINE" --test-oracle-flag "$TEST_ORACLE_PIPELINE" \
           --test-staking-flag "$TEST_STAKING_PIPELINE" --test-borrower-flag "$TEST_BORROWER_PIPELINE" \
           --test-lender-flag "$TEST_LENDER_PIPELINE" --test-treasury-flag "$TEST_TREASURY_PIPELINE" \
-          --test-vesting-flag "$TEST_VESTING_PIPELINE" --test-gov-flag "$TEST_GOV_PIPELINE" --active-lease-address "$ACTIVE_LEASE_ADDRESS"
+          --test-vesting-flag "$TEST_VESTING_PIPELINE" --test-gov-flag "$TEST_GOV_PIPELINE" --test-admin-flag "$TEST_ADMIN_PIPELINE" \
+          --test-profit-flag "$TEST_PROFIT_PIPELINE" --test-dispatcher-flag "$TEST_DISPATCHER_PIPELINE" \
+          --test-timealarms-flag "$TEST_TIMEALARMS_PIPELINE" -test-reserve-flag "$TEST_RESERVE_PIPELINE" --active-lease-address "$ACTIVE_LEASE_ADDRESS"
       - name: "Upload .env artifact"
         uses: actions/upload-artifact@v3
         with:
