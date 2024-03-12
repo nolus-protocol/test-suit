@@ -1,6 +1,6 @@
 import { InstantiateOptions, CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
-import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
+import { LeaserConfigInfo } from '@nolus/nolusjs/build/contracts';
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import {
   customFees,
@@ -23,12 +23,9 @@ import {
   getCurrencyOtherThan,
   getLeaseAddressFromOpenLeaseResponse,
   getLeaseGroupCurrencies,
-  getLpnGroupCurrencies,
-  getNativeGroupCurrencies,
 } from '../util/smart-contracts/getters';
 import {
   checkLeaseBalance,
-  findPriceLowerThanOneLPN,
   returnAmountToTheMainAccount,
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
@@ -51,7 +48,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let leaserInstance: NolusContracts.Leaser;
     let oracleInstance: NolusContracts.Oracle;
     let cosm: CosmWasmClient;
-    let leaserConfig: LeaserConfig;
+    let leaserConfig: LeaserConfigInfo;
+    let minAsset: string;
+    let minTransaction: string;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
@@ -218,8 +217,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           calcBorrowLTD(downpaymentToLPN_max, ltd),
         );
       } else {
-        const initPercent =
-          +leaserConfig.config.lease_position_spec.liability.initial;
+        const initPercent = +leaserConfig.lease_position_spec.liability.initial;
 
         calcBorrowAmount_max = Math.trunc(
           calcBorrowLTV(downpaymentToLPN_min, initPercent),
@@ -270,6 +268,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       downpaymentCurrencyIBC: string,
       downpaymentAmount: string,
       message: string,
+      maxLTD?: number,
     ) {
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
@@ -292,7 +291,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           borrowerWallet,
           leaseCurrency,
           customFees.exec,
-          undefined,
+          maxLTD,
           [
             { denom: downpaymentCurrencyIBC, amount: downpaymentAmount },
             defaultTip,
@@ -383,8 +382,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
+      leaserConfig = (await leaserInstance.getLeaserConfig()).config;
+      minAsset = leaserConfig.lease_position_spec.min_asset.amount;
+      minTransaction = leaserConfig.lease_position_spec.min_transaction.amount;
+
       const lppConfig = await lppInstance.getLppConfig();
-      leaserConfig = await leaserInstance.getLeaserConfig();
       lppCurrency = lppConfig.lpn_ticker;
       lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
       leaseCurrency = getLeaseGroupCurrencies()[0];
@@ -481,8 +483,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
 
       const maxLTD =
-        LTVtoLTD(+leaserConfig.config.lease_position_spec.liability.initial) -
-        100; // -10%
+        LTVtoLTD(+leaserConfig.lease_position_spec.liability.initial) - 100; // -10%
 
       await testOpening(
         currentLeaseCurrency,
@@ -584,6 +585,81 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
     });
 
+    // min_transaction <= 1000, min_asset>=15000
+    test('the borrower tries to open a lease whose amount is less than the "min_asset" - should produce an error', async () => {
+      const downpaymentCurrency = lppCurrency;
+      const downpaymentCurrencyToIBC =
+        currencyTicker_To_IBC(downpaymentCurrency);
+      const downpaymentCurrencyPriceObj =
+        await oracleInstance.getPriceFor(downpaymentCurrency);
+      const [
+        minToleranceCurrencyPrice_LC,
+        exactCurrencyPrice_LC,
+        maxToleranceCurrencyPrice_LC,
+      ] = currencyPriceObjToNumbers(downpaymentCurrencyPriceObj, 1);
+
+      const downpaymentAmount = minTransaction;
+      const maxLTD = 1000;
+
+      const quoteLease = await leaserInstance.leaseQuote(
+        downpaymentAmount,
+        downpaymentCurrency,
+        leaseCurrency,
+        maxLTD,
+      );
+
+      expect(
+        Math.trunc(+quoteLease.total.amount / minToleranceCurrencyPrice_LC),
+      ).toBeLessThanOrEqual(+minAsset);
+
+      await testOpeningWithInvalidParams(
+        leaseCurrency,
+        downpaymentCurrencyToIBC,
+        downpaymentAmount.toString(),
+        `The asset amount should worth at least ${minAsset} ${lppCurrency}`,
+        maxLTD,
+      );
+    });
+
+    test('the borrower tries to open a lease by sending a downpayment which is less than the "min_transaction" - should produce an error', async () => {
+      const downpaymentCurrency = leaseCurrency;
+      const downpaymentCurrencyToIBC =
+        currencyTicker_To_IBC(downpaymentCurrency);
+      const downpaymentCurrencyPriceObj =
+        await oracleInstance.getPriceFor(downpaymentCurrency);
+      const [
+        minToleranceCurrencyPrice_DPC,
+        exactCurrencyPrice_DPC,
+        maxToleranceCurrencyPrice_DPC,
+      ] = currencyPriceObjToNumbers(downpaymentCurrencyPriceObj, 1);
+
+      const downpaymentAmount = Math.trunc(
+        (+minTransaction - 1) * minToleranceCurrencyPrice_DPC,
+      );
+
+      await testOpeningWithInvalidParams(
+        leaseCurrency,
+        downpaymentCurrencyToIBC,
+        downpaymentAmount.toString(),
+        `The transaction amount should worth at least ${minTransaction} ${lppCurrency}`,
+      );
+    });
+
+    test('the borrower tries to open a lease whose borrowed amount is less than the "min_transaction" - should produce an error', async () => {
+      const downpaymentCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
+      const downpaymentAmount = +minTransaction;
+
+      const maxLTD = 10;
+
+      await testOpeningWithInvalidParams(
+        leaseCurrency,
+        downpaymentCurrencyToIBC,
+        downpaymentAmount.toString(),
+        `The transaction amount should worth at least ${minTransaction} ${lppCurrency}`,
+        maxLTD,
+      );
+    });
+
     test('the lpp "open loan" functionality should be used only by the lease contract', async () => {
       const lppOpenLoanMsg = {
         open_loan: { amount: { amount: '10', ticker: lppCurrency } }, // any amount
@@ -650,9 +726,5 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         /^.*can not instantiate: unauthorized.*/,
       );
     });
-
-    // TO DO
-    // test('the borrower tries to open a lease whose total value is too small - should produce an error', async () => {
-    // });
   },
 );
