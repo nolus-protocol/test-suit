@@ -5,7 +5,6 @@ import {
   MsgCancelUpgrade,
   MsgSoftwareUpgrade,
 } from 'cosmjs-types/cosmos/upgrade/v1beta1/tx';
-import { MsgUpdateClient } from 'cosmjs-types/ibc/core/client/v1/tx';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { MsgUpdateParams } from 'cosmjs-types/cosmos/staking/v1beta1/tx';
 import { MsgCommunityPoolSpend } from 'cosmjs-types/cosmos/distribution/v1beta1/tx';
@@ -94,7 +93,6 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
     });
   });
 
-  // UPDATE to be tax params update
   test('validator should be able to submit a ParameterChange proposal', async () => {
     const paramChangeMsg = MsgUpdateParams.fromPartial({
       authority: authority,
@@ -119,7 +117,9 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       authority: authority,
       plan: {
         name: 'Upgrade 1',
-        height: BigInt(11111),
+        height: BigInt(11111111),
+        info: 'test info',
+        time: { nanos: 0, seconds: BigInt(0) },
       },
     });
 
@@ -141,19 +141,6 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       value: Uint8Array.from(
         MsgCancelUpgrade.encode(cancelSoftwareUpgradeMsg).finish(),
       ),
-    });
-  });
-
-  xtest('validator should be able to submit a ClientUpdate proposal', async () => {
-    const clientUpdateMsg = MsgUpdateClient.fromPartial({
-      clientId: 'tendermint-1',
-      // clientMessage: 'TO DO',
-      signer: wallet.address as string,
-    });
-
-    msg.value.messages[0] = Any.fromPartial({
-      typeUrl: '/ibc.core.client.v1.MsgUpdateClient',
-      value: Uint8Array.from(MsgUpdateClient.encode(clientUpdateMsg).finish()),
     });
   });
 
@@ -228,14 +215,6 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       value: Uint8Array.from(MsgClearAdmin.encode(clearAdminMsg).finish()),
     });
   });
-
-  // test('validator should be able to submit a ExecuteContract proposal and run from authorized address', async () => {
-  //   // TO DO
-  // });
-
-  // test('validator should be able to submit a MigrateContract proposal and run from authorized address', async () => {
-  //   // TO DO
-  // });
 
   // TO DO when MsgPinCodes
   // test('validator should be able to submit a PinCodes proposal', async () => {
