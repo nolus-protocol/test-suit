@@ -8,7 +8,6 @@ import {
   sleep,
 } from '../../../util/utils';
 import { currencyTicker_To_IBC } from '../calculations';
-import { getPaymentGroupCurrencies } from '../getters';
 
 export async function checkLeaseBalance(
   leaseAddress: string,
@@ -91,33 +90,6 @@ export async function waitLeaseInProgressToBeNull(
   } while (timeout > 0);
 
   return new Error('Timeout');
-}
-
-export async function findPriceLowerThanOneLPN(
-  oracleInstance: NolusContracts.Oracle,
-): Promise<string | undefined> {
-  const paymentCurrencies = getPaymentGroupCurrencies();
-
-  let result;
-  for (let i = 0; i < paymentCurrencies.length; i++) {
-    let priceObj;
-    try {
-      priceObj = await oracleInstance.getPriceFor(paymentCurrencies[i]);
-    } catch (err) {
-      console.log('No price for ', paymentCurrencies[i]);
-    }
-
-    if (typeof priceObj != 'undefined') {
-      const price = +priceObj.amount.amount / +priceObj.amount_quote.amount;
-
-      if (price < 1) {
-        result = paymentCurrencies[i];
-        console.log('Found ', result, ' price < 1 LPN = ', price);
-      }
-    }
-  }
-
-  return result;
 }
 
 export async function calcMinAllowablePaymentAmount(
