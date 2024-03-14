@@ -1,4 +1,4 @@
-import { Coin, DeliverTxResponse } from '@cosmjs/stargate';
+import { DeliverTxResponse } from '@cosmjs/stargate';
 import { NolusWallet } from '@nolus/nolusjs';
 import { getUser1Wallet } from './clients';
 import { GASPRICE, customFees } from './utils';
