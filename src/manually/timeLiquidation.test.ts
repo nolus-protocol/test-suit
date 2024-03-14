@@ -1,10 +1,8 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import {
-  customFees,
   sleep,
   undefinedHandler,
   TONANOSEC,
-  defaultTip,
   NATIVE_MINIMAL_DENOM,
 } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
@@ -15,12 +13,9 @@ import {
 } from '../util/smart-contracts/calculations';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
+import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import {
-  getLeaseAddressFromOpenLeaseResponse,
-  getLeaseGroupCurrencies,
-} from '../util/smart-contracts/getters';
-import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
-import {
+  openLease,
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
@@ -152,52 +147,6 @@ describe.skip('Lease - Time Liquidation tests', () => {
     );
   }
 
-  async function openLease(downpayment: number): Promise<NolusContracts.Lease> {
-    await provideEnoughLiquidity(
-      leaserInstance,
-      lppInstance,
-      downpayment.toString(),
-      downpaymentCurrency,
-      leaseCurrency,
-    );
-
-    await userWithBalanceWallet.transferAmount(
-      borrowerWallet.address as string,
-      [
-        { denom: downpaymentCurrencyToIBC, amount: downpayment.toString() },
-        defaultTip,
-      ],
-      customFees.transfer,
-    );
-
-    await sendInitExecuteFeeTokens(
-      userWithBalanceWallet,
-      borrowerWallet.address as string,
-    );
-
-    const response = await leaserInstance.openLease(
-      borrowerWallet,
-      leaseCurrency,
-      customFees.exec,
-      undefined,
-      [
-        {
-          denom: downpaymentCurrencyToIBC,
-          amount: downpayment.toString(),
-        },
-        defaultTip,
-      ],
-    );
-
-    const leaseAddress = getLeaseAddressFromOpenLeaseResponse(response);
-    console.log('Lease address: ', leaseAddress);
-
-    const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
-    expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
-
-    return leaseInstance;
-  }
-
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     cosm = await NolusClient.getInstance().getCosmWasmClient();
@@ -219,8 +168,18 @@ describe.skip('Lease - Time Liquidation tests', () => {
   });
 
   test('partial liquidation due to expiry of due_period - should work as expected', async () => {
-    const downpayment = 1000000;
-    const leaseInstance = await openLease(downpayment);
+    const downpayment = '1000000';
+
+    const leaseAddress = await openLease(
+      leaserInstance,
+      lppInstance,
+      downpayment,
+      downpaymentCurrency,
+      leaseCurrency,
+      borrowerWallet,
+    );
+    const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
+    expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
 
     await sendInitExecuteFeeTokens(
       userWithBalanceWallet,

@@ -23,16 +23,16 @@ import {
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
 } from '../util/smart-contracts/calculations';
-import { runOrSkip, runTestIfDev, runTestIfLocal } from '../util/testingRules';
+import { runOrSkip, runTestIfLocal } from '../util/testingRules';
 import {
   getChangeFromRepayTx,
-  getLeaseAddressFromOpenLeaseResponse,
   getLeaseGroupCurrencies,
   getMarginInterestPaidFromRepayTx,
   getPrincipalPaidFromRepayTx,
 } from '../util/smart-contracts/getters';
 import {
   checkLeaseBalance,
+  openLease,
   returnAmountToTheMainAccount,
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
@@ -251,41 +251,14 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
       leaseCurrency = getLeaseGroupCurrencies()[0];
 
-      await provideEnoughLiquidity(
+      leaseAddress = await openLease(
         leaserInstance,
         lppInstance,
         downpayment,
         downpaymentCurrency,
         leaseCurrency,
-      );
-
-      await userWithBalanceWallet.transferAmount(
-        borrowerWallet.address as string,
-        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
-        customFees.transfer,
-      );
-      await sendInitExecuteFeeTokens(
-        userWithBalanceWallet,
-        borrowerWallet.address as string,
-      );
-
-      const quote = await leaserInstance.leaseQuote(
-        downpayment,
-        downpaymentCurrency,
-        leaseCurrency,
-      );
-      expect(quote.borrow).toBeDefined();
-
-      const result = await leaserInstance.openLease(
         borrowerWallet,
-        leaseCurrency,
-        customFees.exec,
-        undefined,
-        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
       );
-
-      leaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
-      expect(leaseAddress).not.toBe('');
       leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
 
       console.log('REPAY tests --- Lease address: ', leaseAddress);

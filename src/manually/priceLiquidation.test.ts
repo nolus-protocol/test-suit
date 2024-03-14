@@ -6,15 +6,13 @@ import NODE_ENDPOINT, {
   getUser1Wallet,
   txSearchByEvents,
 } from '../util/clients';
-import { customFees, sleep, undefinedHandler, defaultTip } from '../util/utils';
+import { customFees, sleep, undefinedHandler } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
-import {
-  getLeaseAddressFromOpenLeaseResponse,
-  findWasmEventPositions,
-} from '../util/smart-contracts/getters';
+import { findWasmEventPositions } from '../util/smart-contracts/getters';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 import {
+  openLease,
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
@@ -181,32 +179,15 @@ describe.skip('Lease - Price Liquidation tests', () => {
   }
 
   test('liquidation due to a drop in price - should work as expected', async () => {
-    await userWithBalanceWallet.transferAmount(
-      borrowerWallet.address as string,
-      [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
-      customFees.transfer,
-    );
-
-    await sendInitExecuteFeeTokens(
-      userWithBalanceWallet,
-      borrowerWallet.address as string,
-    );
-
-    const response = await leaserInstance.openLease(
-      borrowerWallet,
+    leaseAddress = await openLease(
+      leaserInstance,
+      lppInstance,
+      downpayment,
+      downpaymentCurrency,
       leaseCurrency,
-      customFees.exec,
-      undefined,
-      [
-        {
-          denom: downpaymentCurrencyToIBC,
-          amount: downpayment,
-        },
-        defaultTip,
-      ],
+      borrowerWallet,
     );
 
-    leaseAddress = getLeaseAddressFromOpenLeaseResponse(response);
     console.log('Lease address: ', leaseAddress);
 
     const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);

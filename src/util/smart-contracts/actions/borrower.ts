@@ -1,13 +1,19 @@
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
-import { sendInitTransferFeeTokens } from '../../../util/transfer';
+import {
+  sendInitExecuteFeeTokens,
+  sendInitTransferFeeTokens,
+} from '../../../util/transfer';
 import { getUser1Wallet } from '../../../util/clients';
 import {
   BLOCK_CREATION_TIME_DEV_SEC,
   BORROWER_ATTEMPTS_TIMEOUT,
   customFees,
+  defaultTip,
   sleep,
 } from '../../../util/utils';
 import { currencyTicker_To_IBC } from '../calculations';
+import { provideEnoughLiquidity } from './lender';
+import { getLeaseAddressFromOpenLeaseResponse } from '../getters';
 
 export async function checkLeaseBalance(
   leaseAddress: string,
@@ -110,4 +116,44 @@ export async function calcMinAllowablePaymentAmount(
   ).toString();
 
   return payment > preferredPaymentAmount ? payment : preferredPaymentAmount;
+}
+
+export async function openLease(
+  leaserInstance: NolusContracts.Leaser,
+  lppInstance: NolusContracts.Lpp,
+  downpayment: string,
+  downpaymentCurrency: string,
+  leaseCurrency: string,
+  borrowerWallet: NolusWallet,
+): Promise<string> {
+  const userWithBalanceWallet = await getUser1Wallet();
+  const downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
+
+  await provideEnoughLiquidity(
+    leaserInstance,
+    lppInstance,
+    downpayment,
+    downpaymentCurrency,
+    leaseCurrency,
+  );
+
+  await userWithBalanceWallet.transferAmount(
+    borrowerWallet.address as string,
+    [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
+    customFees.transfer,
+  );
+  await sendInitExecuteFeeTokens(
+    userWithBalanceWallet,
+    borrowerWallet.address as string,
+  );
+
+  const result = await leaserInstance.openLease(
+    borrowerWallet,
+    leaseCurrency,
+    customFees.exec,
+    undefined,
+    [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
+  );
+
+  return getLeaseAddressFromOpenLeaseResponse(result);
 }

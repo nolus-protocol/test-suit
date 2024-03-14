@@ -9,13 +9,11 @@ import {
   undefinedHandler,
 } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
-import {
-  getLeaseAddressFromOpenLeaseResponse,
-  getLeaseGroupCurrencies,
-} from '../util/smart-contracts/getters';
+import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { runOrSkip, runTestIfLocal } from '../util/testingRules';
 import {
   calcMinAllowablePaymentAmount,
+  openLease,
   returnAmountToTheMainAccount,
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
@@ -24,7 +22,6 @@ import {
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
 } from '../util/smart-contracts/calculations';
-import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Market Close',
@@ -36,7 +33,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let leaseCurrency: string;
     let leaseCurrencyToIBC: string;
     let downpaymentCurrency: string;
-    let downpaymentCurrencyToIBC: string;
     let oracleInstance: NolusContracts.Oracle;
     let lppInstance: NolusContracts.Lpp;
     let leaserInstance: NolusContracts.Leaser;
@@ -76,39 +72,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     }
 
-    async function openLease(): Promise<string> {
-      await provideEnoughLiquidity(
-        leaserInstance,
-        lppInstance,
-        downpayment,
-        downpaymentCurrency,
-        leaseCurrency,
-      );
-
-      await userWithBalanceWallet.transferAmount(
-        borrowerWallet.address as string,
-        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
-        customFees.transfer,
-      );
-      await sendInitExecuteFeeTokens(
-        userWithBalanceWallet,
-        borrowerWallet.address as string,
-      );
-
-      const result = await leaserInstance.openLease(
-        borrowerWallet,
-        leaseCurrency,
-        customFees.exec,
-        undefined,
-        [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
-      );
-
-      const leaseAddress = getLeaseAddressFromOpenLeaseResponse(result);
-      expect(leaseAddress).not.toBe('');
-
-      return leaseAddress;
-    }
-
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
       cosm = await NolusClient.getInstance().getCosmWasmClient();
@@ -126,14 +89,20 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaseCurrency = getLeaseGroupCurrencies()[0];
       leaseCurrencyToIBC = currencyTicker_To_IBC(leaseCurrency);
       downpaymentCurrency = lppCurrency;
-      downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
 
       minSellAsset = +(await leaserInstance.getLeaserConfig()).config
         .lease_position_spec.min_transaction.amount;
       minAsset = +(await leaserInstance.getLeaserConfig()).config
         .lease_position_spec.min_asset.amount;
 
-      leaseAddress = await openLease();
+      leaseAddress = await openLease(
+        leaserInstance,
+        lppInstance,
+        downpayment,
+        downpaymentCurrency,
+        leaseCurrency,
+        borrowerWallet,
+      );
       leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
@@ -595,7 +564,14 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to fully close the position - should work as expected', async () => {
-      const leaseAddress = await openLease();
+      const leaseAddress = await openLease(
+        leaserInstance,
+        lppInstance,
+        downpayment,
+        downpaymentCurrency,
+        leaseCurrency,
+        borrowerWallet,
+      );
       const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
