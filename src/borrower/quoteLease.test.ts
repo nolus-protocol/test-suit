@@ -38,6 +38,24 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     const downpayment = '10000';
 
+    async function testQuoteWithInvalidParams(
+      downpaymentAmount: string,
+      downpaymentCurrency: string,
+      leaseCurrency: string,
+      message: string,
+      maxLTD?: number,
+    ) {
+      const quoteQueryResult = () =>
+        leaserInstance.leaseQuote(
+          downpaymentAmount,
+          downpaymentCurrency,
+          leaseCurrency,
+          maxLTD,
+        );
+
+      await expect(quoteQueryResult).rejects.toThrow(message);
+    }
+
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
       cosm = await NolusClient.getInstance().getCosmWasmClient();
@@ -174,23 +192,21 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to apply for a lease with 0 down payment - should produce an error', async () => {
-      const quoteQueryResult = () =>
-        leaserInstance.leaseQuote('0', downpaymentCurrency, leaseCurrency);
-      await expect(quoteQueryResult).rejects.toThrow(
-        /^.*Cannot open lease with zero downpayment.*/,
+      await testQuoteWithInvalidParams(
+        '0',
+        downpaymentCurrency,
+        leaseCurrency,
+        'Cannot open lease with zero downpayment',
       );
     });
 
     test('the borrower tries to apply for a lease with max ltv = 0 - should produce an error', async () => {
-      const quoteQueryResult = () =>
-        leaserInstance.leaseQuote(
-          downpayment,
-          downpaymentCurrency,
-          leaseCurrency,
-          0,
-        );
-      await expect(quoteQueryResult).rejects.toThrow(
-        /^.*Cannot open lease with zero downpayment.*/,
+      await testQuoteWithInvalidParams(
+        downpayment,
+        downpaymentCurrency,
+        leaseCurrency,
+        'Cannot open lease with zero downpayment',
+        0,
       );
     });
 
@@ -202,30 +218,31 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           liabilityInitialPercent,
       );
 
-      const quoteQueryResult = () =>
-        leaserInstance.leaseQuote(
-          unavailableAmount.toString(),
-          downpaymentCurrency,
-          leaseCurrency,
-        );
-      await expect(quoteQueryResult).rejects.toThrow(/^.*No Liquidity.*/);
+      await testQuoteWithInvalidParams(
+        unavailableAmount.toString(),
+        downpaymentCurrency,
+        leaseCurrency,
+        'No Liquidity',
+      );
     });
 
     test('the borrower tries to apply for a lease with unsupported currency as a down payment - should produce an error', async () => {
       const invalidPaymentCurrency = 'unsupported';
 
-      const quoteQueryResult = () =>
-        leaserInstance.leaseQuote('100', invalidPaymentCurrency, leaseCurrency);
-      await expect(quoteQueryResult).rejects.toThrow(
+      await testQuoteWithInvalidParams(
+        '100',
+        invalidPaymentCurrency,
+        leaseCurrency,
         `Found a symbol '${invalidPaymentCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
       );
     });
 
     test('the borrower tries to apply for a lease with leaseCurrency === lpp native - should produce an error', async () => {
-      const quoteQueryResult = () =>
-        leaserInstance.leaseQuote('100', downpaymentCurrency, lppCurrency);
-      await expect(quoteQueryResult).rejects.toThrow(
-        /^.*Unknown currency symbol.*/,
+      await testQuoteWithInvalidParams(
+        '100',
+        downpaymentCurrency,
+        lppCurrency,
+        'Unknown currency symbol',
       );
     });
 
@@ -238,14 +255,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           `Unsupported currency '${noProvidedPriceFor}'`,
         );
 
-        const quoteQueryResult = () =>
-          leaserInstance.leaseQuote(
-            '100', // any amount
-            downpaymentCurrency,
-            noProvidedPriceFor,
-          );
-        await expect(quoteQueryResult).rejects.toThrow(
-          /^.*Failed to fetch price for the pair.*/,
+        await testQuoteWithInvalidParams(
+          '100',
+          downpaymentCurrency,
+          noProvidedPriceFor,
+          'Failed to fetch price for the pair',
         );
 
         // TO DO - no down payment currency price (when we have >1 onlyPaymentsCurrencies in the list of supported currencies)
