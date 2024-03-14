@@ -54,7 +54,7 @@ describe.skip('Lease - Time Liquidation tests', () => {
     const leasesBefore = await leaserInstance.getCurrentOpenLeasesByOwner(
       borrowerWallet.address as string,
     );
-
+    console.log('Waiting for the due_period to expire...');
     await sleep(duePeriod);
 
     const stateAfterDuePeriod = (await leaseInstance.getLeaseStatus()).opened;

@@ -87,6 +87,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
 
     console.log('Waiting for the price to expire...');
     await sleep(periodSecs);
+    console.log('Done');
 
     const leaseCurrencyPriceObj = () =>
       oracleInstance.getPriceFor(leaseCurrency);
@@ -145,10 +146,14 @@ describe.skip('Lease - Price Liquidation tests', () => {
     wPrice: number,
     warningLevel: number,
   ) {
+    console.log('Waiting for the price to expire...');
     await sleep(periodSecs);
+    console.log('Done');
     await pushPrice(wPrice);
 
+    console.log('Waiting for the dispatcher bot...');
     await sleep(alarmDispatcherPeriod);
+    console.log('Done');
 
     const txsCount = (
       await txSearchByEvents(
@@ -236,9 +241,12 @@ describe.skip('Lease - Price Liquidation tests', () => {
 
     //max
     console.log('Waiting for the liquidation...');
+    console.log('Waiting for the price to expire...');
     await sleep(periodSecs);
+    console.log('Done');
     await pushPrice(liquidationPrice);
 
+    console.log('Waiting for the dispatcher bot...');
     await sleep(alarmDispatcherPeriod);
     await waitLeaseInProgressToBeNull(leaseInstance);
 
