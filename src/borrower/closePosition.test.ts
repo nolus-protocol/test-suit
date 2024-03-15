@@ -9,7 +9,10 @@ import {
   undefinedHandler,
 } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
-import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
+import {
+  getLeaseGroupCurrencies,
+  getLeaseObligations,
+} from '../util/smart-contracts/getters';
 import { runOrSkip, runTestIfLocal } from '../util/testingRules';
 import {
   calcMinAllowablePaymentAmount,
@@ -317,12 +320,15 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const leaseObligationsBeforePartialClose =
-        +leaseStateBeforePartialClose.principal_due.amount +
-        +leaseStateBeforePartialClose.due_interest.amount +
-        +leaseStateBeforePartialClose.due_margin.amount +
-        +leaseStateBeforePartialClose.overdue_interest.amount +
-        +leaseStateBeforePartialClose.overdue_margin.amount;
+      const leaseObligationsBeforePartialClose = getLeaseObligations(
+        leaseStateBeforePartialClose,
+        true,
+      );
+
+      if (!leaseObligationsBeforePartialClose) {
+        undefinedHandler();
+        return;
+      }
 
       const borrowerBalanceBeforeLPN = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
@@ -382,19 +388,22 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const leaseStateAfterPartialClose = (await leaseInstance.getLeaseStatus())
         .opened;
 
-      expect(leaseStateAfterPartialClose).toBeDefined();
-
       if (!leaseStateAfterPartialClose) {
         undefinedHandler();
         return;
       }
 
-      const leaseObligationsAfterPartialClose =
-        +leaseStateAfterPartialClose.principal_due.amount +
-        +leaseStateAfterPartialClose.due_interest.amount +
-        +leaseStateAfterPartialClose.due_margin.amount +
-        +leaseStateAfterPartialClose.overdue_interest.amount +
-        +leaseStateAfterPartialClose.overdue_margin.amount;
+      expect(leaseStateAfterPartialClose).toBeDefined();
+
+      const leaseObligationsAfterPartialClose = getLeaseObligations(
+        leaseStateAfterPartialClose,
+        true,
+      );
+
+      if (!leaseObligationsAfterPartialClose) {
+        undefinedHandler();
+        return;
+      }
 
       expect(+leaseStateAfterPartialClose.amount.amount).toBe(
         +leaseStateBeforePartialClose.amount.amount - +amountToCloseValue,
@@ -442,12 +451,15 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseAmountBeforePartialClose = leaseStateBeforePartialClose.amount;
 
-      const leaseObligationsBeforePartialClose =
-        +leaseStateBeforePartialClose.principal_due.amount +
-        +leaseStateBeforePartialClose.due_interest.amount +
-        +leaseStateBeforePartialClose.due_margin.amount +
-        +leaseStateBeforePartialClose.overdue_interest.amount +
-        +leaseStateBeforePartialClose.overdue_margin.amount;
+      const leaseObligationsBeforePartialClose = getLeaseObligations(
+        leaseStateBeforePartialClose,
+        true,
+      );
+
+      if (!leaseObligationsBeforePartialClose) {
+        undefinedHandler();
+        return;
+      }
 
       const borrowerBalanceBeforeLPN = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
@@ -591,12 +603,16 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       }
 
       const leaseAmountBeforeClose = leaseStateBeforeFullClose.amount;
-      const leaseObligations =
-        +leaseStateBeforeFullClose.principal_due.amount +
-        +leaseStateBeforeFullClose.due_interest.amount +
-        +leaseStateBeforeFullClose.due_margin.amount +
-        +leaseStateBeforeFullClose.overdue_interest.amount +
-        +leaseStateBeforeFullClose.overdue_margin.amount;
+
+      const leaseObligations = getLeaseObligations(
+        leaseStateBeforeFullClose,
+        true,
+      );
+
+      if (!leaseObligations) {
+        undefinedHandler();
+        return;
+      }
 
       const borrowerBalanceBeforeLPN = await borrowerWallet.getBalance(
         borrowerWallet.address as string,

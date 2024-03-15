@@ -7,13 +7,13 @@ import {
 } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { Lease, LeaseStatus } from '@nolus/nolusjs/build/contracts';
-import {
-  currencyPriceObjToNumbers,
-  currencyTicker_To_IBC,
-} from '../util/smart-contracts/calculations';
+import { currencyPriceObjToNumbers } from '../util/smart-contracts/calculations';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
-import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
+import {
+  getLeaseGroupCurrencies,
+  getLeaseObligations,
+} from '../util/smart-contracts/getters';
 import {
   openLease,
   waitLeaseInProgressToBeNull,
@@ -38,7 +38,6 @@ describe.skip('Lease - Time Liquidation tests', () => {
   let leaserConfig: NolusContracts.LeaserConfigInfo;
   let leaseCurrency: string;
   let downpaymentCurrency: string;
-  let downpaymentCurrencyToIBC: string;
   let duePeriod: number;
   let minAssetLPN: number;
 
@@ -63,17 +62,14 @@ describe.skip('Lease - Time Liquidation tests', () => {
       return;
     }
 
-    const IOD_afterDuePeriod = stateAfterDuePeriod.overdue_interest.amount;
-    const MOD_afterDuePeriod = stateAfterDuePeriod.overdue_margin.amount;
-    const ID_afterDuePeriod = stateAfterDuePeriod.due_interest.amount;
-    const MD_afterDuePeriod = stateAfterDuePeriod.due_margin.amount;
-    const interestLPN =
-      +IOD_afterDuePeriod +
-      +MOD_afterDuePeriod +
-      +ID_afterDuePeriod +
-      +MD_afterDuePeriod;
+    const interestLPN = getLeaseObligations(stateAfterDuePeriod, false);
 
-    expect(MOD_afterDuePeriod).not.toBe('0');
+    if (!interestLPN) {
+      undefinedHandler();
+      return;
+    }
+
+    expect(stateAfterDuePeriod.overdue_margin.amount).not.toBe('0');
 
     expect(stateBefore.opened?.amount.amount).toBe(
       stateAfterDuePeriod.amount.amount,
@@ -163,7 +159,6 @@ describe.skip('Lease - Time Liquidation tests', () => {
     minAssetLPN = +leaserConfig.lease_position_spec.min_asset.amount;
     const lppConfig = await lppInstance.getLppConfig();
     downpaymentCurrency = lppConfig.lpn_ticker;
-    downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
     leaseCurrency = getLeaseGroupCurrencies()[0];
   });
 

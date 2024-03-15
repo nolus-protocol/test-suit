@@ -3,6 +3,7 @@ import { Attribute, Event, TxResponse } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
 import { GROUPS } from '@nolus/nolusjs/build/types/Networks';
 import { AssetUtils } from '@nolus/nolusjs';
+import { LeaseStatus } from '@nolus/nolusjs/build/contracts';
 import { undefinedHandler } from '../utils';
 
 export function getProtocol() {
@@ -127,4 +128,24 @@ export function getCurrencyOtherThan(unlikeCurrencies: string[]): string {
   }
 
   return currencyTicker;
+}
+
+export function getLeaseObligations(
+  leaseState: LeaseStatus['opened'],
+  includePrincipal: boolean,
+): number | undefined {
+  if (!leaseState) {
+    undefinedHandler();
+    return;
+  }
+
+  const interest =
+    +leaseState.due_interest.amount +
+    +leaseState.due_margin.amount +
+    +leaseState.overdue_interest.amount +
+    +leaseState.overdue_margin.amount;
+
+  return includePrincipal
+    ? interest + +leaseState.principal_due.amount
+    : interest;
 }

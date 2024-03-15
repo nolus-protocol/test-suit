@@ -8,8 +8,10 @@ import NODE_ENDPOINT, {
 } from '../util/clients';
 import { customFees, sleep, undefinedHandler } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
-import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
-import { findWasmEventPositions } from '../util/smart-contracts/getters';
+import {
+  findWasmEventPositions,
+  getLeaseObligations,
+} from '../util/smart-contracts/getters';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 import {
   openLease,
@@ -42,7 +44,6 @@ describe.skip('Lease - Price Liquidation tests', () => {
   let leaserConfig: NolusContracts.LeaserConfig;
   let lpnCurrency: string;
   let downpaymentCurrency: string;
-  let downpaymentCurrencyToIBC: string;
   let leaseAddress: string;
   let maxLiability: number;
   let w1Liability: number;
@@ -83,7 +84,6 @@ describe.skip('Lease - Price Liquidation tests', () => {
     const lppConfig = await lppInstance.getLppConfig();
     lpnCurrency = lppConfig.lpn_ticker;
     downpaymentCurrency = lpnCurrency;
-    downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
 
     console.log('Waiting for the price to expire...');
     await sleep(periodSecs);
@@ -207,19 +207,20 @@ describe.skip('Lease - Price Liquidation tests', () => {
       borrowerWallet.address as string,
     );
 
-    const stateBeforeLiquidation = await leaseInstance.getLeaseStatus();
-    if (!stateBeforeLiquidation.opened) {
+    const stateBeforeLiquidation = (await leaseInstance.getLeaseStatus())
+      .opened;
+    if (!stateBeforeLiquidation) {
       undefinedHandler();
       return;
     }
 
-    const leaseAmount = +stateBeforeLiquidation.opened?.amount.amount;
-    const leaseDue =
-      +stateBeforeLiquidation.opened?.principal_due.amount +
-      +stateBeforeLiquidation.opened?.due_interest.amount +
-      +stateBeforeLiquidation.opened?.due_margin.amount +
-      +stateBeforeLiquidation.opened?.overdue_interest.amount +
-      +stateBeforeLiquidation.opened?.overdue_margin.amount;
+    const leaseAmount = +stateBeforeLiquidation.amount.amount;
+    const leaseDue = getLeaseObligations(stateBeforeLiquidation, true);
+
+    if (!leaseDue) {
+      undefinedHandler();
+      return;
+    }
 
     const w1Price = (leaseDue * 1000) / (leaseAmount * w1Liability);
     const w2Price = (leaseDue * 1000) / (leaseAmount * w2Liability);
@@ -254,7 +255,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
 
     if (stateAfterLiquidation.opened) {
       expect(+stateAfterLiquidation.opened.amount.amount).toBeLessThan(
-        +stateBeforeLiquidation.opened.amount.amount,
+        +stateBeforeLiquidation.amount.amount,
       );
     } else {
       expect(stateAfterLiquidation.liquidated).toBeDefined();

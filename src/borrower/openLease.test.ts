@@ -23,6 +23,7 @@ import {
   getCurrencyOtherThan,
   getLeaseAddressFromOpenLeaseResponse,
   getLeaseGroupCurrencies,
+  getLeaseObligations,
 } from '../util/smart-contracts/getters';
 import {
   checkLeaseBalance,
@@ -309,20 +310,21 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       borrowerWallet: NolusWallet,
     ) {
       const excess = 1000;
-      const currentLeaseState = await leaseInstance.getLeaseStatus();
+      const currentLeaseState = (await leaseInstance.getLeaseStatus()).opened;
 
-      if (!currentLeaseState.opened) {
+      if (!currentLeaseState) {
         undefinedHandler();
         return;
       }
 
-      const paymentAmount =
-        +currentLeaseState.opened?.principal_due.amount +
-        +currentLeaseState.opened?.due_interest.amount +
-        +currentLeaseState.opened?.due_margin.amount +
-        +currentLeaseState.opened?.overdue_interest.amount +
-        +currentLeaseState.opened?.overdue_margin.amount +
-        excess;
+      const leaseObligations = getLeaseObligations(currentLeaseState, true);
+
+      if (!leaseObligations) {
+        undefinedHandler();
+        return;
+      }
+
+      const paymentAmount = leaseObligations + excess;
 
       const payment = {
         amount: paymentAmount.toString(),
