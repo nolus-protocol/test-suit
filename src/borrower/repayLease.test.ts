@@ -15,10 +15,7 @@ import NODE_ENDPOINT, {
   createWallet,
   txSearchByEvents,
 } from '../util/clients';
-import {
-  sendInitExecuteFeeTokens,
-  sendInitTransferFeeTokens,
-} from '../util/transfer';
+import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
@@ -37,7 +34,6 @@ import {
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
-import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Repay lease',
@@ -48,7 +44,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let lppCurrencyToIBC: string;
     let leaseCurrency: string;
     let downpaymentCurrency: string;
-    let downpaymentCurrencyToIBC: string;
     let paymentCurrency: string;
     let paymentCurrencyToIBC: string;
     let cosm: CosmWasmClient;
@@ -248,7 +243,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       lppCurrency = lppConfig.lpn_ticker;
       lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
       downpaymentCurrency = lppCurrency;
-      downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
       leaseCurrency = getLeaseGroupCurrencies()[0];
 
       leaseAddress = await openLease(
@@ -575,16 +569,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         BigInt(borrowerBalanceBeforeClose.amount) + BigInt(exactExcess),
       );
 
-      // return lease amount to the main account
-      await sendInitTransferFeeTokens(
-        userWithBalanceWallet,
-        borrowerWallet.address as string,
-      );
-      await borrowerWallet.transferAmount(
-        userWithBalanceWallet.address as string,
-        [borrowerBalanceAfterClose],
-        customFees.transfer,
-      );
+      const leaseCurrencyToIBC = currencyTicker_To_IBC(leaseCurrency);
+      await returnAmountToTheMainAccount(borrowerWallet, leaseCurrencyToIBC);
 
       const borrowerBalanceInTheEnd = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
