@@ -183,8 +183,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       );
     });
 
-    test('configuration update -> invalid cases - should produce an error', async () => {
-      // sample period = 0
+    test('try to configure the sample_period to 0 - should produce an error', async () => {
       await trySendPropToUpdateConfig(
         wallet,
         initConfig,
@@ -192,8 +191,9 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         1,
         0,
       );
+    });
 
-      // sample numbers = 0
+    test('try to configure the sample_number to 0 - should produce an error', async () => {
       await trySendPropToUpdateConfig(
         wallet,
         initConfig,
@@ -202,16 +202,18 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         1,
         0,
       ); // any pricePeriod
+    });
 
-      // min feeders = 0%
+    test('try to configure the min_feeders to 0% - should produce an error', async () => {
       await trySendPropToUpdateConfig(
         wallet,
         initConfig,
         'The minumum feeders should be greater than 0 and less or equal to 100%',
         0,
       );
+    });
 
-      // min feeders > 100%, 1000permille
+    test('try to configure the min_feeders to be greater than 100% - should produce an error', async () => {
       await trySendPropToUpdateConfig(
         wallet,
         initConfig,
