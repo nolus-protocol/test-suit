@@ -18,6 +18,24 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
   const initBaseAsset = process.env.LPP_BASE_CURRENCY as string;
 
+  async function feedPriceWithInvalidParams(
+    feedPrices: NolusContracts.FeedPrices,
+    message: string,
+  ) {
+    await userWithBalance.transferAmount(
+      feederWallet.address as string,
+      customFees.feedPrice.amount,
+      customFees.transfer,
+    );
+
+    const broadcastTx = () =>
+      oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
+
+    await expect(broadcastTx).rejects.toThrow(message);
+
+    await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
+  }
+
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     userWithBalance = await getUser1Wallet();
@@ -34,7 +52,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   runTestIfLocal(
     'a registered feeder tries to feed a price for an invalid pair - should produce an error',
     async () => {
-      const feedPrices = {
+      const prices = {
         prices: [
           {
             amount: { amount: '2', ticker: initBaseAsset }, // any amount
@@ -43,25 +61,14 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
         ],
       };
 
-      await userWithBalance.transferAmount(
-        feederWallet.address as string,
-        customFees.feedPrice.amount,
-        customFees.transfer,
-      );
-
-      const broadcastTx = () =>
-        oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
-
-      await expect(broadcastTx).rejects.toThrow(/^.*Unsupported denom pairs.*/);
-
-      await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
+      await feedPriceWithInvalidParams(prices, 'Unsupported denom pairs');
     },
   );
 
   runTestIfLocal(
     'a registered feeder tries to feed price = 0 - should produce an error',
     async () => {
-      const feedPrices = {
+      const prices = {
         prices: [
           {
             amount: { amount: '2', ticker: firstPairMember },
@@ -70,30 +77,15 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
         ],
       };
 
-      await userWithBalance.transferAmount(
-        feederWallet.address as string,
-        customFees.feedPrice.amount,
-        customFees.transfer,
+      await feedPriceWithInvalidParams(
+        prices,
+        'The quote amount should not be zero',
       );
 
-      let broadcastTx = () =>
-        oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
+      prices.prices[0].amount.amount = '0';
+      prices.prices[0].amount_quote.amount = '2';
 
-      await expect(broadcastTx).rejects.toThrow(
-        /^.*The quote amount should not be zero.*/,
-      );
-
-      feedPrices.prices[0].amount.amount = '0';
-      feedPrices.prices[0].amount_quote.amount = '2';
-
-      broadcastTx = () =>
-        oracleInstance.feedPrices(feederWallet, feedPrices, 1.3);
-
-      await expect(broadcastTx).rejects.toThrow(
-        /^.*The amount should not be zero.*/,
-      );
-
-      await returnRestToMainAccount(feederWallet, NATIVE_MINIMAL_DENOM);
+      await feedPriceWithInvalidParams(prices, 'The amount should not be zero');
     },
   );
 });
