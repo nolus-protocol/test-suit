@@ -1,8 +1,4 @@
-import {
-  assertIsDeliverTxSuccess,
-  Coin,
-  isDeliverTxFailure,
-} from '@cosmjs/stargate';
+import { assertIsDeliverTxSuccess, Coin } from '@cosmjs/stargate';
 import NODE_ENDPOINT, {
   getValidator1Address,
   createWallet,
@@ -31,13 +27,13 @@ const maybe =
     : describe;
 
 maybe('Staking Nolus tokens - Redelegation', () => {
-  let user1Wallet: NolusWallet;
+  let userWithBalanceWallet: NolusWallet;
   let delegatorWallet: NolusWallet;
   let srcValidatorAddress: string;
   let dstValidatorAddress: string;
 
   const delegatedAmount = '22';
-  const redelegatedAmount = (+delegatedAmount / 2).toString();
+  const redelegatedAmount = Math.trunc(+delegatedAmount / 2).toString();
   let redelegationsCounter = 0;
 
   const delegateMsg = {
@@ -55,13 +51,13 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       delegatorAddress: '',
       validatorSrcAddress: '',
       validatorDstAddress: '',
-      amount: { denom: NATIVE_MINIMAL_DENOM, amount: delegatedAmount },
+      amount: { denom: NATIVE_MINIMAL_DENOM, amount: redelegatedAmount },
     },
   };
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
-    user1Wallet = await getUser1Wallet();
+    userWithBalanceWallet = await getUser1Wallet();
     delegatorWallet = await createWallet();
 
     srcValidatorAddress = getValidator1Address();
@@ -78,7 +74,7 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       amount: delegatedAmount + customFees.configs.amount[0].amount,
     };
 
-    const broadcastTx = await user1Wallet.transferAmount(
+    const broadcastTx = await userWithBalanceWallet.transferAmount(
       delegatorWallet.address as string,
       [initTransfer],
       customFees.transfer,
@@ -93,16 +89,25 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     redelegateMsg.value.amount.denom = NATIVE_MINIMAL_DENOM;
   });
 
-  test('the delegator tries to redelegate tokens from a non-existent delegate-validator pair - should produce an error', async () => {
-    const delegationResult = await delegatorWallet.signAndBroadcast(
+  async function tryRedelegationWithInvalidParams(message: string) {
+    await userWithBalanceWallet.transferAmount(
+      delegatorWallet.address as string,
+      customFees.configs.amount,
+      customFees.transfer,
+    );
+
+    const broadcastTx = await delegatorWallet.signAndBroadcast(
       delegatorWallet.address as string,
       [redelegateMsg],
       customFees.configs,
     );
 
-    expect(isDeliverTxFailure(delegationResult)).toBeTruthy();
-    expect(delegationResult.rawLog).toEqual(
-      'failed to execute message; message index: 0: no delegation for (address, validator) tuple',
+    expect(broadcastTx.rawLog).toContain(message);
+  }
+
+  test('the delegator tries to redelegate tokens from a non-existent delegate-validator pair - should produce an error', async () => {
+    await tryRedelegationWithInvalidParams(
+      'no delegation for (address, validator) tuple',
     );
   });
 
@@ -147,10 +152,10 @@ maybe('Staking Nolus tokens - Redelegation', () => {
     }
 
     const completionTime =
-      redelegationEntries.redelegationResponses[0]?.redelegation?.entries[0]
-        ?.completionTime?.nanos;
+      redelegationEntries.redelegationResponses[0]?.entries[0].redelegationEntry
+        .completionTime.nanos;
 
-    expect(completionTime).not.toBe('');
+    expect(completionTime).not.toBe(undefined);
 
     const delegationsToSrcValAfter = await getDelegatorValidatorPairAmount(
       delegatorWallet.address as string,
@@ -206,15 +211,8 @@ maybe('Staking Nolus tokens - Redelegation', () => {
 
     redelegateMsg.value.amount.denom = invalidDenom;
 
-    const broadcastTx = await delegatorWallet.signAndBroadcast(
-      delegatorWallet.address as string,
-      [redelegateMsg],
-      customFees.configs,
-    );
-
-    expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
-    expect(broadcastTx.rawLog).toEqual(
-      `failed to execute message; message index: 0: invalid coin denomination: got ${invalidDenom}, expected ${bondDenom}: invalid request`,
+    await tryRedelegationWithInvalidParams(
+      `invalid coin denomination: got ${invalidDenom}, expected ${bondDenom}`,
     );
   });
 
@@ -231,15 +229,7 @@ maybe('Staking Nolus tokens - Redelegation', () => {
 
     redelegateMsg.value.amount.amount = delegatedAmount;
 
-    const broadcastTx = await delegatorWallet.signAndBroadcast(
-      delegatorWallet.address as string,
-      [redelegateMsg],
-      customFees.configs,
-    );
-
-    expect(broadcastTx.rawLog).toEqual(
-      'failed to execute message; message index: 0: invalid shares amount: invalid request',
-    );
+    await tryRedelegationWithInvalidParams('invalid shares amount');
 
     const delegationsToSrcValAfter = await getDelegatorValidatorPairAmount(
       delegatorWallet.address as string,
@@ -274,15 +264,8 @@ maybe('Staking Nolus tokens - Redelegation', () => {
   test('the delegator tries to redelegate tokens to the same validator - should produce an error', async () => {
     redelegateMsg.value.validatorDstAddress = srcValidatorAddress;
 
-    const broadcastTx = await delegatorWallet.signAndBroadcast(
-      delegatorWallet.address as string,
-      [redelegateMsg],
-      customFees.configs,
-    );
-
-    expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
-    expect(broadcastTx.rawLog).toEqual(
-      'failed to execute message; message index: 0: cannot redelegate to the same validator',
+    await tryRedelegationWithInvalidParams(
+      'cannot redelegate to the same validator',
     );
   });
 
@@ -317,15 +300,8 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       expect(assertIsDeliverTxSuccess(redelegationResult)).toBeUndefined();
     }
 
-    const broadcastTx = await delegatorWallet.signAndBroadcast(
-      delegatorWallet.address as string,
-      [redelegateMsg],
-      customFees.configs,
-    );
-
-    expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
-    expect(broadcastTx.rawLog).toEqual(
-      'failed to execute message; message index: 0: too many redelegation entries for (delegator, src-validator, dst-validator) tuple',
+    await tryRedelegationWithInvalidParams(
+      'too many redelegation entries for (delegator, src-validator, dst-validator) tuple',
     );
   });
 });

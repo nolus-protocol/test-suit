@@ -54,7 +54,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
       delegateMsg.value.delegatorAddress = stakeholderWallet.address as string;
       delegateMsg.value.validatorAddress = validatorAddress;
 
-      // send some tokens
       const initTransfer: Coin = {
         denom: NATIVE_MINIMAL_DENOM,
         amount: delegatedAmount + customFees.transfer.amount[0].amount,
@@ -73,6 +72,17 @@ runOrSkip(process.env.TEST_STAKING as string)(
       delegateMsg.value.validatorAddress = validatorAddress;
       delegateMsg.value.amount.denom = NATIVE_MINIMAL_DENOM;
     });
+
+    async function tryDelegationWithInvalidParams(message: string) {
+      const broadcastTx = () =>
+        stakeholderWallet.signAndBroadcast(
+          stakeholderWallet.address as string,
+          [delegateMsg],
+          customFees.configs,
+        );
+
+      await expect(broadcastTx).rejects.toThrow(message);
+    }
 
     test('the validator should exist and should be bonded', async () => {
       const expectedStatus: BondStatus =
@@ -197,16 +207,7 @@ runOrSkip(process.env.TEST_STAKING as string)(
 
       delegateMsg.value.amount.amount = '0';
 
-      const broadcastTx = () =>
-        stakeholderWallet.signAndBroadcast(
-          stakeholderWallet.address as string,
-          [delegateMsg],
-          customFees.configs,
-        );
-
-      await expect(broadcastTx).rejects.toThrow(
-        /^.*invalid delegation amount.*/,
-      );
+      await tryDelegationWithInvalidParams('invalid delegation amount');
 
       const stakeholderDelegationsToValAfter =
         await getDelegatorValidatorPairAmount(
@@ -231,16 +232,7 @@ runOrSkip(process.env.TEST_STAKING as string)(
       delegateMsg.value.validatorAddress =
         invalidValidatoWallet.address as string;
 
-      const broadcastTx = () =>
-        stakeholderWallet.signAndBroadcast(
-          stakeholderWallet.address as string,
-          [delegateMsg],
-          customFees.configs,
-        );
-
-      await expect(broadcastTx).rejects.toThrow(
-        /^.*expected nolusvaloper, got nolus.*/,
-      );
+      await tryDelegationWithInvalidParams('expected nolusvaloper, got nolus');
     });
 
     test('the stakeholder tries to delegate tokens different than one defined by params.BondDenom - should produce an error', async () => {

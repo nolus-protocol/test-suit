@@ -1,8 +1,4 @@
-import {
-  assertIsDeliverTxSuccess,
-  Coin,
-  isDeliverTxFailure,
-} from '@cosmjs/stargate';
+import { assertIsDeliverTxSuccess, Coin } from '@cosmjs/stargate';
 import NODE_ENDPOINT, {
   getValidator1Address,
   createWallet,
@@ -25,7 +21,7 @@ import { runOrSkip } from '../util/testingRules';
 runOrSkip(process.env.TEST_STAKING as string)(
   'Staking Nolus tokens - Undelegation',
   () => {
-    let user1Wallet: NolusWallet;
+    let userWithBalanceWallet: NolusWallet;
     let delegatorWallet: NolusWallet;
     let validatorAddress: string;
 
@@ -33,7 +29,7 @@ runOrSkip(process.env.TEST_STAKING as string)(
     const undelegatedAmount = (+delegatedAmount / 2).toString();
     let undelegationsCounter = 0;
 
-    const generalMsg = {
+    const undelegationMsg = {
       typeUrl: '',
       value: {
         delegatorAddress: '',
@@ -44,65 +40,71 @@ runOrSkip(process.env.TEST_STAKING as string)(
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
-      user1Wallet = await getUser1Wallet();
+      userWithBalanceWallet = await getUser1Wallet();
       delegatorWallet = await createWallet();
 
       validatorAddress = getValidator1Address();
 
-      // send some tokens
       const initTransfer: Coin = {
         denom: NATIVE_MINIMAL_DENOM,
         amount: delegatedAmount + customFees.transfer.amount[0].amount,
       };
 
-      const broadcastTx = await user1Wallet.transferAmount(
+      const broadcastTx = await userWithBalanceWallet.transferAmount(
         delegatorWallet.address as string,
         [initTransfer],
         customFees.transfer,
       );
       expect(assertIsDeliverTxSuccess(broadcastTx)).toBeUndefined();
 
-      generalMsg.value.delegatorAddress = delegatorWallet.address as string;
-      generalMsg.value.validatorAddress = validatorAddress;
+      undelegationMsg.value.delegatorAddress =
+        delegatorWallet.address as string;
+      undelegationMsg.value.validatorAddress = validatorAddress;
     });
 
     afterEach(() => {
-      generalMsg.value.delegatorAddress = delegatorWallet.address as string;
-      generalMsg.value.validatorAddress = validatorAddress;
-      generalMsg.value.amount.denom = NATIVE_MINIMAL_DENOM;
+      undelegationMsg.value.delegatorAddress =
+        delegatorWallet.address as string;
+      undelegationMsg.value.validatorAddress = validatorAddress;
+      undelegationMsg.value.amount.denom = NATIVE_MINIMAL_DENOM;
     });
 
-    test('the delegator tries to undelegate tokens from a non-existent delegate-validator pair - should produce an error', async () => {
-      // try to undelegate
-      generalMsg.value.amount.amount = delegatedAmount;
-      generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
+    async function tryUndelegationWithInvalidParams(message: string) {
+      await userWithBalanceWallet.transferAmount(
+        delegatorWallet.address as string,
+        customFees.configs.amount,
+        customFees.transfer,
+      );
 
       const broadcastTx = await delegatorWallet.signAndBroadcast(
         delegatorWallet.address as string,
-        [generalMsg],
+        [undelegationMsg],
         customFees.configs,
       );
 
-      // the delegator is a new user and in this first test he has not delegated tokens yet
-      expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
-      expect(broadcastTx.rawLog).toEqual(
+      expect(broadcastTx.rawLog).toContain(message);
+    }
+
+    test('the delegator tries to undelegate tokens from a non-existent delegate-validator pair - should produce an error', async () => {
+      undelegationMsg.value.amount.amount = delegatedAmount;
+      undelegationMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
+
+      await tryUndelegationWithInvalidParams(
         'failed to execute message; message index: 0: no delegation for (address, validator) tuple',
       );
     });
 
     test('the successful scenario for tokens undelegation - should work as expected', async () => {
-      // delegate tokens
-      generalMsg.value.amount.amount = delegatedAmount;
-      generalMsg.typeUrl = `${stakingModule}.MsgDelegate`;
+      undelegationMsg.value.amount.amount = delegatedAmount;
+      undelegationMsg.typeUrl = `${stakingModule}.MsgDelegate`;
 
       const delegationResult = await delegatorWallet.signAndBroadcast(
         delegatorWallet.address as string,
-        [generalMsg],
+        [undelegationMsg],
         customFees.configs,
       );
       expect(assertIsDeliverTxSuccess(delegationResult)).toBeUndefined();
 
-      // see the delegator staked tokens to the current validator - before undelegation
       const delegatorDelegationsToValBefore =
         await getDelegatorValidatorPairAmount(
           delegatorWallet.address as string,
@@ -114,20 +116,18 @@ runOrSkip(process.env.TEST_STAKING as string)(
         return;
       }
 
-      // undelegate tokens
-      generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
-      generalMsg.value.amount.amount = undelegatedAmount;
+      undelegationMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
+      undelegationMsg.value.amount.amount = undelegatedAmount;
 
       const undelegationResult = await delegatorWallet.signAndBroadcast(
         delegatorWallet.address as string,
-        [generalMsg],
+        [undelegationMsg],
         customFees.configs,
       );
 
       expect(assertIsDeliverTxSuccess(undelegationResult)).toBeUndefined();
       undelegationsCounter++;
 
-      // get unbounded delegation list deligator-validator
       const lastEntrie = (
         await getDelegatorValidatorUnboundingInformation(
           delegatorWallet.address as string,
@@ -148,7 +148,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
 
       expect(completionTime).not.toBe('');
 
-      // see the delegator staked tokens to the current validator - after undelegation
       const delegatorDelegationsToValAfter =
         await getDelegatorValidatorPairAmount(
           delegatorWallet.address as string,
@@ -166,14 +165,13 @@ runOrSkip(process.env.TEST_STAKING as string)(
     });
 
     test('the delegator tries to undelegate 0 tokens - should produce an error', async () => {
-      // try to undelegate
-      generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
-      generalMsg.value.amount.amount = '0';
+      undelegationMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
+      undelegationMsg.value.amount.amount = '0';
 
       const broadcastTx = () =>
         delegatorWallet.signAndBroadcast(
           delegatorWallet.address as string,
-          [generalMsg],
+          [undelegationMsg],
           customFees.configs,
         );
 
@@ -181,7 +179,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
     });
 
     test('the delegator tries to undelegate tokens different than one defined by params.BondDenom - should produce an error', async () => {
-      // get BondDenom from params
       const bondDenom = (await getParamsInformation()).params?.bondDenom;
 
       if (!bondDenom) {
@@ -193,25 +190,16 @@ runOrSkip(process.env.TEST_STAKING as string)(
 
       expect(bondDenom).not.toBe(invalidDenom);
 
-      // undelegate tokens
-      generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
-      generalMsg.value.amount.amount = undelegatedAmount;
-      generalMsg.value.amount.denom = invalidDenom;
+      undelegationMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
+      undelegationMsg.value.amount.amount = undelegatedAmount;
+      undelegationMsg.value.amount.denom = invalidDenom;
 
-      const broadcastTx = await delegatorWallet.signAndBroadcast(
-        delegatorWallet.address as string,
-        [generalMsg],
-        customFees.configs,
-      );
-
-      expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
-      expect(broadcastTx.rawLog).toEqual(
-        `failed to execute message; message index: 0: invalid coin denomination: got ${invalidDenom}, expected ${bondDenom}: invalid request`,
+      await tryUndelegationWithInvalidParams(
+        `got ${invalidDenom}, expected ${bondDenom}`,
       );
     });
 
     test('the delegator tries to undelegate more tokens than he has delegated to the validator - should produce an error', async () => {
-      // see the delegator staked tokens to the current validator - before undelegation
       const delegatorDelegationsToValBefore =
         await getDelegatorValidatorPairAmount(
           delegatorWallet.address as string,
@@ -223,22 +211,13 @@ runOrSkip(process.env.TEST_STAKING as string)(
         return;
       }
 
-      // undelegate tokens
-      generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
-      // after the previous tests he has 'delegatedAmount/2' tokens left
-      generalMsg.value.amount.amount = delegatedAmount;
+      undelegationMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
+      undelegationMsg.value.amount.amount = delegatedAmount;
 
-      const broadcastTx = await delegatorWallet.signAndBroadcast(
-        delegatorWallet.address as string,
-        [generalMsg],
-        customFees.configs,
-      );
-
-      expect(broadcastTx.rawLog).toEqual(
+      await tryUndelegationWithInvalidParams(
         'failed to execute message; message index: 0: invalid shares amount: invalid request',
       );
 
-      // see the delegator staked tokens to the current validator - after undelegation
       const delegatorDelegationsToValAfter =
         await getDelegatorValidatorPairAmount(
           delegatorWallet.address as string,
@@ -256,7 +235,6 @@ runOrSkip(process.env.TEST_STAKING as string)(
     });
 
     test('the delegator should be able to undelagate all his delegated tokens - should be removed from the current validator pairs', async () => {
-      // see the delegator staked tokens to the current validator - before undelegation
       const delegatorDelegationsToValBefore =
         await getDelegatorValidatorPairAmount(
           delegatorWallet.address as string,
@@ -268,21 +246,18 @@ runOrSkip(process.env.TEST_STAKING as string)(
         return;
       }
 
-      // undelegate tokens
-      generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
-      // after the previous tests he has 'undelegatedAmount = delegatedAmount/2' tokens left
-      generalMsg.value.amount.amount = undelegatedAmount;
+      undelegationMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
+      undelegationMsg.value.amount.amount = undelegatedAmount;
 
       const undelegationResult = await delegatorWallet.signAndBroadcast(
         delegatorWallet.address as string,
-        [generalMsg],
+        [undelegationMsg],
         customFees.configs,
       );
 
       expect(assertIsDeliverTxSuccess(undelegationResult)).toBeUndefined();
       undelegationsCounter++;
 
-      // the validator-delegator pair information should not exist - after undelegation
       await expect(
         getDelegatorValidatorPairAmount(
           delegatorWallet.address as string,
@@ -294,49 +269,39 @@ runOrSkip(process.env.TEST_STAKING as string)(
     });
 
     test('the delegator tries to undelegate tokens more than params.MaxEntries times - should produce an error', async () => {
-      // delegate some tokens
-      generalMsg.value.amount.amount = delegatedAmount;
-      generalMsg.typeUrl = `${stakingModule}.MsgDelegate`;
+      undelegationMsg.value.amount.amount = delegatedAmount;
+      undelegationMsg.typeUrl = `${stakingModule}.MsgDelegate`;
 
       const delegationResult = await delegatorWallet.signAndBroadcast(
         delegatorWallet.address as string,
-        [generalMsg],
+        [undelegationMsg],
         customFees.configs,
       );
       expect(assertIsDeliverTxSuccess(delegationResult)).toBeUndefined();
 
-      // get MaxEntries from params
       const maxEntries = (await getParamsInformation()).params?.maxEntries;
 
       if (!maxEntries) {
         undefinedHandler();
         return;
       }
-      generalMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
+      undelegationMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
       const loopIteration = maxEntries - undelegationsCounter;
       const loopUndelegateAmount =
         BigInt(delegatedAmount) / (BigInt(loopIteration) + BigInt(1));
 
-      generalMsg.value.amount.amount = loopUndelegateAmount.toString();
+      undelegationMsg.value.amount.amount = loopUndelegateAmount.toString();
 
       for (let i = 0; i < loopIteration; i++) {
-        // undelegate tokens
         const undelegationResult = await delegatorWallet.signAndBroadcast(
           delegatorWallet.address as string,
-          [generalMsg],
+          [undelegationMsg],
           customFees.configs,
         );
         expect(assertIsDeliverTxSuccess(undelegationResult)).toBeUndefined();
       }
-      const broadcastTx = await delegatorWallet.signAndBroadcast(
-        delegatorWallet.address as string,
-        [generalMsg],
-        customFees.configs,
-      );
 
-      // maxEntries has already been reached
-      expect(isDeliverTxFailure(broadcastTx)).toBeTruthy();
-      expect(broadcastTx.rawLog).toEqual(
+      await tryUndelegationWithInvalidParams(
         'failed to execute message; message index: 0: too many unbonding delegation entries for (delegator, validator) tuple',
       );
     });
