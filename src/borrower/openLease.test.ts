@@ -5,7 +5,6 @@ import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import {
   customFees,
   defaultTip,
-  NATIVE_MINIMAL_DENOM,
   NATIVE_TICKER,
   noProvidedPriceFor,
   undefinedHandler,
@@ -279,10 +278,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       if (+downpaymentAmount > 0) {
         await userWithBalanceWallet.transferAmount(
           borrowerWallet.address as string,
-          [
-            { denom: downpaymentCurrencyIBC, amount: downpaymentAmount },
-            defaultTip,
-          ],
+          [{ denom: downpaymentCurrencyIBC, amount: downpaymentAmount }],
           customFees.transfer,
         );
       }
@@ -293,16 +289,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           leaseCurrency,
           customFees.exec,
           maxLTD,
-          [
-            { denom: downpaymentCurrencyIBC, amount: downpaymentAmount },
-            defaultTip,
-          ],
+          [{ denom: downpaymentCurrencyIBC, amount: downpaymentAmount }],
         );
 
       await expect(openLease).rejects.toThrow(message);
-
-      // transfer the tip amount back
-      await returnAmountToTheMainAccount(borrowerWallet, NATIVE_MINIMAL_DENOM);
     }
 
     async function closeLease(
@@ -574,7 +564,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
                 BigInt(borrowerBalanceBefore.amount) + BigInt(1)
               ).toString(),
             },
-            defaultTip,
           ],
         );
 

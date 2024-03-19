@@ -4,7 +4,6 @@ import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import {
   customFees,
   defaultTip,
-  NATIVE_MINIMAL_DENOM,
   NATIVE_TICKER,
   undefinedHandler,
 } from '../util/utils';
@@ -46,19 +45,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         userWithBalanceWallet,
         wallet.address as string,
       );
-      await userWithBalanceWallet.transferAmount(
-        wallet.address as string,
-        [defaultTip],
-        customFees.transfer,
-      );
 
-      const result = () =>
-        leaseInstance.closeLease(wallet, customFees.exec, [defaultTip]);
+      const result = () => leaseInstance.closeLease(wallet, customFees.exec);
 
       await expect(result).rejects.toThrow(message);
-
-      // transfer the tip amount back
-      await returnAmountToTheMainAccount(wallet, NATIVE_MINIMAL_DENOM);
     }
 
     beforeAll(async () => {
@@ -86,7 +76,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrency,
         borrowerWallet,
       );
-      expect(leaseAddress).not.toBe('');
       leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
