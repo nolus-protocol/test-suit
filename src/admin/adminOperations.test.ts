@@ -102,12 +102,6 @@ runOrSkip(process.env.TEST_ADMIN as string)('Admin contract tests', () => {
       end_of_migration: {},
     };
 
-    await userWithBalanceWallet.transferAmount(
-      userWithBalanceWallet.address as string,
-      customFees.configs.amount,
-      customFees.transfer,
-    );
-
     const broadcastTx = () =>
       userWithBalanceWallet.executeContract(
         adminContractAddress,
