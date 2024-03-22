@@ -94,7 +94,7 @@ runOrSkip(process.env.TEST_ADMIN as string)('Admin contract tests', () => {
       JSON.stringify(changeDexAdminMsg),
     );
 
-    expect(broadcastTx.rawLog).toContain('Invalid address');
+    expect(broadcastTx.rawLog).toContain('addr_validate errored');
   });
 
   test('the migration can only be cancaled by the DEX admin', async () => {
