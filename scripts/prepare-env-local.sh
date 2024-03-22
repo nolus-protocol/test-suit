@@ -80,4 +80,4 @@ verify_mandatory "$PROTOCOL" "protocol name"
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" \
 "$FEEDER_KEY" "$PROTOCOL" "$NO_PRICE_CURRENCY" "$ACTIVE_LEASE_ADDRESS" \
-"" "" "" "" "" "" "" "" "" "" "" ""
+"" "" "" "" "" "" "" "" "" "" "" "" ""
