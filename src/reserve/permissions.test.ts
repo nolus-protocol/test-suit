@@ -20,7 +20,7 @@ runOrSkip(process.env.TEST_RESERVE as string)(
         lease_code_id: process.env.LEASE_CODE_ID,
       };
 
-      const reserveCodeId = 1; // TODO:
+      const reserveCodeId = 1;
 
       await userWithBalanceWallet.transferAmount(
         userWithBalanceWallet.address as string,
@@ -63,7 +63,7 @@ runOrSkip(process.env.TEST_RESERVE as string)(
 
     test('cover liquidation losses msg should only be exec by a lease', async () => {
       const coverLiquidationLossesMsg = {
-        cover_liquidation_losses: { amount: '100' },
+        cover_liquidation_losses: { amount: '100', ticker: 'USDC' },
       };
 
       await userWithBalanceWallet.transferAmount(
@@ -83,9 +83,9 @@ runOrSkip(process.env.TEST_RESERVE as string)(
     });
 
     test('lease code id should only be updated by the Leaser contract', async () => {
-      const newLeaseCodeMsg = { new_lease_code: { lease_code_id: '2' } };
+      const newLeaseCodeMsg = { new_lease_code: 2 };
 
-      const repayLoan = () =>
+      const broadcastTx = () =>
         userWithBalanceWallet.execute(
           userWithBalanceWallet.address as string,
           reserveContractAddress,
@@ -93,7 +93,7 @@ runOrSkip(process.env.TEST_RESERVE as string)(
           customFees.exec,
         );
 
-      await expect(repayLoan).rejects.toThrow(/^.*Unauthorized access.*/);
+      await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
     });
   },
 );
