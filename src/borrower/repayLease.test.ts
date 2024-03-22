@@ -558,7 +558,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const borrowerBalanceInTheEnd = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
-        lppCurrencyToIBC,
+        leaseCurrencyToIBC,
       );
 
       expect(BigInt(borrowerBalanceInTheEnd.amount)).toBe(BigInt(0));
