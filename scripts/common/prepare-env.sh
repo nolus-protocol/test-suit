@@ -90,6 +90,7 @@ local -r lpp_address=$(echo "$protocol_contracts" | jq -r '.lpp')
 local -r leaser_address=$(echo "$protocol_contracts" | jq -r '.leaser')
 local -r oracle_address=$(echo "$protocol_contracts" | jq -r '.oracle')
 local -r profit_address=$(echo "$protocol_contracts" | jq -r '.profit')
+local -r reserve_address=$(echo "$protocol_contracts" | jq -r '.reserve')
 
 local -r protocol_currency=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"config":[]}' $flags | jq -r '.data.lpn_ticker')
 
@@ -134,6 +135,7 @@ ORACLE_ADDRESS=${oracle_address}
 LEASER_ADDRESS=${leaser_address}
 LPP_ADDRESS=${lpp_address}
 PROFIT_ADDRESS=${profit_address}
+RESERVE_ADDRESS=${reserve_address}
 LEASE_CODE_ID=${lease_code_id}
 
 LENDER_DEPOSIT_CAPACITY=${lender_deposit_capacity}
