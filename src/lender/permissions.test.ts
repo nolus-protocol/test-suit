@@ -15,9 +15,9 @@ runOrSkip(process.env.TEST_LENDER as string)(
     });
 
     test('lease code id should only be updated by the Leaser contract', async () => {
-      const newLeaseCodeMsg = { new_lease_code: { lease_code_id: '2' } };
+      const newLeaseCodeMsg = { new_lease_code: { lease_code: 2 } };
 
-      const repayLoan = () =>
+      const broadcastTx = () =>
         userWithBalanceWallet.execute(
           userWithBalanceWallet.address as string,
           lppContractAddress,
@@ -25,7 +25,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
           customFees.exec,
         );
 
-      await expect(repayLoan).rejects.toThrow(/^.*Unauthorized access.*/);
+      await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
     });
   },
 );
