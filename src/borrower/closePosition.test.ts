@@ -230,7 +230,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
         await testMarketCloseInvalidCases(
           borrowerWallet,
-          `Found ticker '${unsupportedCurrency}' expecting '${leaseAmountBeforePartialClose.ticker}'`,
+          `Found a symbol '${unsupportedCurrency}' pretending to be the ticker of the currency with ticker '${leaseAmountBeforePartialClose.ticker}'`,
           leaseAmountBeforePartialClose,
           amount,
         );
