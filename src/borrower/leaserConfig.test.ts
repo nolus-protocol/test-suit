@@ -44,12 +44,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       configBefore = await leaserInstance.getLeaserConfig();
       leaserConfigMsg = JSON.parse(JSON.stringify(configBefore));
-      leaserConfigMsg.config.lease_code_id = undefined;
+      leaserConfigMsg.config.lease_code = undefined;
       leaserConfigMsg.config.dex = undefined;
       leaserConfigMsg.config.lpp = undefined;
       leaserConfigMsg.config.market_price_oracle = undefined;
       leaserConfigMsg.config.profit = undefined;
       leaserConfigMsg.config.time_alarms = undefined;
+      leaserConfigMsg.config.reserve = undefined;
     });
 
     afterEach(async () => {
