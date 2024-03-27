@@ -159,6 +159,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(leasesAfter.length).toBe(leasesBefore.length + 1);
 
       const leaseAddress = getLeaseAddressFromOpenLeaseResponse(response);
+      console.log('Lease addres: ', leaseAddress);
       const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
@@ -371,15 +372,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       borrowerWallet = await createWallet();
 
       leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
-      lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
       leaserConfig = (await leaserInstance.getLeaserConfig()).config;
       minAsset = leaserConfig.lease_position_spec.min_asset.amount;
       minTransaction = leaserConfig.lease_position_spec.min_transaction.amount;
 
-      const lppConfig = await lppInstance.getLppConfig();
-      lppCurrency = lppConfig.lpn_ticker;
+      lppCurrency = process.env.LPP_BASE_CURRENCY as string;
       lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
       leaseCurrency = getLeaseGroupCurrencies()[0];
       leaseCurrencyToIBC = currencyTicker_To_IBC(leaseCurrency);
@@ -668,7 +667,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the lpp "repay loan" functionality should be used only by the lease contract', async () => {
-      const lppRepayLoanMsg = {};
+      const lppRepayLoanMsg = { repay_loan: [] };
 
       const repayLoan = () =>
         userWithBalanceWallet.execute(
@@ -676,6 +675,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           lppContractAddress,
           lppRepayLoanMsg,
           customFees.exec,
+          undefined,
+          [{ amount: '10', denom: lppCurrencyToIBC }],
         );
 
       await expect(repayLoan).rejects.toThrow(/^.*No such contract.*/);
