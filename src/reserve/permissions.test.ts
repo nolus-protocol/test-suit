@@ -8,6 +8,7 @@ runOrSkip(process.env.TEST_RESERVE as string)(
   () => {
     let userWithBalanceWallet: NolusWallet;
     const reserveContractAddress = process.env.RESERVE_ADDRESS as string;
+    const lpn = process.env.LPP_BASE_CURRENCY as string;
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
@@ -63,7 +64,7 @@ runOrSkip(process.env.TEST_RESERVE as string)(
 
     test('cover liquidation losses msg should only be exec by a lease', async () => {
       const coverLiquidationLossesMsg = {
-        cover_liquidation_losses: { amount: '100', ticker: 'USDC' },
+        cover_liquidation_losses: { amount: '100', ticker: lpn },
       };
 
       await userWithBalanceWallet.transferAmount(

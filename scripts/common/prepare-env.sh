@@ -92,7 +92,7 @@ local -r oracle_address=$(echo "$protocol_contracts" | jq -r '.oracle')
 local -r profit_address=$(echo "$protocol_contracts" | jq -r '.profit')
 local -r reserve_address=$(echo "$protocol_contracts" | jq -r '.reserve')
 
-local -r protocol_currency=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"config":[]}' $flags | jq -r '.data.lpn_ticker')
+local -r protocol_currency=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"lpn":[]}' $flags | jq -r '.data')
 
 local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"deposit_capacity":[]}' $flags  | jq -r '.data.amount')
 

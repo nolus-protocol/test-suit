@@ -66,7 +66,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
       const lppConfig = await lppInstance.getLppConfig();
-      lppCurrency = lppConfig.lpn_ticker;
+      lppCurrency = process.env.LPP_BASE_CURRENCY as string;
       downpaymentCurrency = lppCurrency;
       downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
       leaseCurrency = getLeaseGroupCurrencies()[0];

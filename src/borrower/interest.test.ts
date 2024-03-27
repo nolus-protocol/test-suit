@@ -109,9 +109,7 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
 
       leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
 
-      lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
-      const lppConfig = await lppInstance.getLppConfig();
-      lppCurrency = lppConfig.lpn_ticker;
+      lppCurrency = process.env.LPP_BASE_CURRENCY as string;
       lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
 
       const leaserInstance = new NolusContracts.Leaser(cosm, leaserAddress);

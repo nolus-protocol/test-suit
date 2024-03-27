@@ -186,8 +186,7 @@ maybe('Lender tests - Make a deposit', () => {
     userWithBalance = await getUser1Wallet();
     lenderWallet = await createWallet();
 
-    const lppConfig = await lppInstance.getLppConfig();
-    lppCurrency = lppConfig.lpn_ticker;
+    lppCurrency = process.env.LPP_BASE_CURRENCY as string;
     lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
 
     const depositCapacity = await lppInstance.getDepositCapacity();

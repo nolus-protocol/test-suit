@@ -81,8 +81,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
     w3Liability =
       leaserConfig.config.lease_position_spec.liability.third_liq_warn;
 
-    const lppConfig = await lppInstance.getLppConfig();
-    lpnCurrency = lppConfig.lpn_ticker;
+    lpnCurrency = process.env.LPP_BASE_CURRENCY as string;
     downpaymentCurrency = lpnCurrency;
 
     console.log('Waiting for the price to expire...');
