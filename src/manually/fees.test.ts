@@ -24,6 +24,7 @@ import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
 // - non-working dispatcher
 // - oracle swap tree (Osmosis example): {"swap_tree":{"tree":{"value":[0,"USDC"],"children":[{"value":[7,"NLS"]},{"value":[5,"OSMO"]},{"value":[12,"ATOM"]}]}}}
 // - supported fee denoms (Osmosis example) - tax module params: {"params":{"fee_rate":40,"contract_address":"<oracle_address>","base_denom":"unls","fee_params":[{"oracle_address":"<oracle_address>","profit_address":"<profit_address>","accepted_denoms":[{"denom":"<USDC_ibc_denom>","ticker":"USDC"},{"denom":"<OSMO_ibc_denom>","ticker":"OSMO"}]}]}}
+// Before testing, validate the registeredFeeCurrencyTicker and unregisteredFeeCurrencyTicker
 
 describe.skip('Fee tests', () => {
   let user1Wallet: NolusWallet;
@@ -33,8 +34,8 @@ describe.skip('Fee tests', () => {
   let fee: any;
   let transferAmount: Coin;
   let lpnCurrencyToIbc: string;
-  let registeredFeeCurrencyToIbc: string;
-  let unregisteredFeeCurrencyToIbc: string;
+  let registeredFeeCurrencyTicker: string;
+  let unregisteredFeeCurrencyTicker: string;
   const lpnTicker = process.env.LPP_BASE_CURRENCY as string;
 
   async function feedPrice(
@@ -74,8 +75,8 @@ describe.skip('Fee tests', () => {
     feederWallet = await getFeederWallet();
 
     lpnCurrencyToIbc = currencyTicker_To_IBC(lpnTicker);
-    registeredFeeCurrencyToIbc = currencyTicker_To_IBC('OSMO'); // !!! registered denom
-    unregisteredFeeCurrencyToIbc = currencyTicker_To_IBC('ATOM'); // !!! unregistered denom
+    registeredFeeCurrencyTicker = 'NTRN'; // !!! registered currency ticker
+    unregisteredFeeCurrencyTicker = 'ATOM'; // !!! unregistered currency ticker
 
     oracleInstance = new NolusContracts.Oracle(
       cosm,
@@ -99,16 +100,16 @@ describe.skip('Fee tests', () => {
   });
 
   test('user tries to pay the fee in a currency for which there is no price - should produce an error', async () => {
-    fee.amount[0].denom = registeredFeeCurrencyToIbc;
+    fee.amount[0].denom = currencyTicker_To_IBC(registeredFeeCurrencyTicker);
 
     await tryBankTransfer(/^.*no prices found from the oracle.*/);
   });
 
   test('user tries to pay the fee in a currency which is not registered as supported - should produce an error', async () => {
     await feedPrice(NATIVE_TICKER, '1', '1');
-    await feedPrice('ATOM', '1', '1');
+    await feedPrice(unregisteredFeeCurrencyTicker, '1', '1');
 
-    fee.amount[0].denom = unregisteredFeeCurrencyToIbc;
+    fee.amount[0].denom = currencyTicker_To_IBC(unregisteredFeeCurrencyTicker);
 
     await tryBankTransfer(/^.*no fee param found.*/);
   });
