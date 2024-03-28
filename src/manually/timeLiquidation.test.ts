@@ -157,8 +157,7 @@ describe.skip('Lease - Time Liquidation tests', () => {
     leaserConfig = (await leaserInstance.getLeaserConfig()).config;
     duePeriod = +leaserConfig.lease_due_period.toString() / TONANOSEC;
     minAssetLPN = +leaserConfig.lease_position_spec.min_asset.amount;
-    const lppConfig = await lppInstance.getLppConfig();
-    downpaymentCurrency = lppConfig.lpn_ticker;
+    downpaymentCurrency = process.env.LPP_BASE_CURRENCY as string;
     leaseCurrency = getLeaseGroupCurrencies()[0];
   });
 
