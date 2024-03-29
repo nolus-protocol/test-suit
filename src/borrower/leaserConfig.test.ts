@@ -146,7 +146,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await trySendPropToSetConfig('Recalculation cadence should be >= 1h');
     });
 
-    test('try to set min_asset amount = 0 - should produce an error', async () => {
+    test('try to set "min_asset" amount = 0 - should produce an error', async () => {
       leaserConfigMsg.config.lease_position_spec.min_asset = {
         amount: '0',
         ticker: process.env.LPP_BASE_CURRENCY,
@@ -155,7 +155,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await trySendPropToSetConfig('Min asset amount should be positive');
     });
 
-    test('try to set min_asset ticker != LPN - should produce an error', async () => {
+    test('try to set "min_asset" ticker != LPN - should produce an error', async () => {
       const invalidTicker = getLeaseGroupCurrencies()[0];
       leaserConfigMsg.config.lease_position_spec.min_asset = {
         amount: '100', // any amount
@@ -167,7 +167,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('try to set min_sell_asset ticker != LPN - should produce an error', async () => {
+    test('try to set "min_transaction" ticker != LPN - should produce an error', async () => {
       const invalidTicker = getLeaseGroupCurrencies()[0];
       leaserConfigMsg.config.lease_position_spec.min_transaction = {
         amount: '100', // any amount

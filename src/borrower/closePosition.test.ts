@@ -236,7 +236,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       },
     );
 
-    test('the borrower tries to close partially by sending amount < "min_sell_asset" - should produce an error', async () => {
+    test('the borrower tries to close partially by sending amount < "min_transaction" - should produce an error', async () => {
       const leaseAmountBeforePartialClose = (
         await leaseInstance.getLeaseStatus()
       ).opened?.amount;
