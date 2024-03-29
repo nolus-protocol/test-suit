@@ -21,7 +21,7 @@ import {
 
 // These tests require the network to be specifically configured
 // That`s why, they only work locally and in isolation, and only if this requirement is met!
-// Suitable values are :
+// Suitable values are (Osmosis protocol):
 // - for the Leaser config - {...,"lease_interest_rate_margin":30,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"150","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},..."lease_interest_payment":"lease_due_period":5184000000000000}
 // - for the Oracle  config - {"config":{....,"price_config":{"min_feeders":500,"sample_period_secs":260,"samples_number":1,"discount_factor":750}},....}
 // - for the LPP - {...,"min_utilization":0}
@@ -30,7 +30,7 @@ import {
 
 // Before running -> update:
 // - "alarmDispatcherPeriod" = the configured "poll_period_seconds" + 5 /take from the alarms-dispatcher bot config/
-// - check and fill "validPriceLCtoLPN" (LC = "leaseCurrency")
+// - check and fill "leaseCurrency" and "validPriceLCtoLPN" (LC = "leaseCurrency")
 // - "periodSecs" = configured "sample_period_secs" /take from the Oracle smart contract config/
 
 describe.skip('Lease - Price Liquidation tests', () => {
