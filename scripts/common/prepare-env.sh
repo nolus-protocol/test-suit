@@ -99,7 +99,7 @@ local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state
 local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov $flags | jq -r '.account.base_account.address')
 
 local -r leaser_config=$(run_cmd "$accounts_dir" q wasm contract-state smart "$leaser_address" '{"config":{}}' $flags)
-local -r lease_code_id=$(echo "$leaser_config" | jq -r '.data.config.lease_code_id')
+local -r lease_code_id=$(echo "$leaser_config" | jq -r '.data.config.lease_code')
 
 local test_interest=false;
 if [ -n "$active_lease_address" ] && [ "$test_borrower" != "false" ] ; then
