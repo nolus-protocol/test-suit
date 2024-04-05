@@ -13,7 +13,7 @@ export async function provideEnoughLiquidity(
   const depositAmountLPP = '100000';
   const userWithBalanceWallet = await getUser1Wallet();
   const lppCurrencyToIBC = currencyTicker_To_IBC(
-    (await lppInstance.getLppConfig()).lpn_ticker,
+    process.env.LPP_BASE_CURRENCY as string,
   );
   let quote;
   do {
