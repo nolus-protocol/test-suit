@@ -24,6 +24,7 @@ FAUCET_KEY="faucet"
 NOLUS_DEV_NET="https://dev-cl.nolus.network:26657"
 NOLUS_CORE_TAG=""
 MNEMONIC_FAUCET=""
+TEST_WALLET_MNEMONIC=""
 
 PROTOCOL=""
 ACTIVE_LEASE_ADDRESS=""
@@ -53,6 +54,7 @@ while [[ $# -gt 0 ]]; do
     [--nolus-dev-net <nolus_dev_url>]
     [--nolus-core-version-tag <nolus_core_preferred_tag>]
     [--mnemonic-faucet <mnemonic_phrase>]
+    [--test-wallet-mnemonic <mnemonic_phrase>]
     [--protocol <protocol_name_to_test>]
     [--active-lease-address <active_lease_address>]
     [--test-transfer-flag <test_transfer_true_or_false>]
@@ -86,6 +88,12 @@ while [[ $# -gt 0 ]]; do
 
   --mnemonic-faucet)
     MNEMONIC_FAUCET="$2"
+    shift
+    shift
+    ;;
+
+  --test-wallet-mnemonic)
+    TEST_WALLET_MNEMONIC="$2"
     shift
     shift
     ;;
@@ -191,6 +199,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR"/common/verify.sh
 
 verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic"
+verify_mandatory "$TEST_WALLET_MNEMONIC" "test wallet mnemonic"
 verify_mandatory "$PROTOCOL" "protocol name"
 
 if [[ -z ${NOLUS_CORE_TAG} ]]; then
@@ -207,10 +216,12 @@ mkdir "$HOME_DIR/accounts"
 ACCOUNTS_DIR="$HOME_DIR/accounts"
 
 source "$SCRIPT_DIR"/common/cmd.sh
+TEST_ACCOUNT_KEY="test-main-account"
 echo "$MNEMONIC_FAUCET" | run_cmd "$ACCOUNTS_DIR" keys add "$FAUCET_KEY" --recover --keyring-backend "test"
+echo "$TEST_WALLET_MNEMONIC" | run_cmd "$ACCOUNTS_DIR"  keys add "$TEST_ACCOUNT_KEY" --recover --keyring-backend "test"
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
-prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$FAUCET_KEY" "" "$PROTOCOL" \
+prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
 "" "$ACTIVE_LEASE_ADDRESS" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
 "$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN" \
 "$TEST_PROFIT" "$TEST_DISPATCHER" "$TEST_TIMEALARMS" "$TEST_RESERVE"

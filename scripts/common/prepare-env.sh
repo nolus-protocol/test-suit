@@ -32,7 +32,7 @@ prepareEnv() {
 local -r node_url="$1"
 local -r node_env="$2"
 local -r accounts_dir="$3"
-local -r main_accounts_key="$4"
+local -r main_account_key="$4"
 local -r feeder_key="$5"
 local -r protocol="$6"
 local -r no_price_currency="$7"
@@ -56,7 +56,7 @@ local -r flags="--output json --node $node_url"
 _addKey "test-user-1" "$accounts_dir"
 _addKey "test-user-2" "$accounts_dir"
 
-local -r user_1_priv_key=$(_exportKey "$main_accounts_key" "$accounts_dir")
+local -r user_1_priv_key=$(_exportKey "$main_account_key" "$accounts_dir")
 local -r user_2_priv_key=$(_exportKey "test-user-1" "$accounts_dir")
 local -r user_3_priv_key=$(_exportKey "test-user-2" "$accounts_dir")
 local -r validator_1_address=$(_getValidatorAddress "0" "$accounts_dir" "$node_url")
