@@ -128,7 +128,7 @@ for currency in ${!CURRENCY@}; do
       else
         swap_tx=$(echo 'y' | "$DEX_NETWORK_BINARY_PATH" tx gamm swap-exact-amount-in "${currency[amount]}""$DEX_NETWORK_NATIVE_DENOM" 10000 --swap-route-denoms "${currency[denom]}" --swap-route-pool-ids "${currency[pool_id]}" $FLAGS --output json)
         swap_tx=$(wait_tx_included_in_block "$DEX_NETWORK_BINARY_PATH" "$DEX_NETWORK_NODE_URL" "$swap_tx")
-        swapped_token=$(echo "$swap_tx" |  jq -r '.logs[].events[] | select(.type == "token_swapped") | .attributes[] | select(.key == "tokens_out") | .value')
+        swapped_token=$(echo "$swap_tx" |  jq -r  '.events[] | select(.type == "token_swapped") | .attributes[] | select(.key == "tokens_out") | .value')
       fi
   else
     swapped_token="${currency[amount]}${currency[denom]}"
