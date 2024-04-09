@@ -124,7 +124,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       initConfig = await oracleInstance.getConfig();
       baseAsset = initConfig.base_asset;
 
-      leaseCurrencies = getLeaseGroupCurrencies();
+      leaseCurrencies = await getLeaseGroupCurrencies(oracleInstance);
     });
 
     test('try to update swap paths with unsupported currencies - should produce an error', async () => {
@@ -148,7 +148,8 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     });
 
     test('try to update swap paths with base currency other than the init base currency - should produce an error', async () => {
-      const leaseGroupCurrencies = getLeaseGroupCurrencies();
+      const leaseGroupCurrencies =
+        await getLeaseGroupCurrencies(oracleInstance);
       const newSwapTree: SwapTree = {
         tree: { value: [0, leaseGroupCurrencies[0]] },
       };

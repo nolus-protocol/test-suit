@@ -68,8 +68,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const lppConfig = await lppInstance.getLppConfig();
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
       downpaymentCurrency = lppCurrency;
-      downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
-      leaseCurrency = getLeaseGroupCurrencies()[0];
+      downpaymentCurrencyToIBC =
+        await currencyTicker_To_IBC(downpaymentCurrency);
+      leaseCurrency = (await getLeaseGroupCurrencies(oracleInstance))[0];
+
+      expect(downpaymentCurrencyToIBC).not.toBe('');
 
       baseInterestRate =
         lppConfig.borrow_rate.base_interest_rate / PERMILLE_TO_PERCENT; //%

@@ -234,9 +234,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
-      lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
+      lppCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
       downpaymentCurrency = lppCurrency;
-      leaseCurrency = getLeaseGroupCurrencies()[0];
+      leaseCurrency = (await getLeaseGroupCurrencies(oracleInstance))[0];
+
+      expect(lppCurrencyToIBC).not.toBe('');
 
       leaseAddress = await openLease(
         leaserInstance,
@@ -266,7 +268,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       }
 
       paymentCurrency = lppCurrency;
-      paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
+      paymentCurrencyToIBC = await currencyTicker_To_IBC(paymentCurrency);
+
+      expect(paymentCurrencyToIBC).not.toBe('');
 
       const paymentAmount = Math.trunc(
         +leaseStateBeforeFirstRepay.principal_due.amount / 3,
@@ -292,7 +296,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       }
 
       paymentCurrency = leaseCurrency;
-      paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
+      paymentCurrencyToIBC = await currencyTicker_To_IBC(paymentCurrency);
+
+      expect(paymentCurrencyToIBC).not.toBe('');
 
       const paymentAmountLPN =
         +leaseStateBeforeSecondRepay.principal_due.amount / 2;
@@ -372,7 +378,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           `Unsupported currency '${noProvidedPriceFor}'`,
         );
         const noProvidedPriceForToIBC =
-          currencyTicker_To_IBC(noProvidedPriceFor);
+          await currencyTicker_To_IBC(noProvidedPriceFor);
+
+        expect(noProvidedPriceFor).not.toBe('');
 
         const borrowerBalance = await borrowerWallet.getBalance(
           borrowerWallet.address as string,
@@ -405,7 +413,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(leaseStateBeforeRepay).toBeDefined();
 
       paymentCurrency = lppCurrency;
-      paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
+      paymentCurrencyToIBC = await currencyTicker_To_IBC(paymentCurrency);
+
+      expect(paymentCurrencyToIBC).not.toBe('');
 
       const payment = {
         denom: paymentCurrencyToIBC,
@@ -420,7 +430,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         .lease_position_spec.min_transaction.amount;
 
       const paymentCurrency = leaseCurrency;
-      const paymentCurrencyToIBC = currencyTicker_To_IBC(paymentCurrency);
+      const paymentCurrencyToIBC = await currencyTicker_To_IBC(paymentCurrency);
+      expect(paymentCurrencyToIBC).not.toBe('');
       const paymentCurrencyPriceObj =
         await oracleInstance.getPriceFor(paymentCurrency);
       const [
@@ -552,7 +563,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         BigInt(borrowerBalanceBeforeClose.amount) + BigInt(exactExcess),
       );
 
-      const leaseCurrencyToIBC = currencyTicker_To_IBC(leaseCurrency);
+      const leaseCurrencyToIBC = await currencyTicker_To_IBC(leaseCurrency);
+      expect(leaseCurrencyToIBC).not.toBe('');
+
       await returnAmountToTheMainAccount(borrowerWallet, leaseCurrencyToIBC);
 
       const borrowerBalanceInTheEnd = await borrowerWallet.getBalance(

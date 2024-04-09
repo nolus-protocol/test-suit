@@ -379,11 +379,15 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       minTransaction = leaserConfig.lease_position_spec.min_transaction.amount;
 
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
-      lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
-      leaseCurrency = getLeaseGroupCurrencies()[0];
-      leaseCurrencyToIBC = currencyTicker_To_IBC(leaseCurrency);
+      lppCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
+      leaseCurrency = (await getLeaseGroupCurrencies(oracleInstance))[0];
+      leaseCurrencyToIBC = await currencyTicker_To_IBC(leaseCurrency);
       downpaymentCurrency = lppCurrency;
-      downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
+      downpaymentCurrencyToIBC =
+        await currencyTicker_To_IBC(downpaymentCurrency);
+
+      expect(leaseCurrencyToIBC).not.toBe('');
+      expect(downpaymentCurrencyToIBC).not.toBe('');
 
       await provideEnoughLiquidity(
         leaserInstance,
@@ -397,9 +401,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     test('the successful scenario for opening a lease - downpayment currency === lpn currency - should work as expected', async () => {
       const currentLeaseCurrency = leaseCurrency;
       const currentDownpaymentCurrency = lppCurrency;
-      const currentDownpaymentCurrencyToIBC = currencyTicker_To_IBC(
+      const currentDownpaymentCurrencyToIBC = await currencyTicker_To_IBC(
         currentDownpaymentCurrency,
       );
+
+      expect(currentDownpaymentCurrencyToIBC).not.toBe('');
 
       await testOpening(
         currentLeaseCurrency,
@@ -412,18 +418,18 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const currentDPAmount = '1000000';
 
       const currentLeaseCurrency = leaseCurrency;
-      const currentDownpaymentCurrency = getCurrencyOtherThan([
-        currentLeaseCurrency,
-        lppCurrency,
-        NATIVE_TICKER,
-      ]);
+      const currentDownpaymentCurrency = await getCurrencyOtherThan(
+        [currentLeaseCurrency, lppCurrency, NATIVE_TICKER],
+        oracleInstance,
+      );
 
       expect(currentDownpaymentCurrency).not.toBe('undefined');
 
-      const currentDownpaymentCurrencyToIBC = currencyTicker_To_IBC(
+      const currentDownpaymentCurrencyToIBC = await currencyTicker_To_IBC(
         currentDownpaymentCurrency,
       );
 
+      expect(currentDownpaymentCurrencyToIBC).not.toBe('');
       await testOpening(
         currentLeaseCurrency,
         currentDownpaymentCurrency,
@@ -455,9 +461,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       // !!! leaseCurrency balance > 0 is required for the main account
       const currentLeaseCurrency = leaseCurrency;
       const currentDownpaymentCurrency = currentLeaseCurrency;
-      const currentDownpaymentCurrencyToIBC = currencyTicker_To_IBC(
+      const currentDownpaymentCurrencyToIBC = await currencyTicker_To_IBC(
         currentDownpaymentCurrency,
       );
+
+      expect(currentDownpaymentCurrencyToIBC).not.toBe('');
 
       await testOpening(
         currentLeaseCurrency,
@@ -469,9 +477,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     test('the borrower should be able to open a lease with preferred LTV', async () => {
       const currentLeaseCurrency = leaseCurrency;
       const currentDownpaymentCurrency = lppCurrency;
-      const currentDownpaymentCurrencyToIBC = currencyTicker_To_IBC(
+      const currentDownpaymentCurrencyToIBC = await currencyTicker_To_IBC(
         currentDownpaymentCurrency,
       );
+
+      expect(currentDownpaymentCurrencyToIBC).not.toBe('');
 
       const maxLTD =
         LTVtoLTD(+leaserConfig.lease_position_spec.liability.initial) - 100; // -10%
@@ -519,7 +529,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         // );
 
         const noProvidedPriceForToIBC =
-          currencyTicker_To_IBC(noProvidedPriceFor);
+          await currencyTicker_To_IBC(noProvidedPriceFor);
+
+        expect(noProvidedPriceForToIBC).not.toBe('');
 
         await testOpeningWithInvalidParams(
           leaseCurrency,
@@ -579,7 +591,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     test('the borrower tries to open a lease whose amount is less than the "min_asset" - should produce an error', async () => {
       const downpaymentCurrency = lppCurrency;
       const downpaymentCurrencyToIBC =
-        currencyTicker_To_IBC(downpaymentCurrency);
+        await currencyTicker_To_IBC(downpaymentCurrency);
       const downpaymentCurrencyPriceObj =
         await oracleInstance.getPriceFor(downpaymentCurrency);
       const [
@@ -587,6 +599,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         exactCurrencyPrice_LC,
         maxToleranceCurrencyPrice_LC,
       ] = currencyPriceObjToNumbers(downpaymentCurrencyPriceObj, 1);
+
+      expect(downpaymentCurrencyToIBC).not.toBe('');
 
       const downpaymentAmount = minTransaction;
       const maxLTD = 1000;
@@ -614,7 +628,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     test('the borrower tries to open a lease by sending a downpayment which is less than the "min_transaction" - should produce an error', async () => {
       const downpaymentCurrency = leaseCurrency;
       const downpaymentCurrencyToIBC =
-        currencyTicker_To_IBC(downpaymentCurrency);
+        await currencyTicker_To_IBC(downpaymentCurrency);
       const downpaymentCurrencyPriceObj =
         await oracleInstance.getPriceFor(downpaymentCurrency);
       const [
@@ -622,6 +636,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         exactCurrencyPrice_DPC,
         maxToleranceCurrencyPrice_DPC,
       ] = currencyPriceObjToNumbers(downpaymentCurrencyPriceObj, 1);
+
+      expect(downpaymentCurrencyToIBC).not.toBe('');
 
       const downpaymentAmount = Math.trunc(
         (+minTransaction - 1) * minToleranceCurrencyPrice_DPC,
@@ -636,8 +652,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to open a lease whose borrowed amount is less than the "min_transaction" - should produce an error', async () => {
-      const downpaymentCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
+      const downpaymentCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
       const downpaymentAmount = +minTransaction;
+
+      expect(downpaymentCurrencyToIBC).not.toBe('');
 
       const maxLTD = 10;
 

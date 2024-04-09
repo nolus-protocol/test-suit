@@ -78,7 +78,8 @@ maybe('Lender tests - Claim rewards', () => {
     lenderWallet = await createWallet();
 
     lppCurrency = process.env.LPP_BASE_CURRENCY as string;
-    lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
+    lppCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
+    expect(lppCurrencyToIBC).not.toBe('');
 
     rewards = { amount: '200000000', denom: NATIVE_MINIMAL_DENOM };
 

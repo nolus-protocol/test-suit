@@ -22,7 +22,7 @@ export async function checkLeaseBalance(
   const cosm = await NolusClient.getInstance().getCosmWasmClient();
   let balanceState = false;
   currenciesTickers.forEach((ticker) => async () => {
-    const tickerToIbc = currencyTicker_To_IBC(ticker);
+    const tickerToIbc = await currencyTicker_To_IBC(ticker);
     const leaseBalance = await cosm.getBalance(leaseAddress, tickerToIbc);
 
     if (leaseBalance.amount) balanceState = true;
@@ -127,7 +127,8 @@ export async function openLease(
   borrowerWallet: NolusWallet,
 ): Promise<string> {
   const userWithBalanceWallet = await getUser1Wallet();
-  const downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
+  const downpaymentCurrencyToIBC =
+    await currencyTicker_To_IBC(downpaymentCurrency);
 
   await provideEnoughLiquidity(
     leaserInstance,

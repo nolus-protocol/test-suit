@@ -158,7 +158,7 @@ describe.skip('Lease - Time Liquidation tests', () => {
     duePeriod = +leaserConfig.lease_due_period.toString() / TONANOSEC;
     minAssetLPN = +leaserConfig.lease_position_spec.min_asset.amount;
     downpaymentCurrency = process.env.LPP_BASE_CURRENCY as string;
-    leaseCurrency = getLeaseGroupCurrencies()[0];
+    leaseCurrency = (await getLeaseGroupCurrencies(oracleInstance))[0];
   });
 
   test('partial liquidation due to expiry of due_period - should work as expected', async () => {

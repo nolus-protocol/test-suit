@@ -12,10 +12,12 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let userWithBalanceWallet: NolusWallet;
     let wallet: NolusWallet;
     let leaserInstance: NolusContracts.Leaser;
+    let oracleInstance: NolusContracts.Oracle;
     let configBefore: NolusContracts.LeaserConfig;
     let leaserConfigMsg: LeaserConfig;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
+    const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
     async function trySendPropToSetConfig(message: string): Promise<void> {
       await userWithBalanceWallet.transferAmount(
@@ -38,6 +40,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const cosm = await NolusClient.getInstance().getCosmWasmClient();
 
       leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
+      oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
       userWithBalanceWallet = await getUser1Wallet();
       wallet = await createWallet();
@@ -156,7 +159,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('try to set "min_asset" ticker != LPN - should produce an error', async () => {
-      const invalidTicker = getLeaseGroupCurrencies()[0];
+      const invalidTicker = (await getLeaseGroupCurrencies(oracleInstance))[0];
       leaserConfigMsg.config.lease_position_spec.min_asset = {
         amount: '100', // any amount
         ticker: invalidTicker,
@@ -168,7 +171,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('try to set "min_transaction" ticker != LPN - should produce an error', async () => {
-      const invalidTicker = getLeaseGroupCurrencies()[0];
+      const invalidTicker = (await getLeaseGroupCurrencies(oracleInstance))[0];
       leaserConfigMsg.config.lease_position_spec.min_transaction = {
         amount: '100', // any amount
         ticker: invalidTicker,

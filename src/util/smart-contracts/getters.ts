@@ -2,7 +2,7 @@ import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
 import { Attribute, Event, TxResponse } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
 import { GROUPS } from '@nolus/nolusjs/build/types/Networks';
-import { AssetUtils } from '@nolus/nolusjs';
+import { AssetUtils, NolusContracts } from '@nolus/nolusjs';
 import { LeaseStatus } from '@nolus/nolusjs/build/contracts';
 import { undefinedHandler } from '../utils';
 
@@ -51,22 +51,39 @@ function getAttributeValueFromWasmRepayEvent(
   return BigInt(wasmEvent.attributes[attributeIndex[0]].value.toString());
 }
 
-export function getLeaseGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lease, getProtocol());
+async function getOracleCurrencies(
+  oracleInstance: NolusContracts.Oracle,
+): Promise<NolusContracts.CurrencyInfo[]> {
+  return await oracleInstance.getCurrencies();
 }
 
-export function getLpnGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Lpn, getProtocol());
+export async function getLeaseGroupCurrencies(
+  oracleInstance: NolusContracts.Oracle,
+): Promise<string[]> {
+  const currencies = await getOracleCurrencies(oracleInstance);
+  return AssetUtils.findTickersByGroup(currencies, GROUPS.Lease);
 }
 
-export function getNativeGroupCurrencies(): string[] | string {
-  return AssetUtils.getCurrenciesByGroupDevnet(GROUPS.Native, getProtocol());
+export async function getLpnGroupCurrencies(
+  oracleInstance: NolusContracts.Oracle,
+): Promise<string[]> {
+  const currencies = await getOracleCurrencies(oracleInstance);
+  return AssetUtils.findTickersByGroup(currencies, GROUPS.Lpn);
 }
 
-export function getPaymentGroupCurrencies(): string[] {
-  const nativeCurrency = getNativeGroupCurrencies();
-  const lpnCurrencies = getLpnGroupCurrencies();
-  const leaseCurrencies = getLeaseGroupCurrencies();
+export async function getNativeGroupCurrencies(
+  oracleInstance: NolusContracts.Oracle,
+): Promise<string[]> {
+  const currencies = await getOracleCurrencies(oracleInstance);
+  return AssetUtils.findTickersByGroup(currencies, GROUPS.Native);
+}
+
+export async function getPaymentGroupCurrencies(
+  oracleInstance: NolusContracts.Oracle,
+): Promise<string[]> {
+  const nativeCurrency = await getNativeGroupCurrencies(oracleInstance);
+  const lpnCurrencies = await getLpnGroupCurrencies(oracleInstance);
+  const leaseCurrencies = await getLeaseGroupCurrencies(oracleInstance);
 
   const allCurencies: string[] = ([] as string[]).concat(
     Array.isArray(nativeCurrency) ? nativeCurrency : [nativeCurrency],
@@ -112,12 +129,11 @@ export function getMarginPaidTimeFromRawState(rawState: Uint8Array): bigint {
   );
 }
 
-export function getCurrencyOtherThan(unlikeCurrencies: string[]): string {
-  if (unlikeCurrencies.includes('USDC')) {
-    unlikeCurrencies.push('USDC_AXELAR');
-  }
-
-  const supportedCurrencies = getPaymentGroupCurrencies();
+export async function getCurrencyOtherThan(
+  unlikeCurrencies: string[],
+  oracleInstance: NolusContracts.Oracle,
+): Promise<string> {
+  const supportedCurrencies = await getPaymentGroupCurrencies(oracleInstance);
   const currencyTicker = supportedCurrencies.find(
     (currency) => !unlikeCurrencies.includes(currency),
   );

@@ -31,12 +31,14 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let downpaymentCurrencyToIBC: string;
     let lppInstance: NolusContracts.Lpp;
     let leaserInstance: NolusContracts.Leaser;
+    let oracleInstance: NolusContracts.Oracle;
     let leaseAddress: string;
     let cosm: CosmWasmClient;
     let leaseInstance: NolusContracts.Lease;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
+    const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
     const downpayment = '100000';
 
@@ -60,12 +62,18 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
       leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
+      oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
-      leaseCurrency = getLeaseGroupCurrencies()[0];
-      leaseCurrencyToIBC = currencyTicker_To_IBC(leaseCurrency);
+      leaseCurrency = (await getLeaseGroupCurrencies(oracleInstance))[0];
+      leaseCurrencyToIBC = await currencyTicker_To_IBC(leaseCurrency);
+
       downpaymentCurrency = lppCurrency;
-      downpaymentCurrencyToIBC = currencyTicker_To_IBC(downpaymentCurrency);
+      downpaymentCurrencyToIBC =
+        await currencyTicker_To_IBC(downpaymentCurrency);
+
+      expect(leaseCurrencyToIBC).not.toBe('');
+      expect(downpaymentCurrencyToIBC).not.toBe('');
 
       leaseAddress = await openLease(
         leaserInstance,

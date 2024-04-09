@@ -1,9 +1,8 @@
-import { NolusContracts, AssetUtils } from '@nolus/nolusjs';
+import { NolusContracts, AssetUtils, NolusClient } from '@nolus/nolusjs';
 import { LppBalance } from '@nolus/nolusjs/build/contracts';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
-import { Networks } from '@nolus/nolusjs/build/types/Networks';
 import { TONANOSEC } from '../utils';
-import { getProtocol } from './getters';
+import NODE_ENDPOINT from '../clients';
 
 const NANOSEC_YEAR = 365 * 24 * 60 * 60 * TONANOSEC;
 
@@ -106,15 +105,24 @@ export function calcDepositCapacity(
   return (totalDue * 100) / (minUtilization / 10) - balance - totalDue;
 }
 
-export function currencyTicker_To_IBC(ticker: string): string {
-  if (ticker === 'USDC') {
-    ticker = 'USDC_AXELAR';
-  }
-  return AssetUtils.makeIBCMinimalDenomDevnet(
-    ticker,
-    Networks.NOLUS,
-    getProtocol(),
+export async function currencyTicker_To_IBC(ticker: string): Promise<string> {
+  NolusClient.setInstance(NODE_ENDPOINT);
+  const cosm = await NolusClient.getInstance().getCosmWasmClient();
+
+  const oracleInstance = new NolusContracts.Oracle(
+    cosm,
+    process.env.ORACLE_ADDRESS as string,
   );
+  const currencies = await oracleInstance.getCurrencies();
+
+  const result = AssetUtils.findBankSymbolByTicker(currencies, ticker);
+  const resultString: string = result ?? '';
+
+  if (resultString == '') {
+    console.log('!!! Bank symbol not found!');
+  }
+
+  return resultString;
 }
 
 export function currencyPriceObjToNumbers(

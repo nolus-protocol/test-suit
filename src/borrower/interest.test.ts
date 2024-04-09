@@ -108,9 +108,10 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
       cosm = await NolusClient.getInstance().getCosmWasmClient();
 
       leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
+      lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
 
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
-      lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
+      lppCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
 
       const leaserInstance = new NolusContracts.Leaser(cosm, leaserAddress);
       duePeriod = +(

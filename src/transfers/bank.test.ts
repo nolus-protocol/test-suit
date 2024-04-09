@@ -21,10 +21,10 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
     let user2Wallet: NolusWallet;
     let user3Wallet: NolusWallet;
     let transfer: Coin;
+    let existingCurrencyIbc: string;
     const transferAmount = '10';
     const treasuryAddress = process.env.TREASURY_ADDRESS as string;
     const existingCurrencyTicker = process.env.LPP_BASE_CURRENCY as string;
-    const existingCurrencyIbc = currencyTicker_To_IBC(existingCurrencyTicker);
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
@@ -32,6 +32,8 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
       user1Wallet = await getUser1Wallet();
       user2Wallet = await getUser2Wallet();
       user3Wallet = await getUser3Wallet();
+
+      existingCurrencyIbc = await currencyTicker_To_IBC(existingCurrencyTicker);
 
       transfer = {
         denom: existingCurrencyIbc,

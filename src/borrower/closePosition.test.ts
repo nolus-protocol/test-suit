@@ -87,10 +87,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
 
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
-      lppCurrencyToIBC = currencyTicker_To_IBC(lppCurrency);
-      leaseCurrency = getLeaseGroupCurrencies()[0];
-      leaseCurrencyToIBC = currencyTicker_To_IBC(leaseCurrency);
+      lppCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
+      leaseCurrency = (await getLeaseGroupCurrencies(oracleInstance))[0];
+      leaseCurrencyToIBC = await currencyTicker_To_IBC(leaseCurrency);
       downpaymentCurrency = lppCurrency;
+
+      expect(lppCurrencyToIBC).not.toBe('');
+      expect(leaseCurrencyToIBC).not.toBe('');
 
       minSellAsset = +(await leaserInstance.getLeaserConfig()).config
         .lease_position_spec.min_transaction.amount;
@@ -105,7 +108,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrency,
         borrowerWallet,
       );
+
       leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
+
+      console.log('Lease address: ', leaseAddress);
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
     });

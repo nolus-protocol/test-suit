@@ -74,7 +74,9 @@ describe.skip('Fee tests', () => {
     user2Wallet = await getUser2Wallet();
     feederWallet = await getFeederWallet();
 
-    lpnCurrencyToIbc = currencyTicker_To_IBC(lpnTicker);
+    lpnCurrencyToIbc = await currencyTicker_To_IBC(lpnTicker);
+    expect(lpnCurrencyToIbc).not.toBe('');
+
     registeredFeeCurrencyTicker = 'NTRN'; // !!! registered currency ticker
     unregisteredFeeCurrencyTicker = 'ATOM'; // !!! unregistered currency ticker
 

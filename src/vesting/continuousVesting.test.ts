@@ -239,7 +239,9 @@ runOrSkip(process.env.TEST_VESTING as string)(
 
       createVestingAccountMsg.amount = [
         {
-          denom: currencyTicker_To_IBC(process.env.LPP_BASE_CURRENCY as string),
+          denom: await currencyTicker_To_IBC(
+            process.env.LPP_BASE_CURRENCY as string,
+          ),
           amount: FULL_AMOUNT.amount,
         },
       ];
