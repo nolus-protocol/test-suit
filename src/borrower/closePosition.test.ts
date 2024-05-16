@@ -591,6 +591,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
       const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
 
+      console.log('Lease address', leaseAddress);
+
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
 
       const leasesBefore = (
