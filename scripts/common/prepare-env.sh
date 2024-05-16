@@ -35,21 +35,22 @@ local -r accounts_dir="$3"
 local -r main_account_key="$4"
 local -r feeder_key="$5"
 local -r protocol="$6"
-local -r no_price_currency="$7"
-local -r active_lease_address="$8"
-local -r test_transfers="$9"
-local -r test_oracle="${10}"
-local -r test_staking="${11}"
-local -r test_borrower="${12}"
-local -r test_lender="${13}"
-local -r test_treasury="${14}"
-local -r test_vesting="${15}"
-local -r test_gov="${16}"
-local -r test_admin="${17}"
-local -r test_profit="${18}"
-local -r test_dispatcher="${19}"
-local -r test_timealarms="${20}"
-local -r test_reserve="${21}"
+local -r admin_contract_address="$7"
+local -r no_price_currency="$8"
+local -r active_lease_address="$9"
+local -r test_transfers="${10}"
+local -r test_oracle="${11}"
+local -r test_staking="${12}"
+local -r test_borrower="${13}"
+local -r test_lender="${14}"
+local -r test_treasury="${15}"
+local -r test_vesting="${16}"
+local -r test_gov="${17}"
+local -r test_admin="${18}"
+local -r test_profit="${19}"
+local -r test_dispatcher="${20}"
+local -r test_timealarms="${21}"
+local -r test_reserve="${22}"
 
 local -r flags="--output json --node $node_url"
 
@@ -73,9 +74,6 @@ local -r fee_rate=$(run_cmd "$accounts_dir" q tax params $flags | jq '.params.fe
 local -r validator_fee_part=$((100-"$fee_rate"))
 
 # Get platform contracts
-
-local -r admin_contract_address='nolus1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrq8welhp'
-
 local -r platform_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"platform":{}}' $flags | jq '.data')
 local -r timealarms_address=$(echo "$platform_info" | jq -r '.timealarms')
 local -r treasury_address=$(echo "$platform_info" | jq -r '.treasury')

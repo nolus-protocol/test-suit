@@ -5,6 +5,7 @@ NOLUS_LOCAL_NET="http://localhost:26612"
 MAIN_KEY="reserve"
 NOLUS_HOME_DIR="$HOME/.nolus"
 PROTOCOL=""
+ADMIN_CONTRACT_ADDRESS="nolus17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsmc5xhq"
 NO_PRICE_CURRENCY="STARS"
 FEEDER_KEY=""
 ACTIVE_LEASE_ADDRESS=""
@@ -21,6 +22,7 @@ while [[ $# -gt 0 ]]; do
     [--home-dir <nolus_accounts_dir>]
     [--feeder-key <feeder_key_name>]
     [--protocol <protocol>]
+    [--admin-contract-address <admin_contract_address>]
     [--no-price-currency <no_price_currency_ticker>]
     [--active-lease-address <active_lease_address>]" \
     "$0"
@@ -47,6 +49,12 @@ while [[ $# -gt 0 ]]; do
 
   --protocol)
     PROTOCOL="$2"
+    shift
+    shift
+    ;;
+
+  --admin-contract-address)
+    ADMIN_CONTRACT_ADDRESS="$2"
     shift
     shift
     ;;
@@ -79,5 +87,5 @@ verify_mandatory "$PROTOCOL" "protocol name"
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" \
-"$FEEDER_KEY" "$PROTOCOL" "$NO_PRICE_CURRENCY" "$ACTIVE_LEASE_ADDRESS" \
+"$FEEDER_KEY" "$PROTOCOL" "$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY" "$ACTIVE_LEASE_ADDRESS" \
 "" "" "" "" "" "" "" "" "" "" "" "" ""

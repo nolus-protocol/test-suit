@@ -43,6 +43,8 @@ TEST_DISPATCHER="true"
 TEST_TIMEALARMS="true"
 TEST_RESERVE="true"
 
+ADMIN_CONTRACT_ADDRESS="nolus1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrq8welhp"
+
 while [[ $# -gt 0 ]]; do
   key="$1"
 
@@ -56,6 +58,7 @@ while [[ $# -gt 0 ]]; do
     [--mnemonic-faucet <mnemonic_phrase>]
     [--test-wallet-mnemonic <mnemonic_phrase>]
     [--protocol <protocol_name_to_test>]
+    [--admin-contract-address <admin_contract_address>]
     [--active-lease-address <active_lease_address>]
     [--test-transfer-flag <test_transfer_true_or_false>]
     [--test-oracle-flag <test_oracle_true_or_false>]
@@ -100,6 +103,12 @@ while [[ $# -gt 0 ]]; do
 
   --protocol)
     PROTOCOL="$2"
+    shift
+    shift
+    ;;
+
+  --admin-contract-address)
+    ADMIN_CONTRACT_ADDRESS="$2"
     shift
     shift
     ;;
@@ -222,6 +231,6 @@ echo "$TEST_WALLET_MNEMONIC" | run_cmd "$ACCOUNTS_DIR"  keys add "$TEST_ACCOUNT_
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
-"" "$ACTIVE_LEASE_ADDRESS" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
+"$ADMIN_CONTRACT_ADDRESS" "" "$ACTIVE_LEASE_ADDRESS" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
 "$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN" \
 "$TEST_PROFIT" "$TEST_DISPATCHER" "$TEST_TIMEALARMS" "$TEST_RESERVE"
