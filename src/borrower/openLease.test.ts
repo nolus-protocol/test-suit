@@ -459,6 +459,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('the successful scenario for opening a lease - downpayment currency === lease currency- should work as expected', async () => {
       // !!! leaseCurrency balance > 0 is required for the main account
+
+      const currentDPAmount = '1000000';
+
       const currentLeaseCurrency = leaseCurrency;
       const currentDownpaymentCurrency = currentLeaseCurrency;
       const currentDownpaymentCurrencyToIBC = await currencyTicker_To_IBC(
@@ -471,6 +474,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         currentLeaseCurrency,
         currentDownpaymentCurrency,
         currentDownpaymentCurrencyToIBC,
+        undefined,
+        currentDPAmount,
       );
     });
 
