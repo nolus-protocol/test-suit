@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --exit-child src/index.ts",
     "start": "ts-node src/index.ts",
-    "prepare-env-dev": "/bin/bash ./scripts/prepare-env-dev.sh",
+    "prepare-env-test": "/bin/bash ./scripts/prepare-env-test.sh",
     "prepare-env-local": "/bin/bash ./scripts/prepare-env-local.sh",
     "fund-main-account": "/bin/bash ./scripts/helpers/fund-with-supported-currencies.sh",
     "test": "npx jest --runInBand",

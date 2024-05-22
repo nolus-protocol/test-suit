@@ -19,11 +19,9 @@ HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
 
 GITHUB_NOLUS_CORE_RELEASES="https://github.com/Nolus-Protocol/nolus-core/releases"
 NOLUS_BUILD_BINARY_ARTIFACT="nolus.tar.gz"
-FAUCET_KEY="faucet"
 
-NOLUS_DEV_NET="https://dev-cl.nolus.network:26657"
+NOLUS_DEV_NET="https://rila-cl.nolus.network:26657/"
 NOLUS_CORE_TAG=""
-MNEMONIC_FAUCET=""
 TEST_WALLET_MNEMONIC=""
 
 PROTOCOL=""
@@ -43,7 +41,7 @@ TEST_DISPATCHER="true"
 TEST_TIMEALARMS="true"
 TEST_RESERVE="true"
 
-ADMIN_CONTRACT_ADDRESS="nolus1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrq8welhp"
+ADMIN_CONTRACT_ADDRESS="nolus1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jsqxf8nd"
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -55,7 +53,6 @@ while [[ $# -gt 0 ]]; do
     "Usage: %s
     [--nolus-dev-net <nolus_dev_url>]
     [--nolus-core-version-tag <nolus_core_preferred_tag>]
-    [--mnemonic-faucet <mnemonic_phrase>]
     [--test-wallet-mnemonic <mnemonic_phrase>]
     [--protocol <protocol_name_to_test>]
     [--admin-contract-address <admin_contract_address>]
@@ -85,12 +82,6 @@ while [[ $# -gt 0 ]]; do
 
   --nolus-core-version-tag)
     NOLUS_CORE_TAG="$2"
-    shift
-    shift
-    ;;
-
-  --mnemonic-faucet)
-    MNEMONIC_FAUCET="$2"
     shift
     shift
     ;;
@@ -207,7 +198,6 @@ done
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR"/common/verify.sh
 
-verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic"
 verify_mandatory "$TEST_WALLET_MNEMONIC" "test wallet mnemonic"
 verify_mandatory "$PROTOCOL" "protocol name"
 
@@ -226,11 +216,10 @@ ACCOUNTS_DIR="$HOME_DIR/accounts"
 
 source "$SCRIPT_DIR"/common/cmd.sh
 TEST_ACCOUNT_KEY="test-main-account"
-echo "$MNEMONIC_FAUCET" | run_cmd "$ACCOUNTS_DIR" keys add "$FAUCET_KEY" --recover --keyring-backend "test"
 echo "$TEST_WALLET_MNEMONIC" | run_cmd "$ACCOUNTS_DIR"  keys add "$TEST_ACCOUNT_KEY" --recover --keyring-backend "test"
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
-prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
+prepareEnv "$NOLUS_DEV_NET" "test" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
 "$ADMIN_CONTRACT_ADDRESS" "" "$ACTIVE_LEASE_ADDRESS" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
 "$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN" \
 "$TEST_PROFIT" "$TEST_DISPATCHER" "$TEST_TIMEALARMS" "$TEST_RESERVE"

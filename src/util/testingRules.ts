@@ -1,5 +1,5 @@
 export const runTestIfLocal = ifLocal() ? test : test.skip;
-export const runTestIfDev = ifDev() ? test : test.skip;
+export const runTestIfTest = ifTest() ? test : test.skip;
 export const runIfLenderDepositRestriction = ifDepositCapacity()
   ? test
   : test.skip;
@@ -12,8 +12,8 @@ export function ifLocal() {
   return (process.env.ENV as string) === 'local';
 }
 
-export function ifDev() {
-  return (process.env.ENV as string) === 'dev';
+export function ifTest() {
+  return (process.env.ENV as string) === 'test';
 }
 
 function ifDepositCapacity() {
