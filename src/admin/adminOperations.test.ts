@@ -26,7 +26,7 @@ runOrSkip(process.env.TEST_ADMIN as string)('Admin contract tests', () => {
   test('an unregistered account tries to instantiate a contract - should produce an error', async () => {
     const instantiateContractMsg = {
       instantiate: {
-        code_id: 1,
+        code_id: '1',
         expected_address: process.env.TREASURY_ADDRESS as string,
         protocol: 'protocol',
         label: 'test',
