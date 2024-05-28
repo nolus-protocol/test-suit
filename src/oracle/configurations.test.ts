@@ -122,7 +122,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
 
       initConfig = await oracleInstance.getConfig();
-      baseAsset = initConfig.base_asset;
+      baseAsset = await oracleInstance.getBaseCurrency();
 
       leaseCurrencies = await getLeaseGroupCurrencies(oracleInstance);
     });
