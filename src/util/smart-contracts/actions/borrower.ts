@@ -107,7 +107,7 @@ export async function calcMinAllowablePaymentAmount(
   const minTransactionAmount = +(await leaserInstance.getLeaserConfig()).config
     .lease_position_spec.min_transaction.amount;
 
-  const priceObj = await oracleInstance.getPriceFor(paymentCurrencyTicker);
+  const priceObj = await oracleInstance.getBasePrice(paymentCurrencyTicker);
   const price = +priceObj.amount.amount / +priceObj.amount_quote.amount;
 
   const additionAmount = 20;

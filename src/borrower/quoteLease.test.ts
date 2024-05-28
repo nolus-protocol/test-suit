@@ -101,7 +101,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
 
       const leaseCurrencyPriceObj =
-        await oracleInstance.getPriceFor(leaseCurrency);
+        await oracleInstance.getBasePrice(leaseCurrency);
 
       const [
         minToleranceCurrencyPrice,
@@ -253,7 +253,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       'the borrower tries to apply for a lease when there is no currency price provided by the Oracle - should produce an error',
       async () => {
         const leaseCurrencyPriceObj = () =>
-          oracleInstance.getPriceFor(noProvidedPriceFor);
+          oracleInstance.getBasePrice(noProvidedPriceFor);
         await expect(leaseCurrencyPriceObj).rejects.toThrow(
           `Unsupported currency '${noProvidedPriceFor}'`,
         );

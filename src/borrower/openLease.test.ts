@@ -108,7 +108,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
 
       const leaseCurrencyPriceObj =
-        await oracleInstance.getPriceFor(leaseCurrency);
+        await oracleInstance.getBasePrice(leaseCurrency);
       const [
         minToleranceCurrencyPrice_LC,
         exactCurrencyPrice_LC,
@@ -120,7 +120,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       let maxToleranceCurrencyPrice_PC = 1;
       if (downpaymentCurrency !== lppCurrency) {
         const downnpaymentCurrencyPriceObj =
-          await oracleInstance.getPriceFor(downpaymentCurrency);
+          await oracleInstance.getBasePrice(downpaymentCurrency);
         [
           minToleranceCurrencyPrice_PC,
           exactCurrencyPrice_PC,
@@ -598,7 +598,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const downpaymentCurrencyToIBC =
         await currencyTicker_To_IBC(downpaymentCurrency);
       const downpaymentCurrencyPriceObj =
-        await oracleInstance.getPriceFor(downpaymentCurrency);
+        await oracleInstance.getBasePrice(downpaymentCurrency);
       const [
         minToleranceCurrencyPrice_LC,
         exactCurrencyPrice_LC,
@@ -635,7 +635,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const downpaymentCurrencyToIBC =
         await currencyTicker_To_IBC(downpaymentCurrency);
       const downpaymentCurrencyPriceObj =
-        await oracleInstance.getPriceFor(downpaymentCurrency);
+        await oracleInstance.getBasePrice(downpaymentCurrency);
       const [
         minToleranceCurrencyPrice_DPC,
         exactCurrencyPrice_DPC,

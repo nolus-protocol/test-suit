@@ -253,7 +253,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       }
 
       const leaseCurrencyPriceObj =
-        await oracleInstance.getPriceFor(leaseCurrency);
+        await oracleInstance.getBasePrice(leaseCurrency);
       const [
         minToleranceCurrencyPrice_LC,
         exactCurrencyPrice_LC,
@@ -290,7 +290,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const leaseAmountBeforeClose = leaseStateBeforePartialClose.amount;
 
       const leaseCurrencyPriceObj =
-        await oracleInstance.getPriceFor(leaseCurrency);
+        await oracleInstance.getBasePrice(leaseCurrency);
       const [
         minToleranceCurrencyPrice_LC,
         exactCurrencyPrice_LC,
@@ -356,7 +356,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
 
       const leaseCurrencyPriceObj =
-        await oracleInstance.getPriceFor(leaseCurrency);
+        await oracleInstance.getBasePrice(leaseCurrency);
       const [
         minToleranceCurrencyPrice_LC,
         exactCurrencyPrice_LC,
@@ -487,7 +487,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
 
       const leaseCurrencyPriceObj =
-        await oracleInstance.getPriceFor(leaseCurrency);
+        await oracleInstance.getBasePrice(leaseCurrency);
 
       const [
         minToleranceCurrencyPrice_LC,
@@ -637,7 +637,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
 
       const leaseCurrencyPriceObj =
-        await oracleInstance.getPriceFor(leaseCurrency);
+        await oracleInstance.getBasePrice(leaseCurrency);
       const [
         minToleranceCurrencyPrice_LC,
         exactCurrencyPrice_LC,

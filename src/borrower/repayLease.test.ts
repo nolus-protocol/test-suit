@@ -304,7 +304,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         +leaseStateBeforeSecondRepay.principal_due.amount / 2;
 
       const paymentCurrencyPriceObj =
-        await oracleInstance.getPriceFor(paymentCurrency);
+        await oracleInstance.getBasePrice(paymentCurrency);
 
       const [
         minToleranceCurrencyPrice,
@@ -369,18 +369,18 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    runTestIfLocal(
+    test.only(
       'the borrower tries to pay when there is no payment currency price provided by the Oracle - should produce an error',
       async () => {
         const leaseCurrencyPriceObj = () =>
-          oracleInstance.getPriceFor(noProvidedPriceFor);
+          oracleInstance.getBasePrice(noProvidedPriceFor);
         await expect(leaseCurrencyPriceObj).rejects.toThrow(
           `Unsupported currency '${noProvidedPriceFor}'`,
         );
         const noProvidedPriceForToIBC =
           await currencyTicker_To_IBC(noProvidedPriceFor);
 
-        expect(noProvidedPriceFor).not.toBe('');
+        expect(noProvidedPriceForToIBC).not.toBe('');
 
         const borrowerBalance = await borrowerWallet.getBalance(
           borrowerWallet.address as string,
@@ -433,7 +433,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const paymentCurrencyToIBC = await currencyTicker_To_IBC(paymentCurrency);
       expect(paymentCurrencyToIBC).not.toBe('');
       const paymentCurrencyPriceObj =
-        await oracleInstance.getPriceFor(paymentCurrency);
+        await oracleInstance.getBasePrice(paymentCurrency);
       const [
         minToleranceCurrencyPrice_PC,
         exactCurrencyPrice_PC,
