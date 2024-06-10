@@ -369,33 +369,30 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test.only(
-      'the borrower tries to pay when there is no payment currency price provided by the Oracle - should produce an error',
-      async () => {
-        const leaseCurrencyPriceObj = () =>
-          oracleInstance.getBasePrice(noProvidedPriceFor);
-        await expect(leaseCurrencyPriceObj).rejects.toThrow(
-          `Unsupported currency '${noProvidedPriceFor}'`,
-        );
-        const noProvidedPriceForToIBC =
-          await currencyTicker_To_IBC(noProvidedPriceFor);
+    test('the borrower tries to pay when there is no payment currency price provided by the Oracle - should produce an error', async () => {
+      const leaseCurrencyPriceObj = () =>
+        oracleInstance.getBasePrice(noProvidedPriceFor);
+      await expect(leaseCurrencyPriceObj).rejects.toThrow(
+        `Unsupported currency '${noProvidedPriceFor}'`,
+      );
+      const noProvidedPriceForToIBC =
+        await currencyTicker_To_IBC(noProvidedPriceFor);
 
-        expect(noProvidedPriceForToIBC).not.toBe('');
+      expect(noProvidedPriceForToIBC).not.toBe('');
 
-        const borrowerBalance = await borrowerWallet.getBalance(
-          borrowerWallet.address as string,
-          noProvidedPriceForToIBC,
-        );
+      const borrowerBalance = await borrowerWallet.getBalance(
+        borrowerWallet.address as string,
+        noProvidedPriceForToIBC,
+      );
 
-        await testRepaymentWithInvalidParams(
-          {
-            denom: noProvidedPriceForToIBC,
-            amount: borrowerBalance.amount,
-          },
-          `Failed to fetch price for the pair ${noProvidedPriceFor}/${lppCurrency}`,
-        );
-      },
-    );
+      await testRepaymentWithInvalidParams(
+        {
+          denom: noProvidedPriceForToIBC,
+          amount: borrowerBalance.amount,
+        },
+        `Failed to fetch price for the pair ${noProvidedPriceFor}/${lppCurrency}`,
+      );
+    });
 
     test('a user other than the lease owner tries to pay - should work as expected', async () => {
       const newUserWallet = await createWallet();
