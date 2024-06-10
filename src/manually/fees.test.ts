@@ -77,7 +77,7 @@ describe.skip('Fee tests', () => {
     lpnCurrencyToIbc = await currencyTicker_To_IBC(lpnTicker);
     expect(lpnCurrencyToIbc).not.toBe('');
 
-    registeredFeeCurrencyTicker = 'NTRN'; // !!! registered currency ticker
+    registeredFeeCurrencyTicker = 'OSMO'; // !!! registered currency ticker
     unregisteredFeeCurrencyTicker = 'ATOM'; // !!! unregistered currency ticker
 
     oracleInstance = new NolusContracts.Oracle(
@@ -102,7 +102,11 @@ describe.skip('Fee tests', () => {
   });
 
   test('user tries to pay the fee in a currency for which there is no price - should produce an error', async () => {
-    fee.amount[0].denom = currencyTicker_To_IBC(registeredFeeCurrencyTicker);
+    fee.amount[0].denom = await currencyTicker_To_IBC(
+      registeredFeeCurrencyTicker,
+    );
+
+    console.log(fee.amount[0].denom, registeredFeeCurrencyTicker);
 
     await tryBankTransfer(/^.*no prices found from the oracle.*/);
   });
@@ -111,7 +115,9 @@ describe.skip('Fee tests', () => {
     await feedPrice(NATIVE_TICKER, '1', '1');
     await feedPrice(unregisteredFeeCurrencyTicker, '1', '1');
 
-    fee.amount[0].denom = currencyTicker_To_IBC(unregisteredFeeCurrencyTicker);
+    fee.amount[0].denom = await currencyTicker_To_IBC(
+      unregisteredFeeCurrencyTicker,
+    );
 
     await tryBankTransfer(/^.*no fee param found.*/);
   });
