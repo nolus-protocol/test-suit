@@ -89,7 +89,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
     console.log('Done');
 
     const leaseCurrencyPriceObj = () =>
-      oracleInstance.getPriceFor(leaseCurrency);
+      oracleInstance.getBasePrice(leaseCurrency);
     await expect(leaseCurrencyPriceObj).rejects.toThrow('No price');
 
     await pushPrice(validPriceLCtoLPN);

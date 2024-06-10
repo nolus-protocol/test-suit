@@ -89,7 +89,7 @@ describe.skip('Lease - Time Liquidation tests', () => {
     clearInterval(intervalId);
 
     const leaseCurrencyPriceObj =
-      await oracleInstance.getPriceFor(leaseCurrency);
+      await oracleInstance.getBasePrice(leaseCurrency);
     const [
       minToleranceCurrencyPrice_LC,
       exactCurrencyPrice_LC,
