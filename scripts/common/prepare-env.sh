@@ -68,7 +68,7 @@ if [ -n "$feeder_key" ] ; then
   feeder_priv_key=$(_exportKey "$feeder_key" "$accounts_dir")
 fi
 
-local -r gov_min_deposit_native=$(run_cmd "$accounts_dir" q gov params $flags | jq -r '.deposit_params.min_deposit[0].amount')
+local -r gov_min_deposit_native=$(run_cmd "$accounts_dir" q gov params $flags | jq -r '.params.min_deposit[0].amount')
 
 local -r fee_rate=$(run_cmd "$accounts_dir" q tax params $flags | jq '.params.fee_rate')
 local -r validator_fee_part=$((100-"$fee_rate"))
@@ -94,7 +94,7 @@ local -r protocol_currency=$(run_cmd "$accounts_dir" q wasm contract-state smart
 
 local -r lender_deposit_capacity=$(run_cmd "$accounts_dir" q wasm contract-state smart "$lpp_address" '{"deposit_capacity":[]}' $flags  | jq -r '.data.amount')
 
-local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov $flags | jq -r '.account.base_account.address')
+local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov $flags | jq -r '.account.value.address')
 
 local -r leaser_config=$(run_cmd "$accounts_dir" q wasm contract-state smart "$leaser_address" '{"config":{}}' $flags)
 local -r lease_code_id=$(echo "$leaser_config" | jq -r '.data.config.lease_code')
