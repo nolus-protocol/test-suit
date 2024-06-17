@@ -178,13 +178,17 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
         existingCurrencyIbc,
       );
 
-      const broadcastTx = () =>
-        user2Wallet.transferAmount(
-          user3Wallet.address as string,
-          [transfer],
-          customFees.transfer,
-        );
-      await expect(broadcastTx).rejects.toThrow(/^.*invalid coins.*/);
+      await sendInitTransferFeeTokens(
+        user1Wallet,
+        user2Wallet.address as string,
+      );
+
+      const transferTx = await user2Wallet.transferAmount(
+        user3Wallet.address as string,
+        [transfer],
+        customFees.transfer,
+      );
+      expect(transferTx.rawLog).toContain('invalid coins');
 
       const nextUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,
@@ -212,13 +216,17 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
         existingCurrencyIbc,
       );
 
-      const broadcastTx = () =>
-        user2Wallet.transferAmount(
-          WRONG_WALLET_ADDRESS,
-          [transfer],
-          customFees.transfer,
-        );
-      await expect(broadcastTx).rejects.toThrow(/^.*invalid address.*/);
+      await sendInitTransferFeeTokens(
+        user1Wallet,
+        user2Wallet.address as string,
+      );
+
+      const transferTx = await user2Wallet.transferAmount(
+        WRONG_WALLET_ADDRESS,
+        [transfer],
+        customFees.transfer,
+      );
+      expect(transferTx.rawLog).toContain('invalid address');
 
       const nextUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,

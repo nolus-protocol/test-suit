@@ -181,6 +181,7 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
         denom: NATIVE_MINIMAL_DENOM,
         amount: '0',
       };
+
       const previousUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,
         NATIVE_MINIMAL_DENOM,
@@ -190,14 +191,18 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      const broadcastTx = () =>
-        user2Wallet.transferAmount(
-          user3Wallet.address as string,
-          [transfer],
-          customFees.transfer,
-        );
+      await sendInitTransferFeeTokens(
+        user1Wallet,
+        user2Wallet.address as string,
+      );
 
-      await expect(broadcastTx).rejects.toThrow(/^.*0unls: invalid coins.*/);
+      const transferTx = await user2Wallet.transferAmount(
+        user3Wallet.address as string,
+        [transfer],
+        customFees.transfer,
+      );
+
+      expect(transferTx.rawLog).toContain('0unls: invalid coins');
 
       const nextUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,
@@ -272,13 +277,17 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      const broadcastTx = () =>
-        user2Wallet.transferAmount(
-          WRONG_WALLET_ADDRESS,
-          [transfer2],
-          customFees.transfer,
-        );
-      await expect(broadcastTx).rejects.toThrow(/^.*invalid address.*/);
+      await sendInitTransferFeeTokens(
+        user1Wallet,
+        user2Wallet.address as string,
+      );
+
+      const transferTx = await user2Wallet.transferAmount(
+        WRONG_WALLET_ADDRESS,
+        [transfer2],
+        customFees.transfer,
+      );
+      expect(transferTx.rawLog).toContain('invalid address');
 
       const nextUser2Balance = await user2Wallet.getBalance(
         user2Wallet.address as string,
