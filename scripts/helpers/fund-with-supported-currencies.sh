@@ -109,7 +109,7 @@ source "$SCRIPT_DIR"/common/cmd.sh
 declare -r status=$(echo "$DEX_ACCOUNT_MNEMONIC" | "$DEX_NETWORK_BINARY_PATH" keys add main_key_testing --recover)
 REMOTE_CHANNEL_ID=$(run_cmd "$NOLUS_HOME_DIR" q wasm contract-state smart "$LEASER_CONTRACT_ADDRESS" '{"config":{}}' --node "$NOLUS_NODE_URL" --output json | jq '.data.config.dex.transfer_channel.remote_endpoint' | tr -d '"')
 
-FLAGS="--home $DEX_NETWORK_HOME_DIR --from $DEX_ACCOUNT_ADDRESS --gas auto --gas-adjustment 1.3 --fees 100000$DEX_NETWORK_NATIVE_DENOM --node $DEX_NETWORK_NODE_URL --broadcast-mode sync"
+FLAGS="--home $DEX_NETWORK_HOME_DIR --from $DEX_ACCOUNT_ADDRESS --gas auto --gas-adjustment 2 --fees 100000$DEX_NETWORK_NATIVE_DENOM --node $DEX_NETWORK_NODE_URL --broadcast-mode sync"
 
 # swap and transfer
 declare -n currency
@@ -124,7 +124,7 @@ for currency in ${!CURRENCY@}; do
         swap_msg='{"execute_swap_operations":{"operations":[{"astro_swap":{"offer_asset_info":{"native_token":{"denom":"untrn"}},"ask_asset_info":{"native_token":{"denom":"'"${currency[denom]}"'"}}}}]}}'
         swap_tx=$(echo 'y' | "$DEX_NETWORK_BINARY_PATH" tx wasm execute "$ASTROPORT_ROUTER_CONTRACT" "$swap_msg" $FLAGS --amount "${currency[amount]}$DEX_NETWORK_NATIVE_DENOM" --output json)
         swap_tx=$(wait_tx_included_in_block "$DEX_NETWORK_BINARY_PATH" "$DEX_NETWORK_NODE_URL" "$swap_tx")
-        swapped_token=$(echo "$swap_tx" |  jq -r '.logs[].events[] | select(.type == "wasm") | .attributes[] | select(.key == "return_amount") | .value')"${currency[denom]}"
+        swapped_token=$(echo "$swap_tx" |  jq -r '.events[] | select(.type == "wasm") | .attributes[] | select(.key == "return_amount") | .value')"${currency[denom]}"
       else
         swap_tx=$(echo 'y' | "$DEX_NETWORK_BINARY_PATH" tx gamm swap-exact-amount-in "${currency[amount]}""$DEX_NETWORK_NATIVE_DENOM" 10000 --swap-route-denoms "${currency[denom]}" --swap-route-pool-ids "${currency[pool_id]}" $FLAGS --output json)
         swap_tx=$(wait_tx_included_in_block "$DEX_NETWORK_BINARY_PATH" "$DEX_NETWORK_NODE_URL" "$swap_tx")
