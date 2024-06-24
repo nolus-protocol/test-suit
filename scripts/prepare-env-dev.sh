@@ -43,7 +43,7 @@ TEST_DISPATCHER="true"
 TEST_TIMEALARMS="true"
 TEST_RESERVE="true"
 
-ADMIN_CONTRACT_ADDRESS="nolus1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrq8welhp"
+ADMIN_CONTRACT_ADDRESS="nolus17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsmc5xhq"
 
 while [[ $# -gt 0 ]]; do
   key="$1"
