@@ -54,6 +54,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaserConfigMsg.config.profit = undefined;
       leaserConfigMsg.config.time_alarms = undefined;
       leaserConfigMsg.config.reserve = undefined;
+      leaserConfigMsg.config.protocols_registry = undefined;
     });
 
     afterEach(async () => {
