@@ -373,6 +373,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
+      lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
 
       leaserConfig = (await leaserInstance.getLeaserConfig()).config;
       minAsset = leaserConfig.lease_position_spec.min_asset.amount;
@@ -552,7 +553,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrency,
         downpaymentCurrencyToIBC,
         '0',
-        'invalid coins',
+        'amount is not positive',
       );
     });
 
