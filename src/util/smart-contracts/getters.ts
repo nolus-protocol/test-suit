@@ -124,8 +124,7 @@ export function getTotalPaidFromRepayTx(response: TxResponse): bigint {
 
 export function getMarginPaidTimeFromRawState(rawState: Uint8Array): bigint {
   return BigInt(
-    JSON.parse(fromUtf8(rawState)).OpenedActive.lease.lease.loan.current_period
-      .period.start,
+    JSON.parse(fromUtf8(rawState)).OpenedActive.lease.lease.loan.margin_paid_by,
   );
 }
 
