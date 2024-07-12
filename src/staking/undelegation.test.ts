@@ -168,14 +168,13 @@ runOrSkip(process.env.TEST_STAKING as string)(
       undelegationMsg.typeUrl = `${stakingModule}.MsgUndelegate`;
       undelegationMsg.value.amount.amount = '0';
 
-      const broadcastTx = () =>
-        delegatorWallet.signAndBroadcast(
-          delegatorWallet.address as string,
-          [undelegationMsg],
-          customFees.configs,
-        );
+      const undelegateTx = await delegatorWallet.signAndBroadcast(
+        delegatorWallet.address as string,
+        [undelegationMsg],
+        customFees.configs,
+      );
 
-      await expect(broadcastTx).rejects.toThrow(/^.*invalid shares amount.*/);
+      expect(undelegateTx.rawLog).toContain('invalid shares amount');
     });
 
     test('the delegator tries to undelegate tokens different than one defined by params.BondDenom - should produce an error', async () => {

@@ -5,25 +5,26 @@ import { Any } from "cosmjs-types/google/protobuf/any";
 
 export const protobufPackage = "cosmos.gov.v1";
 
-export interface MsgSubmitProposalCheck {
+export interface MsgSubmitPropWValidation {
   messages: Any[];
   initialDeposit: Coin[];
   proposer: string;
   metadata: string;
   summary: string;
   title: string;
+  expedited: boolean;
 }
 
-export interface MsgSubmitProposalCheckResponse {
+export interface MsgSubmitPropWValidationResponse {
   proposalId: bigint;
 }
 
-function createBaseMsgSubmitProposalCheck(): MsgSubmitProposalCheck {
-  return { messages: [], initialDeposit: [], proposer: "", metadata: "", summary: "", title: "" };
+function createBaseMsgSubmitPropWValidation(): MsgSubmitPropWValidation {
+  return { messages: [], initialDeposit: [], proposer: "", metadata: "", summary: "", title: "", expedited: false};
 }
 
-export const  MsgSubmitProposalCheck = {
-  encode(message: MsgSubmitProposalCheck, writer: _m0.BinaryWriter = BinaryWriter.create()): _m0.BinaryWriter {
+export const  MsgSubmitPropWValidation = {
+  encode(message: MsgSubmitPropWValidation, writer: _m0.BinaryWriter = BinaryWriter.create()): _m0.BinaryWriter {
     for (const v of message.messages) {
       Any.encode(v, writer.uint32(10).fork()).ldelim();
     }
@@ -42,14 +43,17 @@ export const  MsgSubmitProposalCheck = {
     if (message.title !== "") {
       writer.uint32(50).string(message.title);
     }
+    if (message.expedited === true) {
+      writer.uint32(58).bool(message.expedited);
+    }
 
     return writer;
   },
 
-  decode(input: _m0.BinaryReader | Uint8Array, length?: number):  MsgSubmitProposalCheck {
+  decode(input: _m0.BinaryReader | Uint8Array, length?: number):  MsgSubmitPropWValidation {
     const reader = input instanceof _m0.BinaryReader ? input : new _m0.BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseMsgSubmitProposalCheck();
+    const message = createBaseMsgSubmitPropWValidation();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -95,17 +99,25 @@ export const  MsgSubmitProposalCheck = {
 
           message.title = reader.string();
           continue;
+        case 7:
+          if (tag !== 58) {
+            break;
+          }
+
+          message.expedited = reader.bool();
+          continue;
       }
-      if ((tag & 7) === 4 || tag === 0) {
+
+      if ((tag & 8) === 4 || tag === 0) {
         break;
       }
-      reader.skipType(tag & 7);
+      reader.skipType(tag & 8);
     }
     return message;
   },
 
-  fromJSON(object: any): MsgSubmitProposalCheck {
-    const obj = createBaseMsgSubmitProposalCheck();
+  fromJSON(object: any): MsgSubmitPropWValidation {
+    const obj = createBaseMsgSubmitPropWValidation();
         if (Array.isArray(object?.messages))
             obj.messages = object.messages.map((e: any) => Any.fromJSON(e));
         if (Array.isArray(object?.initialDeposit))
@@ -115,13 +127,15 @@ export const  MsgSubmitProposalCheck = {
         if (isSet(object.metadata))
             obj.metadata = String(object.metadata);
         if (isSet(object.summary))
-            obj.metadata = String(object.metadata);
+            obj.summary = String(object.summary);
         if (isSet(object.title))
-            obj.metadata = String(object.metadata);
+            obj.title = String(object.title);
+        if (isSet(object.expedited))
+            obj.expedited=object.expedited;
         return obj;
   },
 
-  toJSON(message: MsgSubmitProposalCheck): unknown {
+  toJSON(message: MsgSubmitPropWValidation): unknown {
     const obj: any = {};
         if (message.messages) {
             obj.messages = message.messages.map((e) => (e ? Any.toJSON(e) : undefined));
@@ -137,43 +151,45 @@ export const  MsgSubmitProposalCheck = {
         }
         message.proposer !== undefined && (obj.proposer = message.proposer);
         message.metadata !== undefined && (obj.metadata = message.metadata);
-        message.summary !== undefined && (obj.metadata = message.summary);
-        message.title !== undefined && (obj.metadata = message.title);
+        message.summary !== undefined && (obj.summary = message.summary);
+        message.title !== undefined && (obj.title = message.title);
+        message.expedited !== undefined && (obj.expedited = message.expedited);
         return obj;
   },
 
-  create<I extends Exact<DeepPartial<MsgSubmitProposalCheck>, I>>(base?: I): MsgSubmitProposalCheck {
-    return MsgSubmitProposalCheck.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<MsgSubmitPropWValidation>, I>>(base?: I): MsgSubmitPropWValidation {
+    return MsgSubmitPropWValidation.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<MsgSubmitProposalCheck>, I>>(object: I): MsgSubmitProposalCheck {
-    const message = createBaseMsgSubmitProposalCheck();
+  fromPartial<I extends Exact<DeepPartial<MsgSubmitPropWValidation>, I>>(object: I): MsgSubmitPropWValidation {
+    const message = createBaseMsgSubmitPropWValidation();
     message.messages = object.messages?.map((e) => Any.fromPartial(e)) || [];
         message.initialDeposit = object.initialDeposit?.map((e) => Coin.fromPartial(e)) || [];
         message.proposer = object.proposer ?? "";
         message.metadata = object.metadata ?? "";
         message.summary = object.summary ?? "";
         message.title = object.title ?? "";
+        message.expedited = object.expedited ?? false;
     return message;
   },
 };
 
-function createBaseMsgSubmitProposalCheckResponse(): MsgSubmitProposalCheckResponse {
+function createBaseMsgSubmitPropWValidationResponse(): MsgSubmitPropWValidationResponse {
   return { proposalId: BigInt(0) };
 }
 
-export const MsgSubmitProposalCheckResponse = {
-  encode(message: MsgSubmitProposalCheckResponse, writer: _m0.BinaryWriter = new _m0.BinaryWriter()): _m0.BinaryWriter {
+export const MsgSubmitPropWValidationResponse = {
+  encode(message: MsgSubmitPropWValidationResponse, writer: _m0.BinaryWriter = new _m0.BinaryWriter()): _m0.BinaryWriter {
     if (message.proposalId !== BigInt(0)) {
       writer.uint32(8).uint64(message.proposalId);
   }
   return writer;
   },
 
-  decode(input: _m0.BinaryReader | Uint8Array, length?: number): MsgSubmitProposalCheckResponse {
+  decode(input: _m0.BinaryReader | Uint8Array, length?: number): MsgSubmitPropWValidationResponse {
     const reader = input instanceof _m0.BinaryReader ? input : new _m0.BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseMsgSubmitProposalCheckResponse();
+    const message = createBaseMsgSubmitPropWValidationResponse();
     while (reader.pos < end) {
         const tag = reader.uint32();
         switch (tag >>> 3) {
@@ -188,25 +204,25 @@ export const MsgSubmitProposalCheckResponse = {
     return message;
   },
 
-  fromJSON(object: any): MsgSubmitProposalCheckResponse {
-    const obj = createBaseMsgSubmitProposalCheckResponse();
+  fromJSON(object: any): MsgSubmitPropWValidationResponse {
+    const obj = createBaseMsgSubmitPropWValidationResponse();
         if (isSet(object.proposalId))
             obj.proposalId = BigInt(object.proposalId.toString());
         return obj;
   },
 
-  toJSON(message: MsgSubmitProposalCheckResponse): unknown {
+  toJSON(message: MsgSubmitPropWValidationResponse): unknown {
     const obj: any = {};
     message.proposalId !== undefined && (obj.proposalId = (message.proposalId || BigInt(0)).toString());
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<MsgSubmitProposalCheckResponse>, I>>(base?: I): MsgSubmitProposalCheckResponse {
-    return MsgSubmitProposalCheckResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<MsgSubmitPropWValidationResponse>, I>>(base?: I): MsgSubmitPropWValidationResponse {
+    return MsgSubmitPropWValidationResponse.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<MsgSubmitProposalCheckResponse>, I>>(object: I): MsgSubmitProposalCheckResponse {
-    const message = createBaseMsgSubmitProposalCheckResponse();
+  fromPartial<I extends Exact<DeepPartial<MsgSubmitPropWValidationResponse>, I>>(object: I): MsgSubmitPropWValidationResponse {
+    const message = createBaseMsgSubmitPropWValidationResponse();
     if (object.proposalId !== undefined && object.proposalId !== null) {
       message.proposalId = BigInt(object.proposalId.toString());
   }
@@ -215,7 +231,7 @@ export const MsgSubmitProposalCheckResponse = {
 };
 
 export interface Msg {
-  SubmitProposalCheck(request: MsgSubmitProposalCheck): Promise<MsgSubmitProposalCheckResponse>;
+  SubmitPropWValidation(request: MsgSubmitPropWValidation): Promise<MsgSubmitPropWValidationResponse>;
 }
 
 export class MsgClientImpl implements Msg {
@@ -224,12 +240,12 @@ export class MsgClientImpl implements Msg {
   constructor(rpc: Rpc, opts?: { service?: string }) {
     this.service = opts?.service || 'cosmos.gov.v1';
     this.rpc = rpc;
-    this.SubmitProposalCheck = this.SubmitProposalCheck.bind(this);
+    this.SubmitPropWValidation = this.SubmitPropWValidation.bind(this);
   }
-  SubmitProposalCheck(request: MsgSubmitProposalCheck): Promise<MsgSubmitProposalCheckResponse> {
-    const data = MsgSubmitProposalCheck.encode(request).finish();
-    const promise = this.rpc.request(this.service, "SubmitProposalCheck", data);
-    return promise.then((data) => MsgSubmitProposalCheckResponse.decode(new BinaryReader(data)));
+  SubmitPropWValidation(request: MsgSubmitPropWValidation): Promise<MsgSubmitPropWValidationResponse> {
+    const data = MsgSubmitPropWValidation.encode(request).finish();
+    const promise = this.rpc.request(this.service, "SubmitPropWValidation", data);
+    return promise.then((data) => MsgSubmitPropWValidationResponse.decode(new BinaryReader(data)));
   }
 }
 

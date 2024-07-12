@@ -238,7 +238,7 @@ maybe('Lender tests - Claim rewards', () => {
   test('the dispatcher tries to send 0 rewards - should produce an error', async () => {
     const rewards = { amount: '0', denom: NATIVE_MINIMAL_DENOM };
 
-    await testDistributeRewardsInvalidCases('invalid coins', rewards);
+    await testDistributeRewardsInvalidCases('amount is not positive', rewards);
   });
 
   test('the dispatcher tries not to send funds when calling "distribute_rewards" msg - should produce an error', async () => {

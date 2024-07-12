@@ -74,14 +74,13 @@ runOrSkip(process.env.TEST_STAKING as string)(
     });
 
     async function tryDelegationWithInvalidParams(message: string) {
-      const broadcastTx = () =>
-        stakeholderWallet.signAndBroadcast(
-          stakeholderWallet.address as string,
-          [delegateMsg],
-          customFees.configs,
-        );
+      const delegateTx = await stakeholderWallet.signAndBroadcast(
+        stakeholderWallet.address as string,
+        [delegateMsg],
+        customFees.configs,
+      );
 
-      await expect(broadcastTx).rejects.toThrow(message);
+      expect(delegateTx.rawLog).toContain(message);
     }
 
     test('the validator should exist and should be bonded', async () => {
@@ -232,7 +231,9 @@ runOrSkip(process.env.TEST_STAKING as string)(
       delegateMsg.value.validatorAddress =
         invalidValidatoWallet.address as string;
 
-      await tryDelegationWithInvalidParams('expected nolusvaloper, got nolus');
+      await tryDelegationWithInvalidParams(
+        `expected 'nolusvaloper' got 'nolus'`,
+      );
     });
 
     test('the stakeholder tries to delegate tokens different than one defined by params.BondDenom - should produce an error', async () => {

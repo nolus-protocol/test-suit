@@ -365,7 +365,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     test('the borrower tries to pay a lease with 0 amount - should produce an error', async () => {
       await testRepaymentWithInvalidParams(
         { denom: lppCurrencyToIBC, amount: '0' },
-        'invalid coins',
+        'amount is not positive',
       );
     });
 

@@ -8,7 +8,7 @@ import { NolusWallet } from '@nolus/nolusjs';
 import { NATIVE_MINIMAL_DENOM, customFees, MIN_DEPOSIT_AMOUNT } from './utils';
 import { MsgSudoContract } from './codec/cosmos/msgSudoContract/tx';
 import { getUser1Wallet } from './clients';
-import { MsgSubmitProposalCheck } from './codec/cosmos/msgSubmitProposalCheck/tx';
+import { MsgSubmitPropWValidation } from './codec/cosmos/msgSubmitPropWValidation/tx';
 
 const NODE_ENDPOINT = process.env.NODE_URL as string;
 let queryClient: QueryClient & GovExtension;
@@ -31,7 +31,7 @@ export async function sendSudoContractProposal(
 ): Promise<DeliverTxResponse> {
   const authority = process.env.GOV_MODULE_ADDRESS as string;
   const msgSudoContractUrl = '/cosmwasm.wasm.v1.MsgSudoContract';
-  const msgSubmitProposalCheckUrl = '/cosmos.gov.v1.MsgSubmitProposalCheck';
+  const msgSubmitPropWValidationUrl = '/cosmos.gov.v1.MsgSubmitPropWValidation';
 
   const userWithBalanceWallet = await getUser1Wallet();
 
@@ -46,7 +46,10 @@ export async function sendSudoContractProposal(
   // TO DO: Update when cosmjs-types: MsgSudoContract
   wallet.registry.register(msgSudoContractUrl, MsgSudoContract);
 
-  wallet.registry.register(msgSubmitProposalCheckUrl, MsgSubmitProposalCheck);
+  wallet.registry.register(
+    msgSubmitPropWValidationUrl,
+    MsgSubmitPropWValidation,
+  );
 
   const sudoContractMsg = MsgSudoContract.fromPartial({
     authority: authority,
@@ -55,7 +58,7 @@ export async function sendSudoContractProposal(
   });
 
   const sudoProposal = {
-    typeUrl: msgSubmitProposalCheckUrl,
+    typeUrl: msgSubmitPropWValidationUrl,
     value: {
       messages: [
         Any.fromPartial({
