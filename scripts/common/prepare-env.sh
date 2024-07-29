@@ -48,9 +48,8 @@ local -r test_vesting="${16}"
 local -r test_gov="${17}"
 local -r test_admin="${18}"
 local -r test_profit="${19}"
-local -r test_dispatcher="${20}"
-local -r test_timealarms="${21}"
-local -r test_reserve="${22}"
+local -r test_timealarms="${20}"
+local -r test_reserve="${21}"
 
 local -r flags="--output json --node $node_url"
 
@@ -77,7 +76,6 @@ local -r validator_fee_part=$((100-"$fee_rate"))
 local -r platform_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"platform":{}}' $flags | jq '.data')
 local -r timealarms_address=$(echo "$platform_info" | jq -r '.timealarms')
 local -r treasury_address=$(echo "$platform_info" | jq -r '.treasury')
-local -r rewards_dispatcher_address=$(echo "$platform_info" | jq -r '.dispatcher')
 
 # Get Protocol contracts
 
@@ -128,7 +126,6 @@ VALIDATOR_FEE_PART=${validator_fee_part}
 ADMIN_CONTRACT_ADDRESS=${admin_contract_address}
 TREASURY_ADDRESS=${treasury_address}
 TIMEALARMS_ADDRESS=${timealarms_address}
-DISPATCHER_ADDRESS=${rewards_dispatcher_address}
 ORACLE_ADDRESS=${oracle_address}
 LEASER_ADDRESS=${leaser_address}
 LPP_ADDRESS=${lpp_address}
@@ -151,7 +148,6 @@ TEST_GOV=${test_gov}
 TEST_ADMIN=${test_admin}
 TEST_BORROWER_INTEREST=${test_interest}
 TEST_PROFIT=${test_profit}
-TEST_DISPATCHER=${test_dispatcher}
 TEST_TIMEALARMS=${test_timealarms}
 TEST_RESERVE=${test_reserve}
 EOF

@@ -39,7 +39,6 @@ TEST_VESTING="true"
 TEST_GOV="true"
 TEST_ADMIN="true"
 TEST_PROFIT="true"
-TEST_DISPATCHER="true"
 TEST_TIMEALARMS="true"
 TEST_RESERVE="true"
 
@@ -70,7 +69,6 @@ while [[ $# -gt 0 ]]; do
     [--test-gov-flag <test_gov_true_or_false>]
     [--test-admin-flag <test_admin_true_or_false>]
     [--test-profit-flag <test_profit_true_or_false>]
-    [--test-dispatcher-flag <test_dispatcher_true_or_false>
     [--test-timealarms-flag <test_timealarms_true_or_false>]
     [--test-reserve-flag <test_reserve_true_or_false>]" \
     "$0"
@@ -179,12 +177,6 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  --test-dispatcher-flag)
-    TEST_DISPATCHER="$2"
-    shift
-    shift
-    ;;
-
   --test-timealarms-flag)
     TEST_TIMEALARMS="$2"
     shift
@@ -233,4 +225,4 @@ source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
 "$ADMIN_CONTRACT_ADDRESS" "" "$ACTIVE_LEASE_ADDRESS" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
 "$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN" \
-"$TEST_PROFIT" "$TEST_DISPATCHER" "$TEST_TIMEALARMS" "$TEST_RESERVE"
+"$TEST_PROFIT" "$TEST_TIMEALARMS" "$TEST_RESERVE"
