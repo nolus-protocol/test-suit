@@ -27,19 +27,26 @@ import {
 import { getProposal } from '../util/proposals';
 import { runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
+import { MsgSubmitPropWValidation } from '../util/codec/cosmos/msgSubmitPropWValidation/tx';
 
 runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
   let wallet: NolusWallet;
   let fee = customFees.exec;
   let msg: any;
   const authority = process.env.GOV_MODULE_ADDRESS as string;
+  const msgSubmitPropWValidationUrl = '/cosmos.gov.v1.MsgSubmitPropWValidation';
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     wallet = await getUser1Wallet();
 
+    wallet.registry.register(
+      msgSubmitPropWValidationUrl,
+      MsgSubmitPropWValidation,
+    );
+
     msg = {
-      typeUrl: '/cosmos.gov.v1.MsgSubmitProposal',
+      typeUrl: msgSubmitPropWValidationUrl,
       value: {
         messages: [],
         metadata: '',
@@ -170,15 +177,13 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
   });
 
   test('validator should be able to submit a InstantiateContract proposal', async () => {
-    const treasuryInitMsg = {
-      rewards_dispatcher: process.env.LEASER_ADDRESS as string,
-    };
+    const timealarmsInitMsg = {};
 
     const initContractMsg = MsgInstantiateContract.fromPartial({
       admin: wallet.address as string,
       codeId: BigInt(1),
       label: 'contract-label',
-      msg: toUtf8(JSON.stringify(treasuryInitMsg)),
+      msg: toUtf8(JSON.stringify(timealarmsInitMsg)),
       funds: [{ denom: NATIVE_MINIMAL_DENOM, amount: '12' }],
       sender: authority,
     });
