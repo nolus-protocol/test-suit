@@ -245,7 +245,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         '100',
         downpaymentCurrency,
         lppCurrency,
-        'Unknown currency symbol',
+        `Found a symbol '${lppCurrency}' pretending to be ticker of a currency pertaining to the lease group`,
       );
     });
 

@@ -254,7 +254,9 @@ maybe('Staking Nolus tokens - Redelegation', () => {
       customFees.configs,
     );
 
-    expect(redelegateTx.rawLog).toThrow(`expected 'nolusvaloper' got 'nolus'`);
+    expect(redelegateTx.rawLog).toContain(
+      `expected 'nolusvaloper' got 'nolus'`,
+    );
   });
 
   test('the delegator tries to redelegate tokens to the same validator - should produce an error', async () => {

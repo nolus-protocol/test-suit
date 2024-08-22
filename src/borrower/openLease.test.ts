@@ -159,7 +159,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(leasesAfter.length).toBe(leasesBefore.length + 1);
 
       const leaseAddress = getLeaseAddressFromOpenLeaseResponse(response);
-      console.log('Lease addres: ', leaseAddress);
+      console.log('Lease address: ', leaseAddress);
       const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
@@ -416,7 +416,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the successful scenario for opening a lease - downpayment currency !== lpn currency !== lease currency- should work as expected', async () => {
-      const currentDPAmount = '1000000';
+      const currentDPAmount = '100000';
 
       const currentLeaseCurrency = leaseCurrency;
       const currentDownpaymentCurrency = await getCurrencyOtherThan(
