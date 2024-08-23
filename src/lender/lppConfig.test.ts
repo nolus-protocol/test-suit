@@ -1,9 +1,15 @@
 import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { runOrSkip } from '../util/testingRules';
-import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
+import { fromHex } from '@cosmjs/encoding';
+import { runOrSkip, runTestIfLocal } from '../util/testingRules';
+import NODE_ENDPOINT, {
+  createWallet,
+  getUser1Wallet,
+  getWallet,
+} from '../util/clients';
 import { customFees } from '../util/utils';
 import { sendSudoContractProposal } from '../util/proposals';
+import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 
 runOrSkip(process.env.TEST_LENDER as string)(
   'LPP contract tests - Config',
@@ -157,5 +163,61 @@ runOrSkip(process.env.TEST_LENDER as string)(
         'Rates should not be greater than a hundred percent!',
       );
     });
+
+    runTestIfLocal(
+      'instantiate lpp with an lpn currency other than the one in the protocol - should produce an error',
+      async () => {
+        const adminContractAddress = process.env
+          .ADMIN_CONTRACT_ADDRESS as string;
+        const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
+
+        const dexAdmin = fromHex(process.env.DEX_ADMIN_PRIV_KEY as string);
+        const dexAdminWallet = await getWallet(dexAdmin);
+
+        const lppCodeId = process.env.LPP_CODE_ID as string;
+
+        const cosm = await NolusClient.getInstance().getCosmWasmClient();
+        const oracleInstance = new NolusContracts.Oracle(
+          cosm,
+          oracleContractAddress,
+        );
+        const leaseCurrency = (
+          await getLeaseGroupCurrencies(oracleInstance)
+        )[0];
+
+        const instantiateLppContractMsg = {
+          lpn_ticker: leaseCurrency,
+          lease_code_admin: 'leaser-address',
+          lease_code_id: '1',
+          borrow_rate: {
+            base_interest_rate: 100,
+            utilization_optimal: 750,
+            addon_optimal_interest_rate: 20,
+          },
+          min_utilization: 10,
+        };
+
+        const instantiateContractMsg = {
+          instantiate: {
+            code_id: lppCodeId,
+            label: 'test-lpp-inst',
+            message: JSON.stringify(instantiateLppContractMsg),
+            protocol: 'TEST_PROTOCOL',
+            expected_address: 'expected-address',
+          },
+        };
+
+        const broadcastTx = () =>
+          dexAdminWallet.executeContract(
+            adminContractAddress,
+            instantiateContractMsg,
+            customFees.exec,
+          );
+
+        await expect(broadcastTx).rejects.toThrow(
+          `Found a symbol '${leaseCurrency}' pretending to be ticker of a currency pertaining to the lpns group`,
+        );
+      },
+    );
   },
 );

@@ -38,18 +38,19 @@ local -r protocol="$6"
 local -r admin_contract_address="$7"
 local -r no_price_currency="$8"
 local -r active_lease_address="$9"
-local -r test_transfers="${10}"
-local -r test_oracle="${11}"
-local -r test_staking="${12}"
-local -r test_borrower="${13}"
-local -r test_lender="${14}"
-local -r test_treasury="${15}"
-local -r test_vesting="${16}"
-local -r test_gov="${17}"
-local -r test_admin="${18}"
-local -r test_profit="${19}"
-local -r test_timealarms="${20}"
-local -r test_reserve="${21}"
+local -r dex_admin_key="${10}"
+local -r test_transfers="${11}"
+local -r test_oracle="${12}"
+local -r test_staking="${13}"
+local -r test_borrower="${14}"
+local -r test_lender="${15}"
+local -r test_treasury="${16}"
+local -r test_vesting="${17}"
+local -r test_gov="${18}"
+local -r test_admin="${19}"
+local -r test_profit="${20}"
+local -r test_timealarms="${21}"
+local -r test_reserve="${22}"
 
 local -r flags="--output json --node $node_url"
 
@@ -65,6 +66,11 @@ local -r validator_2_address=$(_getValidatorAddress "1" "$accounts_dir" "$node_u
 local feeder_priv_key=""
 if [ -n "$feeder_key" ] ; then
   feeder_priv_key=$(_exportKey "$feeder_key" "$accounts_dir")
+fi
+
+local dex_admin_priv_key=""
+if [ -n "$dex_admin_key" ] ; then
+  dex_admin_priv_key=$(_exportKey "$dex_admin_key" "$accounts_dir")
 fi
 
 local -r gov_min_deposit_native=$(run_cmd "$accounts_dir" q gov params $flags | jq -r '.params.min_deposit[0].amount')
@@ -97,6 +103,8 @@ local -r gov_module_address=$(run_cmd "$accounts_dir" q auth module-account gov 
 local -r leaser_config=$(run_cmd "$accounts_dir" q wasm contract-state smart "$leaser_address" '{"config":{}}' $flags)
 local -r lease_code_id=$(echo "$leaser_config" | jq -r '.data.config.lease_code')
 
+local -r lpp_code_id=$(run_cmd "$accounts_dir" q wasm contract "$lpp_address" $flags | jq -r '.contract_info.code_id')
+
 local test_interest=false;
 if [ -n "$active_lease_address" ] && [ "$test_borrower" != "false" ] ; then
   test_interest=true
@@ -110,6 +118,7 @@ USER_1_PRIV_KEY=${user_1_priv_key}
 USER_2_PRIV_KEY=${user_2_priv_key}
 USER_3_PRIV_KEY=${user_3_priv_key}
 FEEDER_PRIV_KEY=${feeder_priv_key}
+DEX_ADMIN_PRIV_KEY=${dex_admin_priv_key}
 
 VALIDATOR_1_ADDRESS=${validator_1_address}
 VALIDATOR_2_ADDRESS=${validator_2_address}
@@ -132,6 +141,7 @@ LPP_ADDRESS=${lpp_address}
 PROFIT_ADDRESS=${profit_address}
 RESERVE_ADDRESS=${reserve_address}
 LEASE_CODE_ID=${lease_code_id}
+LPP_CODE_ID=${lpp_code_id}
 
 LENDER_DEPOSIT_CAPACITY=${lender_deposit_capacity}
 

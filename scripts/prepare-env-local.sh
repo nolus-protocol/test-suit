@@ -8,6 +8,7 @@ PROTOCOL=""
 ADMIN_CONTRACT_ADDRESS="nolus17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsmc5xhq"
 NO_PRICE_CURRENCY="STARS"
 FEEDER_KEY=""
+DEX_ADMIN_KEY=""
 ACTIVE_LEASE_ADDRESS=""
 
 while [[ $# -gt 0 ]]; do
@@ -21,6 +22,7 @@ while [[ $# -gt 0 ]]; do
     [--nolus-local-network <nolus_local_url>]
     [--home-dir <nolus_accounts_dir>]
     [--feeder-key <feeder_key_name>]
+    [--dex-admin-key <dex_admin_key_name>]
     [--protocol <protocol>]
     [--admin-contract-address <admin_contract_address>]
     [--no-price-currency <no_price_currency_ticker>]
@@ -43,6 +45,12 @@ while [[ $# -gt 0 ]]; do
 
   --feeder-key)
     FEEDER_KEY="$2"
+    shift
+    shift
+    ;;
+
+  --dex-admin-key)
+    DEX_ADMIN_KEY="$2"
     shift
     shift
     ;;
@@ -83,9 +91,10 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 source "$SCRIPT_DIR"/common/verify.sh
 verify_mandatory "$FEEDER_KEY" "feeder key"
+verify_mandatory "$DEX_ADMIN_KEY" "dex-admin key"
 verify_mandatory "$PROTOCOL" "protocol name"
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" \
 "$FEEDER_KEY" "$PROTOCOL" "$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY" "$ACTIVE_LEASE_ADDRESS" \
-"" "" "" "" "" "" "" "" "" "" "" "" ""
+"$DEX_ADMIN_KEY" "" "" "" "" "" "" "" "" "" "" "" "" ""
