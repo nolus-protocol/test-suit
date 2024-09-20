@@ -61,7 +61,10 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
         ],
       };
 
-      await feedPriceWithInvalidParams(prices, 'Unsupported denom pairs');
+      await feedPriceWithInvalidParams(
+        prices,
+        `No records for a pool with '${initBaseAsset}' and '${firstPairMember}'`,
+      );
     },
   );
 
