@@ -60,8 +60,8 @@ _addKey "test-user-2" "$accounts_dir"
 local -r user_1_priv_key=$(_exportKey "$main_account_key" "$accounts_dir")
 local -r user_2_priv_key=$(_exportKey "test-user-1" "$accounts_dir")
 local -r user_3_priv_key=$(_exportKey "test-user-2" "$accounts_dir")
-local -r validator_1_address=$(_getValidatorAddress "0" "$accounts_dir" "$node_url")
-local -r validator_2_address=$(_getValidatorAddress "1" "$accounts_dir" "$node_url")
+local -r validator_1_address=$(_getValidatorAddress "1" "$accounts_dir" "$node_url")
+local -r validator_2_address=$(_getValidatorAddress "0" "$accounts_dir" "$node_url")
 
 local feeder_priv_key=""
 if [ -n "$feeder_key" ] ; then
