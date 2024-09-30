@@ -1,8 +1,17 @@
 import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
+import { fromHex } from '@cosmjs/encoding';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
-import { OracleConfig, SwapTree } from '@nolus/nolusjs/build/contracts/types';
+import {
+  OracleConfig,
+  SwapTree,
+  Tree,
+} from '@nolus/nolusjs/build/contracts/types';
 import { customFees } from '../util/utils';
-import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
+import NODE_ENDPOINT, {
+  createWallet,
+  getUser1Wallet,
+  getWallet,
+} from '../util/clients';
 import { runOrSkip } from '../util/testingRules';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { sendSudoContractProposal } from '../util/proposals';
@@ -113,6 +122,45 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       expect(broadcastTx.rawLog).toContain(message);
     }
 
+    async function tryInstantiation(
+      swapTree: Tree,
+      message: string,
+    ): Promise<void> {
+      const dexAdmin = fromHex(process.env.DEX_ADMIN_PRIV_KEY as string);
+      const dexAdminWallet = await getWallet(dexAdmin);
+
+      await userWithBalance.transferAmount(
+        dexAdminWallet.address as string,
+        customFees.configs.amount,
+        customFees.transfer,
+      );
+
+      const oracleInitMsg = {
+        config: {
+          price_config: {
+            min_feeders: 500,
+            sample_period_secs: 50,
+            samples_number: 12,
+            discount_factor: 600,
+          },
+        },
+        swap_tree: swapTree,
+      };
+
+      const oracleCodeId = process.env.ORACLE_CODE_ID as string;
+
+      const broadcastTx = () =>
+        dexAdminWallet.instantiate(
+          dexAdminWallet.address as string,
+          +oracleCodeId,
+          oracleInitMsg,
+          'test-oracle-init',
+          customFees.init,
+        );
+
+      await expect(broadcastTx).rejects.toThrow(message);
+    }
+
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
       userWithBalance = await getUser1Wallet();
@@ -140,10 +188,45 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         },
       };
 
+      // Swap_tree update
       await trySendPropToUpdateSwapTree(
         wallet,
         newSwapTree,
         `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
+      );
+
+      // Instantiation
+      await tryInstantiation(
+        newSwapTree.tree,
+        `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
+      );
+    });
+
+    test('try to update swap paths with unsupported pair - should produce an error', async () => {
+      const secondPairMember = process.env.NO_PRICE_CURRENCY as string;
+
+      const newSwapTree: SwapTree = {
+        tree: {
+          value: [0, baseAsset],
+          children: [
+            {
+              value: [1, secondPairMember],
+            },
+          ],
+        },
+      };
+
+      // Swap_tree update
+      await trySendPropToUpdateSwapTree(
+        wallet,
+        newSwapTree,
+        `No records for a pool with '${secondPairMember}' and '${baseAsset}'`,
+      );
+
+      // Instantiation
+      await tryInstantiation(
+        newSwapTree.tree,
+        `No records for a pool with '${secondPairMember}' and '${baseAsset}'`,
       );
     });
 

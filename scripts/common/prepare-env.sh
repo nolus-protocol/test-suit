@@ -105,6 +105,8 @@ local -r lease_code_id=$(echo "$leaser_config" | jq -r '.data.config.lease_code'
 
 local -r lpp_code_id=$(run_cmd "$accounts_dir" q wasm contract "$lpp_address" $flags | jq -r '.contract_info.code_id')
 
+local -r oracle_code_id=$(run_cmd "$accounts_dir" q wasm contract "$oracle_address" $flags | jq -r '.contract_info.code_id')
+
 local test_interest=false;
 if [ -n "$active_lease_address" ] && [ "$test_borrower" != "false" ] ; then
   test_interest=true
@@ -142,6 +144,7 @@ PROFIT_ADDRESS=${profit_address}
 RESERVE_ADDRESS=${reserve_address}
 LEASE_CODE_ID=${lease_code_id}
 LPP_CODE_ID=${lpp_code_id}
+ORACLE_CODE_ID=${oracle_code_id}
 
 LENDER_DEPOSIT_CAPACITY=${lender_deposit_capacity}
 
