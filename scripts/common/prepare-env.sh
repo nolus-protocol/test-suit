@@ -36,7 +36,7 @@ local -r main_account_key="$4"
 local -r feeder_key="$5"
 local -r protocol="$6"
 local -r admin_contract_address="$7"
-local -r no_price_currency="$8"
+local -r no_price_currency_ticker="$8"
 local -r active_lease_address="$9"
 local -r dex_admin_key="${10}"
 local -r test_transfers="${11}"
@@ -129,7 +129,7 @@ GOV_MODULE_ADDRESS=${gov_module_address}
 DEX_NETWORK=${dex_network}
 PROTOCOL=${protocol}
 LPP_BASE_CURRENCY=${protocol_currency}
-NO_PRICE_CURRENCY=${no_price_currency}
+NO_PRICE_CURRENCY_TICKER=${no_price_currency_ticker}
 
 GOV_MIN_DEPOSIT_NATIVE=${gov_min_deposit_native}
 VALIDATOR_FEE_PART=${validator_fee_part}

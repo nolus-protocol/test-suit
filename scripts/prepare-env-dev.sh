@@ -28,7 +28,7 @@ TEST_WALLET_MNEMONIC=""
 
 PROTOCOL=""
 ACTIVE_LEASE_ADDRESS=""
-NO_PRICE_CURRENCY=""
+NO_PRICE_CURRENCY_TICKER=""
 
 TEST_TRANSFER="true"
 TEST_ORACLE="true"
@@ -71,7 +71,7 @@ while [[ $# -gt 0 ]]; do
     [--test-admin-flag <test_admin_true_or_false>]
     [--test-profit-flag <test_profit_true_or_false>]
     [--test-timealarms-flag <test_timealarms_true_or_false>]
-    [--no-price-currency <no_price_currency_ticker>]
+    [--no-price-currency-ticker <no_price_currency_ticker>]
     [--test-reserve-flag <test_reserve_true_or_false>]" \
     "$0"
     exit 0
@@ -119,8 +119,8 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
 
-  --no-price-currency)
-    NO_PRICE_CURRENCY="$2"
+  --no-price-currency-ticker)
+    NO_PRICE_CURRENCY_TICKER="$2"
     shift
     shift
     ;;
@@ -210,7 +210,6 @@ source "$SCRIPT_DIR"/common/verify.sh
 verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic"
 verify_mandatory "$TEST_WALLET_MNEMONIC" "test wallet mnemonic"
 verify_mandatory "$PROTOCOL" "protocol name"
-verify_mandatory "$NO_PRICE_CURRENCY" "no_price_currency ticker"
 
 if [[ -z ${NOLUS_CORE_TAG} ]]; then
     NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq -r '.tag_name')
@@ -232,6 +231,6 @@ echo "$TEST_WALLET_MNEMONIC" | run_cmd "$ACCOUNTS_DIR"  keys add "$TEST_ACCOUNT_
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
-"$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY" "$ACTIVE_LEASE_ADDRESS" "" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
+"$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY_TICKER" "$ACTIVE_LEASE_ADDRESS" "" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
 "$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN" \
 "$TEST_PROFIT" "$TEST_TIMEALARMS" "$TEST_RESERVE"

@@ -12,7 +12,7 @@ import NODE_ENDPOINT, {
   getUser1Wallet,
   getWallet,
 } from '../util/clients';
-import { runOrSkip } from '../util/testingRules';
+import { runOrSkip, runTestIfLocal } from '../util/testingRules';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { sendSudoContractProposal } from '../util/proposals';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
@@ -135,6 +135,23 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         customFees.transfer,
       );
 
+      const adminContractAddress = process.env.ADMIN_CONTRACT_ADDRESS as string;
+
+      const protocol = 'TEST-PROTOCOL';
+      const oracleCodeId = process.env.ORACLE_CODE_ID as string;
+
+      const expectedAddressMsg = {
+        instantiate_address: {
+          code_id: oracleCodeId,
+          protocol: protocol,
+        },
+      };
+
+      const expectedAddress = await wallet.queryContractSmart(
+        adminContractAddress,
+        expectedAddressMsg,
+      );
+
       const oracleInitMsg = {
         config: {
           price_config: {
@@ -147,14 +164,20 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         swap_tree: swapTree,
       };
 
-      const oracleCodeId = process.env.ORACLE_CODE_ID as string;
+      const initMsg = {
+        instantiate: {
+          code_id: oracleCodeId,
+          label: 'test-oracle-init',
+          message: JSON.stringify(oracleInitMsg),
+          protocol: protocol,
+          expected_address: expectedAddress,
+        },
+      };
 
       const broadcastTx = () =>
-        dexAdminWallet.instantiate(
-          dexAdminWallet.address as string,
-          +oracleCodeId,
-          oracleInitMsg,
-          'test-oracle-init',
+        dexAdminWallet.executeContract(
+          adminContractAddress,
+          initMsg,
           customFees.init,
         );
 
@@ -175,60 +198,66 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       leaseCurrencies = await getLeaseGroupCurrencies(oracleInstance);
     });
 
-    test('try to update swap paths with unsupported currencies - should produce an error', async () => {
-      const invalidCurrency = 'A';
-      const newSwapTree: SwapTree = {
-        tree: {
-          value: [0, baseAsset],
-          children: [
-            {
-              value: [1, invalidCurrency],
-            },
-          ],
-        },
-      };
+    runTestIfLocal(
+      'try to update swap paths with unsupported currencies - should produce an error',
+      async () => {
+        const invalidCurrency = 'A';
+        const newSwapTree: SwapTree = {
+          tree: {
+            value: [0, baseAsset],
+            children: [
+              {
+                value: [1, invalidCurrency],
+              },
+            ],
+          },
+        };
 
-      // Swap_tree update
-      await trySendPropToUpdateSwapTree(
-        wallet,
-        newSwapTree,
-        `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
-      );
+        // Swap_tree update
+        await trySendPropToUpdateSwapTree(
+          wallet,
+          newSwapTree,
+          `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
+        );
 
-      // Instantiation
-      await tryInstantiation(
-        newSwapTree.tree,
-        `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
-      );
-    });
+        // Instantiation
+        await tryInstantiation(
+          newSwapTree.tree,
+          `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
+        );
+      },
+    );
 
-    test('try to update swap paths with unsupported pair - should produce an error', async () => {
-      const secondPairMember = process.env.NO_PRICE_CURRENCY as string;
+    runTestIfLocal(
+      'try to update swap paths with unsupported pair - should produce an error',
+      async () => {
+        const secondPairMember = process.env.NO_PRICE_CURRENCY_TICKER as string;
 
-      const newSwapTree: SwapTree = {
-        tree: {
-          value: [0, baseAsset],
-          children: [
-            {
-              value: [1, secondPairMember],
-            },
-          ],
-        },
-      };
+        const newSwapTree: SwapTree = {
+          tree: {
+            value: [0, baseAsset],
+            children: [
+              {
+                value: [1, secondPairMember],
+              },
+            ],
+          },
+        };
 
-      // Swap_tree update
-      await trySendPropToUpdateSwapTree(
-        wallet,
-        newSwapTree,
-        `No records for a pool with '${secondPairMember}' and '${baseAsset}'`,
-      );
+        // Swap_tree update
+        await trySendPropToUpdateSwapTree(
+          wallet,
+          newSwapTree,
+          `No records for a pool with '${secondPairMember}' and '${baseAsset}'`,
+        );
 
-      // Instantiation
-      await tryInstantiation(
-        newSwapTree.tree,
-        `No records for a pool with '${secondPairMember}' and '${baseAsset}'`,
-      );
-    });
+        // Instantiation
+        await tryInstantiation(
+          newSwapTree.tree,
+          `No records for a pool with '${secondPairMember}' and '${baseAsset}'`,
+        );
+      },
+    );
 
     test('try to update swap paths with base currency other than the init base currency - should produce an error', async () => {
       const leaseGroupCurrencies =

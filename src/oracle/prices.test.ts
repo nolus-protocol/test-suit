@@ -43,27 +43,25 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
     oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
-
-    const currenciesPairs = await oracleInstance.getCurrencyPairs();
-    firstPairMember = currenciesPairs[0][0];
-    secondPairMember = currenciesPairs[0][1][1];
   });
 
   runTestIfLocal(
     'a registered feeder tries to feed a price for an invalid pair - should produce an error',
     async () => {
+      const secondPairMember = process.env.NO_PRICE_CURRENCY_TICKER as string;
+
       const prices = {
         prices: [
           {
             amount: { amount: '2', ticker: initBaseAsset }, // any amount
-            amount_quote: { amount: '5', ticker: firstPairMember }, // any amount
+            amount_quote: { amount: '5', ticker: secondPairMember }, // any amount
           },
         ],
       };
 
       await feedPriceWithInvalidParams(
         prices,
-        `No records for a pool with '${initBaseAsset}' and '${firstPairMember}'`,
+        `No records for a pool with '${initBaseAsset}' and '${secondPairMember}'`,
       );
     },
   );
@@ -71,6 +69,10 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   runTestIfLocal(
     'a registered feeder tries to feed price = 0 - should produce an error',
     async () => {
+      const currenciesPairs = await oracleInstance.getCurrencyPairs();
+      firstPairMember = currenciesPairs[0][0];
+      secondPairMember = currenciesPairs[0][1][1];
+
       const prices = {
         prices: [
           {
