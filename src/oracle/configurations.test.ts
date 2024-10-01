@@ -12,7 +12,7 @@ import NODE_ENDPOINT, {
   getUser1Wallet,
   getWallet,
 } from '../util/clients';
-import { runOrSkip, runTestIfLocal } from '../util/testingRules';
+import { runOrSkip, runTestIfDev, runTestIfLocal } from '../util/testingRules';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { sendSudoContractProposal } from '../util/proposals';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
@@ -23,10 +23,12 @@ runOrSkip(process.env.TEST_ORACLE as string)(
     let userWithBalance: NolusWallet;
     let wallet: NolusWallet;
     let oracleInstance: NolusContracts.Oracle;
+    let adminInstance: NolusContracts.Admin;
     let initConfig: OracleConfig;
     let baseAsset: string;
     let leaseCurrencies: string[] | string;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
+    const adminContractAddress = process.env.ADMIN_CONTRACT_ADDRESS as string;
 
     async function trySendPropToUpdateConfig(
       wallet: NolusWallet,
@@ -191,6 +193,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
       const cosm = await NolusClient.getInstance().getCosmWasmClient();
       oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
+      adminInstance = new NolusContracts.Admin(cosm, adminContractAddress);
 
       initConfig = await oracleInstance.getConfig();
       baseAsset = await oracleInstance.getBaseCurrency();
@@ -408,5 +411,57 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         'No feeder data for the specified address',
       );
     });
+
+    runTestIfDev(
+      'migrate to code_id that is incompatible with the protocol - should produce an error',
+      async () => {
+        const protocols = await adminInstance.getProtocols();
+        expect(protocols.length).toBeGreaterThan(1);
+
+        const oracleCodeId = process.env
+          .ORACLE_CODE_ID_DIFFERENT_PROTOCOL as string;
+
+        expect(oracleCodeId).not.toBe('');
+
+        const currentProtocolName = process.env.PROTOCOL as string;
+
+        const protocolsObject = protocols.reduce(
+          (acc, protocol) => {
+            acc[protocol] =
+              protocol === currentProtocolName
+                ? {
+                    some: {
+                      oracle: {
+                        code_id: oracleCodeId,
+                        migrate_msg: '{}',
+                      },
+                    },
+                  }
+                : null;
+            return acc;
+          },
+          {} as Record<string, any>,
+        );
+
+        const migrateMsg = {
+          migrate_contracts: {
+            release: 'tag',
+            migration_spec: {
+              platform: null,
+              protocol: protocolsObject,
+            },
+          },
+        };
+
+        const broadcastTx = await sendSudoContractProposal(
+          wallet,
+          process.env.ADMIN_CONTRACT_ADDRESS as string,
+          JSON.stringify(migrateMsg),
+        );
+        expect(broadcastTx.rawLog).toContain(
+          'pretending to be ticker of a currency pertaining to the payment group',
+        );
+      },
+    );
   },
 );

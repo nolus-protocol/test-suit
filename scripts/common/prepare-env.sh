@@ -38,19 +38,20 @@ local -r protocol="$6"
 local -r admin_contract_address="$7"
 local -r no_price_currency_ticker="$8"
 local -r active_lease_address="$9"
-local -r dex_admin_key="${10}"
-local -r test_transfers="${11}"
-local -r test_oracle="${12}"
-local -r test_staking="${13}"
-local -r test_borrower="${14}"
-local -r test_lender="${15}"
-local -r test_treasury="${16}"
-local -r test_vesting="${17}"
-local -r test_gov="${18}"
-local -r test_admin="${19}"
-local -r test_profit="${20}"
-local -r test_timealarms="${21}"
-local -r test_reserve="${22}"
+local -r oracle_code_id_different_protocol="${10}"
+local -r dex_admin_key="${11}"
+local -r test_transfers="${12}"
+local -r test_oracle="${13}"
+local -r test_staking="${14}"
+local -r test_borrower="${15}"
+local -r test_lender="${16}"
+local -r test_treasury="${17}"
+local -r test_vesting="${18}"
+local -r test_gov="${19}"
+local -r test_admin="${20}"
+local -r test_profit="${21}"
+local -r test_timealarms="${22}"
+local -r test_reserve="${23}"
 
 local -r flags="--output json --node $node_url"
 
@@ -129,7 +130,11 @@ GOV_MODULE_ADDRESS=${gov_module_address}
 DEX_NETWORK=${dex_network}
 PROTOCOL=${protocol}
 LPP_BASE_CURRENCY=${protocol_currency}
+
 NO_PRICE_CURRENCY_TICKER=${no_price_currency_ticker}
+ORACLE_CODE_ID_DIFFERENT_PROTOCOL=${oracle_code_id_different_protocol}
+
+ACTIVE_LEASE_ADDRESS=${active_lease_address}
 
 GOV_MIN_DEPOSIT_NATIVE=${gov_min_deposit_native}
 VALIDATOR_FEE_PART=${validator_fee_part}
@@ -147,8 +152,6 @@ LPP_CODE_ID=${lpp_code_id}
 ORACLE_CODE_ID=${oracle_code_id}
 
 LENDER_DEPOSIT_CAPACITY=${lender_deposit_capacity}
-
-ACTIVE_LEASE_ADDRESS=${active_lease_address}
 
 TEST_TRANSFER=${test_transfers}
 TEST_ORACLE=${test_oracle}

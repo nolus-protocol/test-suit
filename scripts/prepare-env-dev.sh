@@ -29,6 +29,7 @@ TEST_WALLET_MNEMONIC=""
 PROTOCOL=""
 ACTIVE_LEASE_ADDRESS=""
 NO_PRICE_CURRENCY_TICKER=""
+ORACLE_CODE_ID_DIFFERENT_PROTOCOL=""
 
 TEST_TRANSFER="true"
 TEST_ORACLE="true"
@@ -60,6 +61,7 @@ while [[ $# -gt 0 ]]; do
     [--protocol <protocol_name_to_test>]
     [--admin-contract-address <admin_contract_address>]
     [--active-lease-address <active_lease_address>]
+    [--oracle-code-id-different-protocol <oracle_code_id_different_protocol>]
     [--test-transfer-flag <test_transfer_true_or_false>]
     [--test-oracle-flag <test_oracle_true_or_false>]
     [--test-staking-flag <test_staking_true_or_false>]
@@ -115,6 +117,12 @@ while [[ $# -gt 0 ]]; do
 
   --active-lease-address)
     ACTIVE_LEASE_ADDRESS="$2"
+    shift
+    shift
+    ;;
+
+  --oracle-code-id-different-protocol)
+    ORACLE_CODE_ID_DIFFERENT_PROTOCOL="$2"
     shift
     shift
     ;;
@@ -210,6 +218,7 @@ source "$SCRIPT_DIR"/common/verify.sh
 verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic"
 verify_mandatory "$TEST_WALLET_MNEMONIC" "test wallet mnemonic"
 verify_mandatory "$PROTOCOL" "protocol name"
+verify_mandatory "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "oracle code id different protocol"
 
 if [[ -z ${NOLUS_CORE_TAG} ]]; then
     NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq -r '.tag_name')
@@ -231,6 +240,6 @@ echo "$TEST_WALLET_MNEMONIC" | run_cmd "$ACCOUNTS_DIR"  keys add "$TEST_ACCOUNT_
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
-"$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY_TICKER" "$ACTIVE_LEASE_ADDRESS" "" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
+"$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY_TICKER" "$ACTIVE_LEASE_ADDRESS" "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
 "$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN" \
 "$TEST_PROFIT" "$TEST_TIMEALARMS" "$TEST_RESERVE"
