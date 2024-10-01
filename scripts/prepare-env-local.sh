@@ -33,50 +33,42 @@ while [[ $# -gt 0 ]]; do
 
   --nolus-local-network)
     NOLUS_LOCAL_NET="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --home-dir)
     NOLUS_HOME_DIR="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --feeder-key)
     FEEDER_KEY="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --dex-admin-key)
     DEX_ADMIN_KEY="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --protocol)
     PROTOCOL="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --admin-contract-address)
     ADMIN_CONTRACT_ADDRESS="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --no-price-currency-ticker)
     NO_PRICE_CURRENCY_TICKER="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --active-lease-address)
     ACTIVE_LEASE_ADDRESS="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   *)

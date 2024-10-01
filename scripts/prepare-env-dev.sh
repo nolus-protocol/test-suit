@@ -81,128 +81,107 @@ while [[ $# -gt 0 ]]; do
 
   --nolus-dev-net)
     NOLUS_DEV_NET="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --nolus-core-version-tag)
     NOLUS_CORE_TAG="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --mnemonic-faucet)
     MNEMONIC_FAUCET="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-wallet-mnemonic)
     TEST_WALLET_MNEMONIC="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --protocol)
     PROTOCOL="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --admin-contract-address)
     ADMIN_CONTRACT_ADDRESS="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --active-lease-address)
     ACTIVE_LEASE_ADDRESS="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --oracle-code-id-different-protocol)
     ORACLE_CODE_ID_DIFFERENT_PROTOCOL="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --no-price-currency-ticker)
     NO_PRICE_CURRENCY_TICKER="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-transfer-flag)
     TEST_TRANSFER="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-oracle-flag)
     TEST_ORACLE="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-staking-flag)
     TEST_STAKING="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-borrower-flag)
     TEST_BORROWER="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-lender-flag)
     TEST_LENDER="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-treasury-flag)
     TEST_TREASURY="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-vesting-flag)
     TEST_VESTING="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-gov-flag)
     TEST_GOV="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-admin-flag)
     TEST_ADMIN="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-profit-flag)
     TEST_PROFIT="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-timealarms-flag)
     TEST_TIMEALARMS="$2"
-    shift
-    shift
+    shift 2
     ;;
 
   --test-reserve-flag)
     TEST_RESERVE="$2"
-    shift
-    shift
+    shift 2
     ;;
   *)
     echo "unknown option '$key'"
