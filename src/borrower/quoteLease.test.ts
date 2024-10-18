@@ -13,7 +13,7 @@ import {
 } from '../util/smart-contracts/calculations';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
-import { noProvidedPriceFor, PERMILLE_TO_PERCENT } from '../util/utils';
+import { PERMILLE_TO_PERCENT } from '../util/utils';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Quote lease',
@@ -252,6 +252,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     runTestIfLocal(
       'the borrower tries to apply for a lease when there is no currency price provided by the Oracle - should produce an error',
       async () => {
+        const noProvidedPriceFor = process.env
+          .NO_PRICE_LEASE_CURRENCY_TICKER as string;
+
         const leaseCurrencyPriceObj = () =>
           oracleInstance.getBasePrice(noProvidedPriceFor);
         await expect(leaseCurrencyPriceObj).rejects.toThrow(

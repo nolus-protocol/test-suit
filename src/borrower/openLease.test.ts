@@ -6,7 +6,6 @@ import {
   customFees,
   defaultTip,
   NATIVE_TICKER,
-  noProvidedPriceFor,
   undefinedHandler,
 } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
@@ -416,7 +415,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the successful scenario for opening a lease - downpayment currency !== lpn currency !== lease currency- should work as expected', async () => {
-      const currentDPAmount = '100000';
+      const currentDPAmount = '10000';
 
       const currentLeaseCurrency = leaseCurrency;
       const currentDownpaymentCurrency = await getCurrencyOtherThan(
@@ -520,9 +519,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     runTestIfLocal(
       'the borrower tries to open lease when there is no currency price provided by the Oracle - should produce an error',
       async () => {
+        const noProvidedPriceFor = process.env
+          .NO_PRICE_LEASE_CURRENCY_TICKER as string;
         // // TO DO: issue - #69
         // const leaseCurrencyPriceObj = () =>
-        //   oracleInstance.getPriceFor(noProvidedPriceFor);
+        //   oracleInstance.getPriceFor();
         // await expect(leaseCurrencyPriceObj).rejects.toThrow(
         //   `Unsupported currency '${noProvidedPriceFor}'`,
         // );
@@ -534,8 +535,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         //   `TO DO`,
         // );
 
-        const noProvidedPriceForToIBC =
-          await currencyTicker_To_IBC(noProvidedPriceFor);
+        const noProvidedPriceForToIBC = process.env
+          .NO_PRICE_LEASE_CURRENCY_DENOM as string;
 
         expect(noProvidedPriceForToIBC).not.toBe('');
 

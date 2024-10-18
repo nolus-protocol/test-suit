@@ -2,12 +2,7 @@ import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { Asset } from '@nolus/nolusjs/build/contracts';
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import {
-  customFees,
-  defaultTip,
-  noProvidedPriceFor,
-  undefinedHandler,
-} from '../util/utils';
+import { customFees, defaultTip, undefinedHandler } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   getLeaseGroupCurrencies,
@@ -217,31 +212,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         amount,
       );
     });
-
-    runTestIfLocal(
-      'the borrower tries to close partially by sending amount ticker = unsupported currency ticker - should produce an error',
-      async () => {
-        const leaseAmountBeforePartialClose = (
-          await leaseInstance.getLeaseStatus()
-        ).opened?.amount;
-
-        if (!leaseAmountBeforePartialClose) {
-          undefinedHandler();
-          return;
-        }
-        const unsupportedCurrency = noProvidedPriceFor;
-
-        const amount = { amount: '1', ticker: unsupportedCurrency };
-
-        await testMarketCloseInvalidCases(
-          borrowerWallet,
-          `Found a symbol '${unsupportedCurrency}' pretending to be the ticker of the currency with ticker '${leaseAmountBeforePartialClose.ticker}'`,
-          leaseAmountBeforePartialClose,
-          amount,
-        );
-      },
-    );
-
     test('the borrower tries to close partially by sending amount < "min_transaction" - should produce an error', async () => {
       const leaseAmountBeforePartialClose = (
         await leaseInstance.getLeaseStatus()

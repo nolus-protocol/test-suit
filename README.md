@@ -31,18 +31,20 @@ yarn
 #### Dev network
 
 ```sh
-yarn prepare-env-dev --mnemonic-faucet <mnemonic_phrase> --protocol <protocol_to_test>
+yarn prepare-env-dev --test-wallet-mnemonic <mnemonic_phrase> --mnemonic-faucet <mnemonic_phrase> --protocol <protocol_to_test> --oracle-code-id-different-protocol <code_id>
 ```
 
 * For more flags: ```yarn prepare-env-dev --help```
 
 #### Local network
 
-!!! On a local network, manual setup and startup of the feeder&&dispatcher is required before testing. Instructions for this can be found in our [**oracle-price-feeder**](https://github.com/Nolus-Protocol/oracle-price-feeder) repository and the name of the feeder key must be passed to the "--feeder-key" flag when running **yarn prepare-env-local** ([here](#local-network)). For some of the test cases, it is necessary to choose a currency for which this feeder does not provide a price. By default, here in the tests, this is set to be the "STARS" currency. So when you configure the feeder, in the configuration file there, please remove this currency from the **currencies** section. An option is provided here to select and specify a currency other than "STARS" via the flag "--no-price-currency" when running **yarn prepare-env-local**.
+!!! On a local network, manual setup and startup of the feeder&&dispatcher is required before testing. Instructions for this can be found in our [**oracle-price-feeder**](https://github.com/Nolus-Protocol/oracle-price-feeder) repository and the name of the feeder key must be passed to the "--feeder-key" flag when running **yarn prepare-env-local** ([here](#local-network)). For some of the test cases, it is necessary to manually setup currencies for which this feeder does not provide a price (they are not in the swap_tree):
 
 ```sh
-yarn prepare-env-local --feeder-key "<feeder_key_name> "--protocol "<protocol_to_test>"
+yarn prepare-env-local --feeder-key <feeder_key_name> --protocol <protocol_to_test> --dex-admin-key <dex_admin_key> --no-price-currency-ticker <no_price_ticker> --no-price-lease-currency-ticker <no_price_lease_currency_ticker> --no-price-lease-currency-denom <no_price_lease_currency_denom>
 ```
+
+* TO DO: --no-price - meaning
 
 * The 'reserve' account must have funds (in nolus native currency), so be sure to reflect this when starting a local network : **/nolus-core/scripts/init-local-network.sh**
 

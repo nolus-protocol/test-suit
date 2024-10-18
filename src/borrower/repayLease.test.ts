@@ -7,7 +7,6 @@ import {
   defaultTip,
   NATIVE_MINIMAL_DENOM,
   NATIVE_TICKER,
-  noProvidedPriceFor,
   undefinedHandler,
 } from '../util/utils';
 import NODE_ENDPOINT, {
@@ -372,13 +371,17 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     runTestIfLocal(
       'the borrower tries to pay when there is no payment currency price provided by the Oracle - should produce an error',
       async () => {
+        const noProvidedPriceFor = process.env
+          .NO_PRICE_LEASE_CURRENCY_TICKER as string;
+
         const leaseCurrencyPriceObj = () =>
           oracleInstance.getBasePrice(noProvidedPriceFor);
         await expect(leaseCurrencyPriceObj).rejects.toThrow(
           `Unsupported currency '${noProvidedPriceFor}'`,
         );
-        const noProvidedPriceForToIBC =
-          await currencyTicker_To_IBC(noProvidedPriceFor);
+
+        const noProvidedPriceForToIBC = process.env
+          .NO_PRICE_LEASE_CURRENCY_DENOM as string;
 
         expect(noProvidedPriceForToIBC).not.toBe('');
 
