@@ -21,7 +21,7 @@ GITHUB_NOLUS_CORE_RELEASES="https://github.com/Nolus-Protocol/nolus-core/release
 NOLUS_BUILD_BINARY_ARTIFACT="nolus.tar.gz"
 FAUCET_KEY="faucet"
 
-NOLUS_DEV_NET="https://dev-cl.nolus.network:26657"
+NOLUS_DEV_NET="https://vitosha-rpc.nolus.network"
 NOLUS_CORE_TAG=""
 MNEMONIC_FAUCET=""
 TEST_WALLET_MNEMONIC=""
