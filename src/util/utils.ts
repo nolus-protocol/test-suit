@@ -15,8 +15,6 @@ export const VALIDATOR_PART = +(process.env.VALIDATOR_FEE_PART as string) / 100;
 
 const alarmsOccurred = 100;
 
-export const defaultTip = { amount: '300', denom: NATIVE_MINIMAL_DENOM };
-
 export const BORROWER_ATTEMPTS_TIMEOUT = 300;
 
 export const customFees = {

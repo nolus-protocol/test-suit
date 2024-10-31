@@ -1,12 +1,7 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import {
-  customFees,
-  defaultTip,
-  NATIVE_TICKER,
-  undefinedHandler,
-} from '../util/utils';
+import { customFees, NATIVE_TICKER, undefinedHandler } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { runOrSkip } from '../util/testingRules';
@@ -103,7 +98,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [payment, defaultTip],
+        [payment],
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
@@ -113,7 +108,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await leaseInstance.repayLease(borrowerWallet, customFees.exec, [
         payment,
-        defaultTip,
       ]);
 
       expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
@@ -156,7 +150,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [repayAll, defaultTip],
+        [repayAll],
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
@@ -166,7 +160,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await leaseInstance.repayLease(borrowerWallet, customFees.exec, [
         repayAll,
-        defaultTip,
       ]);
 
       expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
@@ -187,15 +180,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         userWithBalanceWallet,
         borrowerWallet.address as string,
       );
-      await userWithBalanceWallet.transferAmount(
-        borrowerWallet.address as string,
-        [defaultTip],
-        customFees.transfer,
-      );
 
-      await leaseInstance.closeLease(borrowerWallet, customFees.exec, [
-        defaultTip,
-      ]);
+      await leaseInstance.closeLease(borrowerWallet, customFees.exec);
 
       expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
 

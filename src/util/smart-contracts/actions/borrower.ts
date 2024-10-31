@@ -8,7 +8,6 @@ import {
   BLOCK_CREATION_TIME_DEV_SEC,
   BORROWER_ATTEMPTS_TIMEOUT,
   customFees,
-  defaultTip,
   sleep,
 } from '../../../util/utils';
 import { currencyTicker_To_IBC } from '../calculations';
@@ -140,7 +139,7 @@ export async function openLease(
 
   await userWithBalanceWallet.transferAmount(
     borrowerWallet.address as string,
-    [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
+    [{ denom: downpaymentCurrencyToIBC, amount: downpayment }],
     customFees.transfer,
   );
   await sendInitExecuteFeeTokens(
@@ -153,7 +152,7 @@ export async function openLease(
     leaseCurrency,
     customFees.exec,
     undefined,
-    [{ denom: downpaymentCurrencyToIBC, amount: downpayment }, defaultTip],
+    [{ denom: downpaymentCurrencyToIBC, amount: downpayment }],
   );
 
   return getLeaseAddressFromOpenLeaseResponse(result);

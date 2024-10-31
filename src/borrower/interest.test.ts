@@ -12,7 +12,7 @@ import NODE_ENDPOINT, {
   txSearchByEvents,
 } from '../util/clients';
 import { runOrSkip } from '../util/testingRules';
-import { customFees, defaultTip, undefinedHandler } from '../util/utils';
+import { customFees, undefinedHandler } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   getLoanInterestPaidFromRepayTx,
@@ -60,7 +60,7 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
     async function repay(payment: Coin) {
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [payment, defaultTip],
+        [payment],
         customFees.transfer,
       );
 
@@ -71,7 +71,6 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
 
       await leaseInstance.repayLease(borrowerWallet, customFees.exec, [
         payment,
-        defaultTip,
       ]);
 
       await waitLeaseInProgressToBeNull(leaseInstance);

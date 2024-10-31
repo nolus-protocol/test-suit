@@ -4,7 +4,6 @@ import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { OpenedLeaseInfo } from '@nolus/nolusjs/build/contracts';
 import {
   customFees,
-  defaultTip,
   NATIVE_MINIMAL_DENOM,
   NATIVE_TICKER,
   undefinedHandler,
@@ -112,12 +111,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const profitBalanceBeforeRepay = await cosm.getBalance(
         profitContractAddress,
         lppCurrencyToIBC,
-      );
-
-      await userWithBalanceWallet.transferAmount(
-        leaseAddress as string,
-        [defaultTip],
-        customFees.transfer,
       );
 
       await leaseInstance.repayLease(payerWallet, customFees.exec, [payment]);
@@ -482,7 +475,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [repayWithExcess, defaultTip],
+        [repayWithExcess],
         customFees.transfer,
       );
 
@@ -493,7 +486,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await leaseInstance.repayLease(borrowerWallet, customFees.exec, [
         repayWithExcess,
-        defaultTip,
       ]);
 
       expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
@@ -543,14 +535,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
-      await userWithBalanceWallet.transferAmount(
-        borrowerWallet.address as string,
-        [defaultTip],
-        customFees.transfer,
-      );
-
-      await leaseInstance.closeLease(borrowerWallet, customFees.exec),
-        [defaultTip];
+      await leaseInstance.closeLease(borrowerWallet, customFees.exec);
 
       await waitLeaseInProgressToBeNull(leaseInstance);
 

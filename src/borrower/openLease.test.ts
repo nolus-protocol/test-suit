@@ -2,12 +2,7 @@ import { InstantiateOptions, CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
 import { LeaserConfigInfo } from '@nolus/nolusjs/build/contracts';
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import {
-  customFees,
-  defaultTip,
-  NATIVE_TICKER,
-  undefinedHandler,
-} from '../util/utils';
+import { customFees, NATIVE_TICKER, undefinedHandler } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   calcBorrowLTD,
@@ -65,23 +60,12 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       ltd?: number,
       dp?: string,
     ) {
-      let fundsList: Coin[];
-
       const downpaymentAmount = dp ? dp : downpayment;
 
-      if (downpaymentCurrencyToIBC === defaultTip.denom)
-        fundsList = [
-          addCoins(
-            { denom: downpaymentCurrencyToIBC, amount: downpaymentAmount },
-            defaultTip,
-          ),
-        ];
-      else {
-        fundsList = [
-          { denom: downpaymentCurrencyToIBC, amount: downpaymentAmount },
-          defaultTip,
-        ];
-      }
+      const fundsList = [
+        { denom: downpaymentCurrencyToIBC, amount: downpaymentAmount },
+      ];
+
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
         fundsList,
@@ -145,10 +129,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrency,
         customFees.exec,
         ltd,
-        [
-          { denom: downpaymentCurrencyToIBC, amount: downpaymentAmount },
-          defaultTip,
-        ],
+        [{ denom: downpaymentCurrencyToIBC, amount: downpaymentAmount }],
       );
 
       const leasesAfter = await leaserInstance.getCurrentOpenLeasesByOwner(
@@ -323,7 +304,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
-        [payment, defaultTip],
+        [payment],
         customFees.transfer,
       );
       await sendInitExecuteFeeTokens(
@@ -333,7 +314,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await leaseInstance.repayLease(borrowerWallet, customFees.exec, [
         payment,
-        defaultTip,
       ]);
 
       expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
@@ -345,15 +325,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         userWithBalanceWallet,
         borrowerWallet.address as string,
       );
-      await userWithBalanceWallet.transferAmount(
-        borrowerWallet.address as string,
-        [defaultTip],
-        customFees.transfer,
-      );
 
-      await leaseInstance.closeLease(borrowerWallet, customFees.exec, [
-        defaultTip,
-      ]);
+      await leaseInstance.closeLease(borrowerWallet, customFees.exec);
 
       expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
 
