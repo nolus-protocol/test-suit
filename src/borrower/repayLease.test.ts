@@ -447,7 +447,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       await testRepaymentWithInvalidParams(
         payment,
-        'Insufficient payment amount',
+        `The transaction amount should worth at least ${minTransaction} USDC`,
       );
     });
 
