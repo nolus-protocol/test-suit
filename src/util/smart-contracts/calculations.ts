@@ -1,16 +1,63 @@
 import { NolusContracts, AssetUtils, NolusClient } from '@nolus/nolusjs';
 import { LppBalance } from '@nolus/nolusjs/build/contracts';
 import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
-import { TONANOSEC } from '../utils';
+import { TONANOSEC, undefinedHandler } from '../utils';
 import NODE_ENDPOINT from '../clients';
+import { getLeaseObligations } from './getters';
 
 const NANOSEC_YEAR = 365 * 24 * 60 * 60 * TONANOSEC;
 
-export function calcBorrowLTV(downpayment: number, ltv: number): number {
+export async function calcLTV( // permille
+  leaseInstance: NolusContracts.Lease,
+  oracleInstance: NolusContracts.Oracle,
+): Promise<number | undefined> {
+  const leaseState = (await leaseInstance.getLeaseStatus()).opened;
+
+  if (!leaseState) {
+    undefinedHandler();
+    return;
+  }
+
+  const leaseAmount = leaseState.amount.amount;
+  const leaseCurrency = leaseState.amount.ticker;
+
+  if (!leaseCurrency) {
+    undefinedHandler();
+    return;
+  }
+
+  const priceObj = await oracleInstance.getBasePrice(leaseCurrency);
+  const [
+    minToleranceCurrencyPrice_LC,
+    exactCurrencyPrice_LC,
+    maxToleranceCurrencyPrice_LC,
+  ] = currencyPriceObjToNumbers(priceObj, 1);
+
+  const leaseAmountToLPN = +leaseAmount / exactCurrencyPrice_LC;
+
+  const obligations = getLeaseObligations(leaseState, true);
+
+  if (!obligations) {
+    undefinedHandler();
+    return;
+  }
+
+  const LTV = Math.trunc((obligations / leaseAmountToLPN) * 1000);
+
+  return LTV;
+}
+
+export function calcBorrowedAmountLTV(
+  downpayment: number,
+  ltv: number,
+): number {
   return (downpayment * ltv) / (1000 - ltv);
 }
 
-export function calcBorrowLTD(downpayment: number, ltd: number): number {
+export function calcBorrowedAmountLTD(
+  downpayment: number,
+  ltd: number,
+): number {
   return downpayment * (ltd / 1000);
 }
 

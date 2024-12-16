@@ -3,8 +3,8 @@ import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { runTestIfLocal, runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, { createWallet } from '../util/clients';
 import {
-  calcBorrowLTD,
-  calcBorrowLTV,
+  calcBorrowedAmountLTD,
+  calcBorrowedAmountLTV,
   calcQuoteAnnualInterestRate,
   calcUtilization,
   currencyPriceObjToNumbers,
@@ -124,7 +124,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(quote.borrow).toBeDefined();
       expect(quote.annual_interest_rate).toBeDefined();
 
-      const calcBorrowAmount = calcBorrowLTV(
+      const calcBorrowAmount = calcBorrowedAmountLTV(
         +downpayment,
         liabilityInitialPercent,
       );
@@ -177,7 +177,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         maxLTD,
       );
 
-      let calcBorrowAmount = calcBorrowLTD(+downpayment, maxLTD);
+      let calcBorrowAmount = calcBorrowedAmountLTD(+downpayment, maxLTD);
       expect(+quote.borrow.amount).toBe(Math.trunc(calcBorrowAmount));
 
       // if maxLTV > the liability initPercent --> use the second one
@@ -190,7 +190,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         maxLTD,
       );
 
-      calcBorrowAmount = calcBorrowLTV(+downpayment, liabilityInitialPercent);
+      calcBorrowAmount = calcBorrowedAmountLTV(
+        +downpayment,
+        liabilityInitialPercent,
+      );
       expect(+quote.borrow.amount).toBe(Math.trunc(calcBorrowAmount));
     });
 

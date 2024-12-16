@@ -5,8 +5,8 @@ import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { customFees, NATIVE_TICKER, undefinedHandler } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
-  calcBorrowLTD,
-  calcBorrowLTV,
+  calcBorrowedAmountLTD,
+  calcBorrowedAmountLTV,
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
   LTVtoLTD,
@@ -192,19 +192,19 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       if (ltd) {
         calcBorrowAmount_max = Math.trunc(
-          calcBorrowLTD(downpaymentToLPN_min, ltd),
+          calcBorrowedAmountLTD(downpaymentToLPN_min, ltd),
         );
         calcBorrowAmount_min = Math.trunc(
-          calcBorrowLTD(downpaymentToLPN_max, ltd),
+          calcBorrowedAmountLTD(downpaymentToLPN_max, ltd),
         );
       } else {
         const initPercent = +leaserConfig.lease_position_spec.liability.initial;
 
         calcBorrowAmount_max = Math.trunc(
-          calcBorrowLTV(downpaymentToLPN_min, initPercent),
+          calcBorrowedAmountLTV(downpaymentToLPN_min, initPercent),
         );
         calcBorrowAmount_min = Math.trunc(
-          calcBorrowLTV(downpaymentToLPN_max, initPercent),
+          calcBorrowedAmountLTV(downpaymentToLPN_max, initPercent),
         );
       }
 
