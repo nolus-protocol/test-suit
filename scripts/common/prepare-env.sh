@@ -78,8 +78,20 @@ fi
 
 local -r gov_min_deposit_native=$(run_cmd "$accounts_dir" q gov params $flags | jq -r '.params.min_deposit[0].amount')
 
-local -r fee_rate=$(run_cmd "$accounts_dir" q tax params $flags | jq '.params.fee_rate')
+local -r tax_params=$(run_cmd "$accounts_dir" q tax params $flags)
+local -r fee_rate=$(echo "$tax_params" | jq '.params.fee_rate')
 local -r validator_fee_part=$((100-"$fee_rate"))
+local -r accepted_denoms=$(echo "$tax_params" | jq -c '
+  [
+    .params.dex_fee_params[] as $profit_obj |
+    $profit_obj.accepted_denoms_min_prices[] |
+    {
+      denom: .denom,
+      minPrice: .min_price,
+      profit: $profit_obj.profit_address
+    }
+  ]
+')
 
 # Get platform contracts
 local -r platform_info=$(run_cmd "$accounts_dir" q wasm contract-state smart "$admin_contract_address" '{"platform":{}}' $flags | jq '.data')
@@ -156,6 +168,8 @@ LPP_CODE_ID=${lpp_code_id}
 ORACLE_CODE_ID=${oracle_code_id}
 
 LENDER_DEPOSIT_CAPACITY=${lender_deposit_capacity}
+
+ACCEPTED_DENOMS=${accepted_denoms}
 
 TEST_TRANSFER=${test_transfers}
 TEST_ORACLE=${test_oracle}
