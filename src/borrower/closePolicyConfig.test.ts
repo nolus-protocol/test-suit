@@ -178,7 +178,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      let TP = currentLTV + 200; // + 20%
+      let TP = currentLTV + 100; // + 10%
       await changeClosePolicyInvalidCases(
         borrowerWallet,
         `The current lease LTV '${currentLTV / PERMILLE_TO_PERCENT}%' would trigger 'take profit below ${TP / PERMILLE_TO_PERCENT}%'!`,
@@ -204,8 +204,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const validTP = currentLTV - 200; // - 20%
-      const validSL = currentLTV + 200; // + 20%
+      const validTP = currentLTV - 100; // - 20%
+      const validSL = currentLTV + 100; // + 20%
 
       await changeClosePolicy(borrowerWallet, validSL, validTP);
 
