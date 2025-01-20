@@ -19,11 +19,9 @@ HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
 
 GITHUB_NOLUS_CORE_RELEASES="https://github.com/Nolus-Protocol/nolus-core/releases"
 NOLUS_BUILD_BINARY_ARTIFACT="nolus.tar.gz"
-FAUCET_KEY="faucet"
 
 NOLUS_DEV_NET="https://vitosha-rpc.nolus.network"
 NOLUS_CORE_TAG=""
-MNEMONIC_FAUCET=""
 TEST_WALLET_MNEMONIC=""
 
 PROTOCOL=""
@@ -46,6 +44,8 @@ TEST_RESERVE="true"
 
 ADMIN_CONTRACT_ADDRESS="nolus17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsmc5xhq"
 
+ENV_FILE=".env"
+
 while [[ $# -gt 0 ]]; do
   key="$1"
 
@@ -56,7 +56,6 @@ while [[ $# -gt 0 ]]; do
     "Usage: %s
     [--nolus-dev-net <nolus_dev_url>]
     [--nolus-core-version-tag <nolus_core_preferred_tag>]
-    [--mnemonic-faucet <mnemonic_phrase>]
     [--test-wallet-mnemonic <mnemonic_phrase>]
     [--protocol <protocol_name_to_test>]
     [--admin-contract-address <admin_contract_address>]
@@ -74,7 +73,8 @@ while [[ $# -gt 0 ]]; do
     [--test-profit-flag <test_profit_true_or_false>]
     [--test-timealarms-flag <test_timealarms_true_or_false>]
     [--no-price-currency-ticker <no_price_currency_ticker>]
-    [--test-reserve-flag <test_reserve_true_or_false>]" \
+    [--test-reserve-flag <test_reserve_true_or_false>]
+    [--env-file <env_file_name>]" \
     "$0"
     exit 0
     ;;
@@ -86,11 +86,6 @@ while [[ $# -gt 0 ]]; do
 
   --nolus-core-version-tag)
     NOLUS_CORE_TAG="$2"
-    shift 2
-    ;;
-
-  --mnemonic-faucet)
-    MNEMONIC_FAUCET="$2"
     shift 2
     ;;
 
@@ -183,6 +178,11 @@ while [[ $# -gt 0 ]]; do
     TEST_RESERVE="$2"
     shift 2
     ;;
+
+  --output-file)
+    ENV_FILE="$2"
+    shift 2
+    ;;
   *)
     echo "unknown option '$key'"
     exit 1
@@ -194,7 +194,6 @@ done
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR"/common/verify.sh
 
-verify_mandatory "$MNEMONIC_FAUCET" "faucet mnemonic"
 verify_mandatory "$TEST_WALLET_MNEMONIC" "test wallet mnemonic"
 verify_mandatory "$PROTOCOL" "protocol name"
 verify_mandatory "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "oracle code id different protocol"
@@ -214,11 +213,10 @@ ACCOUNTS_DIR="$HOME_DIR/accounts"
 
 source "$SCRIPT_DIR"/common/cmd.sh
 TEST_ACCOUNT_KEY="test-main-account"
-echo "$MNEMONIC_FAUCET" | run_cmd "$ACCOUNTS_DIR" keys add "$FAUCET_KEY" --recover --keyring-backend "test"
 echo "$TEST_WALLET_MNEMONIC" | run_cmd "$ACCOUNTS_DIR"  keys add "$TEST_ACCOUNT_KEY" --recover --keyring-backend "test"
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
 "$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY_TICKER" "" "" "$ACTIVE_LEASE_ADDRESS" "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
 "$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN" \
-"$TEST_PROFIT" "$TEST_TIMEALARMS" "$TEST_RESERVE"
+"$TEST_PROFIT" "$TEST_TIMEALARMS" "$TEST_RESERVE" "$ENV_FILE"

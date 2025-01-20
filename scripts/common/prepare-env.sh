@@ -54,6 +54,7 @@ local -r test_admin="${22}"
 local -r test_profit="${23}"
 local -r test_timealarms="${24}"
 local -r test_reserve="${25}"
+local env_file="${26}"
 
 local -r flags="--output json --node $node_url"
 
@@ -127,6 +128,8 @@ if [ -n "$active_lease_address" ] && [ "$test_borrower" != "false" ] ; then
   test_interest=true
 fi
 
+[ ! -f "$HOME_DIR/$env_file" ] && touch "$HOME_DIR/$env_file"
+
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${node_url}
 ENV=${node_env}
@@ -186,5 +189,5 @@ TEST_TIMEALARMS=${test_timealarms}
 TEST_RESERVE=${test_reserve}
 EOF
   )
-   echo "$DOT_ENV" > "$HOME_DIR/.env"
+   echo "$DOT_ENV" > "$HOME_DIR/$env_file"
 }
