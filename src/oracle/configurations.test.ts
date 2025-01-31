@@ -180,7 +180,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
         dexAdminWallet.executeContract(
           adminContractAddress,
           initMsg,
-          customFees.init,
+          customFees.configs,
         );
 
       await expect(broadcastTx).rejects.toThrow(message);

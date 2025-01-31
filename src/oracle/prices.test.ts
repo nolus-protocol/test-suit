@@ -24,7 +24,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
   ) {
     await userWithBalance.transferAmount(
       feederWallet.address as string,
-      customFees.feedPrice.amount,
+      customFees.exec.amount,
       customFees.transfer,
     );
 

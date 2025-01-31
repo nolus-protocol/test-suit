@@ -89,15 +89,11 @@ describe.skip('Lease - Take Profit tests', () => {
 
     await userWithBalanceWallet.transferAmount(
       feederWallet.address as string,
-      customFees.feedPrice.amount,
+      customFees.exec.amount,
       customFees.transfer,
     );
 
-    await oracleInstance.feedPrices(
-      feederWallet,
-      priceObj,
-      customFees.feedPrice,
-    );
+    await oracleInstance.feedPrices(feederWallet, priceObj, customFees.exec);
   }
 
   async function prepareLease(): Promise<NolusContracts.Lease> {

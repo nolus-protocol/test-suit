@@ -124,15 +124,11 @@ describe.skip('Lease - Price Liquidation tests', () => {
 
     await userWithBalanceWallet.transferAmount(
       feederWallet.address as string,
-      customFees.feedPrice.amount,
+      customFees.exec.amount,
       customFees.transfer,
     );
 
-    await oracleInstance.feedPrices(
-      feederWallet,
-      priceObj,
-      customFees.feedPrice,
-    );
+    await oracleInstance.feedPrices(feederWallet, priceObj, customFees.exec);
 
     // const priceAfterConfig = await oracleInstance.getPriceFor(leaseCurrency);
 

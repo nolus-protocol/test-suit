@@ -86,15 +86,11 @@ describe.skip('Lease - Stop Loss tests', () => {
 
     await userWithBalanceWallet.transferAmount(
       feederWallet.address as string,
-      customFees.feedPrice.amount,
+      customFees.exec.amount,
       customFees.transfer,
     );
 
-    await oracleInstance.feedPrices(
-      feederWallet,
-      priceObj,
-      customFees.feedPrice,
-    );
+    await oracleInstance.feedPrices(feederWallet, priceObj, customFees.exec);
   }
 
   async function executeStopLoss(

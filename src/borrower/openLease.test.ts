@@ -708,7 +708,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           leaseContractCodeId,
           leaseInitMsg,
           'test_lease_uat',
-          customFees.init,
+          customFees.configs,
           options,
         );
 
