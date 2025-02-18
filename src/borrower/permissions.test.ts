@@ -43,7 +43,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('migrate leases msg should only be exec via proposal', async () => {
       const migrateLeasesMsg = {
-        migrate_leases: { new_code_id: '2', max_leases: 1000 },
+        migrate_leases: {
+          new_code_id: '2',
+          max_leases: 1000,
+          to_release: { software: 'v1.2.3', protocol: '222222222' },
+        },
       };
 
       await userWithBalanceWallet.transferAmount(
@@ -64,7 +68,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('migrate lease continue msg should only be exec via proposal', async () => {
       const migrateLeasesContMsg = {
-        migrate_leases_cont: { key: leaserContractAddress, max_leases: 1000 },
+        migrate_leases_cont: {
+          key: leaserContractAddress,
+          max_leases: 1000,
+          to_release: { software: 'v1.2.3', protocol: '222222222' },
+        },
       };
 
       await userWithBalanceWallet.transferAmount(
@@ -149,11 +157,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         close_protocol: {
           new_lease_code_id: '1',
           migration_spec: {
-            leaser: { code_id: '1', migrate_msg: '{}' },
-            lpp: { code_id: '1', migrate_msg: '{}' },
-            oracle: { code_id: '1', migrate_msg: '{}' },
-            profit: { code_id: '1', migrate_msg: '{}' },
-            reserve: { code_id: '1', migrate_msg: '{}' },
+            leaser: { code_id: '1', migrate_message: '{}' },
+            lpp: { code_id: '1', migrate_message: '{}' },
+            oracle: { code_id: '1', migrate_message: '{}' },
+            profit: { code_id: '1', migrate_message: '{}' },
+            reserve: { code_id: '1', migrate_message: '{}' },
           },
           force: forceInvalidValue,
         },

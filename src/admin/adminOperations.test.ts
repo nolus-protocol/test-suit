@@ -97,29 +97,14 @@ runOrSkip(process.env.TEST_ADMIN as string)('Admin contract tests', () => {
     expect(broadcastTx.rawLog).toContain('addr_validate errored');
   });
 
-  test('the migration can only be cancaled by the DEX admin', async () => {
-    const endOfMigrationMsg = {
-      end_of_migration: {},
-    };
-
-    const broadcastTx = () =>
-      userWithBalanceWallet.executeContract(
-        adminContractAddress,
-        endOfMigrationMsg,
-        customFees.configs,
-      );
-
-    await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
-  });
-
   test('the protocol deregistration msg can only be used internally', async () => {
     const deregisterPtotocolMsg = {
       deregister_protocol: {
-        leaser: { code_id: '1', migrate_msg: '{}' },
-        lpp: { code_id: '1', migrate_msg: '{}' },
-        oracle: { code_id: '1', migrate_msg: '{}' },
-        profit: { code_id: '1', migrate_msg: '{}' },
-        reserve: { code_id: '1', migrate_msg: '{}' },
+        leaser: { code_id: '1', migrate_message: '{}' },
+        lpp: { code_id: '1', migrate_message: '{}' },
+        oracle: { code_id: '1', migrate_message: '{}' },
+        profit: { code_id: '1', migrate_message: '{}' },
+        reserve: { code_id: '1', migrate_message: '{}' },
       },
     };
 

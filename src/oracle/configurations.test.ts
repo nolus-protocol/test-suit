@@ -429,15 +429,19 @@ runOrSkip(process.env.TEST_ORACLE as string)(
           (acc, protocol) => {
             acc[protocol] =
               protocol === currentProtocolName
-                ? {
-                    some: {
-                      oracle: {
-                        code_id: oracleCodeId,
-                        migrate_msg: '{}',
+                ? [
+                    'version',
+                    {
+                      some: {
+                        oracle: {
+                          code_id: oracleCodeId,
+                          migrate_message: {},
+                          post_migrate_execute: null,
+                        },
                       },
                     },
-                  }
-                : null;
+                  ]
+                : ['', null];
             return acc;
           },
           {} as Record<string, any>,
@@ -445,7 +449,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
 
         const migrateMsg = {
           migrate_contracts: {
-            release: 'tag',
+            to_release: 'tag',
             migration_spec: {
               platform: null,
               protocol: protocolsObject,
