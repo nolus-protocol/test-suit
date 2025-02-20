@@ -110,4 +110,4 @@ source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" \
 "$FEEDER_KEY" "$PROTOCOL" "$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY_TICKER" "$NO_PRICE_LEASE_CURRENCY_TICKER" \
 "$NO_PRICE_LEASE_CURRENCY_DENOM" "$ACTIVE_LEASE_ADDRESS" \
-"" "$DEX_ADMIN_KEY" "" "" "" "" "" "" "" "" "" "" "" "" "" "$ENV_FILE"
+"" "$DEX_ADMIN_KEY" "" "" "" "" "" "" "" "" "" "" "" "" "$ENV_FILE"
