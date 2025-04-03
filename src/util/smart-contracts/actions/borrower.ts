@@ -9,10 +9,14 @@ import {
   BORROWER_ATTEMPTS_TIMEOUT,
   customFees,
   sleep,
+  undefinedHandler,
 } from '../../../util/utils';
 import { currencyTicker_To_IBC } from '../calculations';
 import { provideEnoughLiquidity } from './lender';
-import { getLeaseAddressFromOpenLeaseResponse } from '../getters';
+import {
+  getLeaseAddressFromOpenLeaseResponse,
+  getLeaseObligations,
+} from '../getters';
 
 export async function checkLeaseBalance(
   leaseAddress: string,
@@ -156,4 +160,70 @@ export async function openLease(
   );
 
   return getLeaseAddressFromOpenLeaseResponse(result);
+}
+
+export async function closeLease(
+  leaseInstance: NolusContracts.Lease,
+  borrowerWallet: NolusWallet,
+  lppCurrency: string,
+) {
+  const userWithBalanceWallet = await getUser1Wallet();
+  const excess = 1000;
+
+  const lppCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
+  const currentLeaseState = (await leaseInstance.getLeaseStatus()).opened;
+
+  if (!currentLeaseState) {
+    undefinedHandler();
+    return;
+  }
+
+  const leaseObligations = getLeaseObligations(currentLeaseState, true);
+
+  if (!leaseObligations) {
+    undefinedHandler();
+    return;
+  }
+
+  const paymentAmount = leaseObligations + excess;
+
+  const payment = {
+    amount: paymentAmount.toString(),
+    denom: lppCurrencyToIBC,
+  };
+
+  await userWithBalanceWallet.transferAmount(
+    borrowerWallet.address as string,
+    [payment],
+    customFees.transfer,
+  );
+  await sendInitExecuteFeeTokens(
+    userWithBalanceWallet,
+    borrowerWallet.address as string,
+  );
+
+  await leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
+
+  expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
+
+  const leaseStateAfterRepay = await leaseInstance.getLeaseStatus();
+  expect(leaseStateAfterRepay.paid).toBeDefined();
+
+  await sendInitExecuteFeeTokens(
+    userWithBalanceWallet,
+    borrowerWallet.address as string,
+  );
+
+  await leaseInstance.closeLease(borrowerWallet, customFees.exec);
+
+  expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
+
+  const leaseStateAfterClose = await leaseInstance.getLeaseStatus();
+  expect(leaseStateAfterClose.closed).toBeDefined();
+
+  const leaseCurrencyToIBC = await currencyTicker_To_IBC(
+    currentLeaseState.amount.ticker as string,
+  );
+
+  await returnAmountToTheMainAccount(borrowerWallet, leaseCurrencyToIBC);
 }

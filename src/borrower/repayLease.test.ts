@@ -194,12 +194,12 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       payment: Coin,
       message: string,
     ) {
-      await sendInitExecuteFeeTokens(
-        userWithBalanceWallet,
-        borrowerWallet.address as string,
-      );
-
       if (+payment.amount > 0) {
+        await sendInitExecuteFeeTokens(
+          userWithBalanceWallet,
+          borrowerWallet.address as string,
+        );
+
         await userWithBalanceWallet.transferAmount(
           borrowerWallet.address as string,
           [payment],
@@ -211,6 +211,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
 
       await expect(result).rejects.toThrow(message);
+
+      await returnAmountToTheMainAccount(borrowerWallet, payment.denom);
     }
 
     beforeAll(async () => {
@@ -244,10 +246,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       console.log('REPAY tests --- Lease address: ', leaseAddress);
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
-    });
-
-    afterAll(async () => {
-      await returnAmountToTheMainAccount(borrowerWallet, lppCurrency);
     });
 
     test('the successful lease repayment scenario - payment currency === lpn currency - should work as expected', async () => {
@@ -352,6 +350,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseInstance.repayLease(borrowerWallet, customFees.exec, [repayMore]);
 
       await expect(result).rejects.toThrow(/^.*insufficient funds.*/);
+
+      await returnAmountToTheMainAccount(borrowerWallet, lppCurrencyToIBC);
     });
 
     test('the borrower tries to pay a lease with 0 amount - should produce an error', async () => {

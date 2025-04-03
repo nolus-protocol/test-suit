@@ -16,16 +16,14 @@ import {
   getCurrencyOtherThan,
   getLeaseAddressFromOpenLeaseResponse,
   getLeaseGroupCurrencies,
-  getLeaseObligations,
 } from '../util/smart-contracts/getters';
 import {
   checkLeaseBalance,
+  closeLease,
   returnAmountToTheMainAccount,
-  waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
-import { addCoins, Coin } from '@cosmjs/amino';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Open a lease',
@@ -241,7 +239,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         );
       }
 
-      await closeLease(leaseInstance, borrowerWallet);
+      await closeLease(leaseInstance, borrowerWallet, lppCurrency);
     }
 
     async function testOpeningWithInvalidParams(
@@ -274,66 +272,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         );
 
       await expect(openLease).rejects.toThrow(message);
-    }
 
-    async function closeLease(
-      leaseInstance: NolusContracts.Lease,
-      borrowerWallet: NolusWallet,
-    ) {
-      const excess = 1000;
-      const currentLeaseState = (await leaseInstance.getLeaseStatus()).opened;
-
-      if (!currentLeaseState) {
-        undefinedHandler();
-        return;
-      }
-
-      const leaseObligations = getLeaseObligations(currentLeaseState, true);
-
-      if (!leaseObligations) {
-        undefinedHandler();
-        return;
-      }
-
-      const paymentAmount = leaseObligations + excess;
-
-      const payment = {
-        amount: paymentAmount.toString(),
-        denom: lppCurrencyToIBC,
-      };
-
-      await userWithBalanceWallet.transferAmount(
-        borrowerWallet.address as string,
-        [payment],
-        customFees.transfer,
+      await returnAmountToTheMainAccount(
+        borrowerWallet,
+        downpaymentCurrencyToIBC,
       );
-      await sendInitExecuteFeeTokens(
-        userWithBalanceWallet,
-        borrowerWallet.address as string,
-      );
-
-      await leaseInstance.repayLease(borrowerWallet, customFees.exec, [
-        payment,
-      ]);
-
-      expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
-
-      const leaseStateAfterRepay = await leaseInstance.getLeaseStatus();
-      expect(leaseStateAfterRepay.paid).toBeDefined();
-
-      await sendInitExecuteFeeTokens(
-        userWithBalanceWallet,
-        borrowerWallet.address as string,
-      );
-
-      await leaseInstance.closeLease(borrowerWallet, customFees.exec);
-
-      expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
-
-      const leaseStateAfterClose = await leaseInstance.getLeaseStatus();
-      expect(leaseStateAfterClose.closed).toBeDefined();
-
-      await returnAmountToTheMainAccount(borrowerWallet, leaseCurrencyToIBC);
     }
 
     beforeAll(async () => {
