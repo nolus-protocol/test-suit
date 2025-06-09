@@ -12,7 +12,6 @@ import {
   findWasmEventPositions,
   getLeaseObligations,
 } from '../util/smart-contracts/getters';
-import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
 import {
   openLease,
   waitLeaseInProgressToBeNull,
@@ -22,8 +21,8 @@ import {
 // These tests require the network to be specifically configured
 // That`s why, they only work locally and in isolation, and only if this requirement is met!
 // Suitable values are (Osmosis protocol):
-// - for the Leaser config - {...,"lease_interest_rate_margin":30,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"150","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},..."lease_interest_payment":"lease_due_period":5184000000000000}
-// - for the Oracle  config - {"config":{....,"price_config":{"min_feeders":500,"sample_period_secs":260,"samples_number":1,"discount_factor":750}},....}
+// - for the Leaser config - {..., "lease_max_slippage":{"liquidation":900}, "lease_interest_rate_margin":30,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"150","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},..."lease_interest_payment":"lease_due_period":5184000000000000}
+// - for the Oracle config - {"config":{....,"price_config":{"min_feeders":500,"sample_period_secs":260,"samples_number":1,"discount_factor":750}},....}
 // - for the LPP - {...,"min_utilization":0}
 // - working dispatcher bot
 // - !!! non-working feeder
@@ -54,11 +53,10 @@ describe.skip('Lease - Price Liquidation tests', () => {
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
-  const alarmDispatcherPeriod = 15; // DispatcherBot:poll_period_seconds + 5
-  const periodSecs = 265; // Oracle:sample_period_secs + 5sec
+  const alarmDispatcherPeriod = 120; // DispatcherBot:poll_period_seconds + 5
   const leaseCurrency = 'OSMO';
   const validPriceLCtoLPN = 0.1931;
-  const downpayment = '1000000';
+  const downpayment = '1000000'; // ntrn = '5000000'
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
@@ -84,23 +82,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
     lpnCurrency = process.env.LPP_BASE_CURRENCY as string;
     downpaymentCurrency = lpnCurrency;
 
-    console.log('Waiting for the price to expire...');
-    await sleep(periodSecs);
-    console.log('Done');
-
-    const leaseCurrencyPriceObj = () =>
-      oracleInstance.getBasePrice(leaseCurrency);
-    await expect(leaseCurrencyPriceObj).rejects.toThrow('No price');
-
     await pushPrice(validPriceLCtoLPN);
-
-    await provideEnoughLiquidity(
-      leaserInstance,
-      lppInstance,
-      downpayment,
-      downpaymentCurrency,
-      leaseCurrency,
-    );
   });
 
   async function pushPrice(price: number) {
@@ -129,21 +111,12 @@ describe.skip('Lease - Price Liquidation tests', () => {
     );
 
     await oracleInstance.feedPrices(feederWallet, priceObj, customFees.exec);
-
-    // const priceAfterConfig = await oracleInstance.getPriceFor(leaseCurrency);
-
-    // expect(
-    //   +priceAfterConfig.amount_quote.amount / +priceAfterConfig.amount.amount,
-    // ).toBe(price);
   }
 
   async function checkForLiquidationWarning(
     wPrice: number,
     warningLevel: number,
   ) {
-    console.log('Waiting for the price to expire...');
-    await sleep(periodSecs);
-    console.log('Done');
     await pushPrice(wPrice);
 
     console.log('Waiting for the dispatcher bot...');
@@ -223,6 +196,26 @@ describe.skip('Lease - Price Liquidation tests', () => {
 
     const liquidationPrice = (leaseDue * 1000) / (leaseAmount * maxLiability);
 
+    /////////////////////////// liquidatio before SL /////////////////////////////////////////
+
+    const SL = maxLiability - 10; // -1%
+
+    await userWithBalanceWallet.transferAmount(
+      borrowerWallet.address as string,
+      customFees.exec.amount,
+      customFees.transfer,
+    );
+    await leaseInstance.changeClosePolicy(
+      borrowerWallet,
+      customFees.exec,
+      SL,
+      null,
+    );
+    const policy = (await leaseInstance.getLeaseStatus()).opened?.close_policy;
+    expect(policy?.stop_loss).toBe(SL);
+
+    ///////////////////////////////////
+
     // w1
     console.log('Waiting for warning level 1...');
     await checkForLiquidationWarning(w1Price, 1);
@@ -237,9 +230,6 @@ describe.skip('Lease - Price Liquidation tests', () => {
 
     //max
     console.log('Waiting for the liquidation...');
-    console.log('Waiting for the price to expire...');
-    await sleep(periodSecs);
-    console.log('Done');
     await pushPrice(liquidationPrice);
 
     console.log('Waiting for the dispatcher bot...');

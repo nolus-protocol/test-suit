@@ -8,6 +8,7 @@ import {
   BLOCK_CREATION_TIME_DEV_SEC,
   BORROWER_ATTEMPTS_TIMEOUT,
   customFees,
+  NATIVE_MINIMAL_DENOM,
   sleep,
   undefinedHandler,
 } from '../../../util/utils';
@@ -73,17 +74,42 @@ export async function waitLeaseOpeningProcess(
   return new Error('Timeout');
 }
 
+export async function dispatchAlarms(timealarmsContractAddress: string) {
+  const dispatchAlarmMsg = { dispatch_alarms: { max_count: 32000000 } };
+
+  const userWithBalanceWallet = await getUser1Wallet();
+
+  await userWithBalanceWallet.execute(
+    userWithBalanceWallet.address as string,
+    timealarmsContractAddress,
+    dispatchAlarmMsg,
+    {
+      gas: '200000000',
+      amount: [
+        {
+          amount: '200000000',
+          denom: NATIVE_MINIMAL_DENOM,
+        },
+      ],
+    },
+  );
+}
+
 export async function waitLeaseInProgressToBeNull(
   leaseInstance: NolusContracts.Lease,
+  selfDispatch: boolean = false,
 ): Promise<Error | undefined> {
   let newState;
   let timeout = BORROWER_ATTEMPTS_TIMEOUT;
 
   do {
+    if (selfDispatch) {
+      await dispatchAlarms(process.env.TIMEALARMS_ADDRESS as string);
+    }
     await sleep(BLOCK_CREATION_TIME_DEV_SEC);
     const fullState = await leaseInstance.getLeaseStatus();
     if (
-      fullState.opened?.in_progress === null ||
+      typeof fullState.opened?.status === 'string' ||
       fullState.paid?.in_progress === null ||
       fullState.closed ||
       fullState.liquidated
@@ -92,7 +118,7 @@ export async function waitLeaseInProgressToBeNull(
       return undefined;
     }
     newState = JSON.stringify(
-      fullState.opened?.in_progress || fullState.paid?.in_progress,
+      fullState.opened?.status || fullState.paid?.in_progress,
     );
     console.log('Lease is in progress: ', newState);
     timeout--;

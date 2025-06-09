@@ -22,7 +22,7 @@ import {
 // These tests require the network to be specifically configured
 // That`s why, they only work locally and in isolation, and only if this requirement is met!
 // Suitable values are (Osmosis protocol):
-// - for the Leaser config - {...,"lease_interest_rate_margin":30,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"150","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},..."lease_interest_payment":"lease_due_period":5184000000000000}
+// - for the Leaser config - {...,"lease_max_slippage":{"liquidation":900},"lease_interest_rate_margin":30,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"150","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},..."lease_interest_payment":"lease_due_period":5184000000000000}
 // - for the Oracle  config - {"config":{....,"price_config":{"min_feeders":500,"sample_period_secs":260,"samples_number":1,"discount_factor":750}},....}
 // - for the LPP - {...,"min_utilization":0}
 // - working dispatcher bot
@@ -47,11 +47,10 @@ describe.skip('Lease - Take Profit tests', () => {
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
-  const alarmDispatcherPeriod = 20; // DispatcherBot:poll_period_seconds + 5
-  const periodSecs = 265; // Oracle:sample_period_secs + 5sec
+  const alarmDispatcherPeriod = 100; // DispatcherBot:poll_period_seconds + 5
   const leaseCurrency = 'NTRN';
-  const validPriceLCtoLPN = 0.365; // amount_quote / amount
-  const downpayment = '100000';
+  const validPriceLCtoLPN = 0.284; // amount_quote / amount
+  const downpayment = '500000';
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
@@ -97,9 +96,6 @@ describe.skip('Lease - Take Profit tests', () => {
   }
 
   async function prepareLease(): Promise<NolusContracts.Lease> {
-    console.log('Waiting for the price to expire...');
-    await sleep(periodSecs);
-    console.log('Done');
     await pushPrice(validPriceLCtoLPN);
 
     const downpaymentCurrency = lpnCurrency;
@@ -204,7 +200,9 @@ describe.skip('Lease - Take Profit tests', () => {
 
     await leaseInstance.repayLease(borrowerWallet, customFees.exec, [payment]);
 
-    expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
+    expect(await waitLeaseInProgressToBeNull(leaseInstance, true)).toBe(
+      undefined,
+    );
 
     await checkIfTPisReset(leaseInstance, TP);
 
@@ -249,14 +247,11 @@ describe.skip('Lease - Take Profit tests', () => {
       (leaseDueBeforeLiquidation * 1000) /
       (leaseAmountBeforeLiquidation * maxLiability);
 
-    console.log('Waiting for the price to expire...');
-    await sleep(periodSecs);
-    console.log('Done');
     await pushPrice(price);
 
     console.log('Waiting for the dispatcher bot...');
     await sleep(alarmDispatcherPeriod);
-    await waitLeaseInProgressToBeNull(leaseInstance);
+    await waitLeaseInProgressToBeNull(leaseInstance, true);
 
     const stateAfterLiquidation = await leaseInstance.getLeaseStatus();
 
@@ -310,7 +305,9 @@ describe.skip('Lease - Take Profit tests', () => {
       amountToClose,
     );
 
-    expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
+    expect(await waitLeaseInProgressToBeNull(leaseInstance, true)).toBe(
+      undefined,
+    );
 
     await checkIfTPisReset(leaseInstance, TP);
 
@@ -349,14 +346,11 @@ describe.skip('Lease - Take Profit tests', () => {
       (leaseDueBeforeLiquidation * 1000) /
       (leaseAmountBeforeLiquidation * (TP - 50)); // -5%, TP should be < LTV, not equal
 
-    console.log('Waiting for the price to expire...');
-    await sleep(periodSecs);
-    console.log('Done');
     await pushPrice(tpPrice);
 
     console.log('Waiting for the dispatcher bot...');
     await sleep(alarmDispatcherPeriod);
-    await waitLeaseInProgressToBeNull(leaseInstance);
+    await waitLeaseInProgressToBeNull(leaseInstance, true);
 
     const leaseStateAfter = await leaseInstance.getLeaseStatus();
     expect(leaseStateAfter.closed).toBeDefined();
