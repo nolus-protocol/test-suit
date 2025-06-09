@@ -42,19 +42,20 @@ local -r no_price_lease_currency_denom="${10}"
 local -r active_lease_address="${11}"
 local -r oracle_code_id_different_protocol="${12}"
 local -r dex_admin_key="${13}"
-local -r test_transfers="${14}"
-local -r test_oracle="${15}"
-local -r test_staking="${16}"
-local -r test_borrower="${17}"
-local -r test_lender="${18}"
-local -r test_treasury="${19}"
-local -r test_vesting="${20}"
-local -r test_gov="${21}"
-local -r test_admin="${22}"
-local -r test_profit="${23}"
-local -r test_timealarms="${24}"
-local -r test_reserve="${25}"
-local env_file="${26}"
+local -r lease_admin_key="${14}"
+local -r test_transfers="${15}"
+local -r test_oracle="${16}"
+local -r test_staking="${17}"
+local -r test_borrower="${18}"
+local -r test_lender="${19}"
+local -r test_treasury="${20}"
+local -r test_vesting="${21}"
+local -r test_gov="${22}"
+local -r test_admin="${23}"
+local -r test_profit="${24}"
+local -r test_timealarms="${25}"
+local -r test_reserve="${26}"
+local env_file="${27}"
 
 local -r flags="--output json --node $node_url"
 
@@ -76,6 +77,12 @@ local dex_admin_priv_key=""
 if [ -n "$dex_admin_key" ] ; then
   dex_admin_priv_key=$(_exportKey "$dex_admin_key" "$accounts_dir")
 fi
+
+local lease_admin_priv_key=""
+if [ -n "$lease_admin_key" ] ; then
+  lease_admin_priv_key=$(_exportKey "$lease_admin_key" "$accounts_dir")
+fi
+
 
 local -r gov_min_deposit_native=$(run_cmd "$accounts_dir" q gov params $flags | jq -r '.params.min_deposit[0].amount')
 
@@ -139,6 +146,7 @@ USER_2_PRIV_KEY=${user_2_priv_key}
 USER_3_PRIV_KEY=${user_3_priv_key}
 FEEDER_PRIV_KEY=${feeder_priv_key}
 DEX_ADMIN_PRIV_KEY=${dex_admin_priv_key}
+LEASE_ADMIN_PRIV_KEY=${lease_admin_priv_key}
 
 VALIDATOR_1_ADDRESS=${validator_1_address}
 VALIDATOR_2_ADDRESS=${validator_2_address}

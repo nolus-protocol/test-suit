@@ -11,6 +11,7 @@ NO_PRICE_LEASE_CURRENCY_TICKER=""
 NO_PRICE_LEASE_CURRENCY_DENOM=""
 FEEDER_KEY=""
 DEX_ADMIN_KEY=""
+LEASE_ADMIN_KEY=""
 ACTIVE_LEASE_ADDRESS=""
 ENV_FILE=".env"
 
@@ -21,11 +22,12 @@ while [[ $# -gt 0 ]]; do
 
   -h | --help)
     printf \
-    "Usage: %s
+      "Usage: %s
     [--nolus-local-network <nolus_local_url>]
     [--home-dir <nolus_accounts_dir>]
     [--feeder-key <feeder_key_name>]
     [--dex-admin-key <dex_admin_key_name>]
+    [--lease-admin-key <lease_admin_key_name>]
     [--protocol <protocol>]
     [--admin-contract-address <admin_contract_address>]
     [--no-price-currency-ticker <no_price_currency_ticker>]
@@ -33,7 +35,7 @@ while [[ $# -gt 0 ]]; do
     [--no-price-lease-currency-denom <no_price_lease_currency_denom>]
     [--active-lease-address <active_lease_address>]
     [--env-file <env_file_name>]" \
-    "$0"
+      "$0"
     exit 0
     ;;
 
@@ -54,6 +56,11 @@ while [[ $# -gt 0 ]]; do
 
   --dex-admin-key)
     DEX_ADMIN_KEY="$2"
+    shift 2
+    ;;
+
+  --lease-admin-key)
+    LEASE_ADMIN_KEY="$2"
     shift 2
     ;;
 
@@ -104,10 +111,11 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR"/common/verify.sh
 verify_mandatory "$FEEDER_KEY" "feeder key"
 verify_mandatory "$DEX_ADMIN_KEY" "dex-admin key"
+verify_mandatory "$LEASE_ADMIN_KEY" "lease-admin key"
 verify_mandatory "$PROTOCOL" "protocol name"
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NOLUS_LOCAL_NET" "local" "$NOLUS_HOME_DIR" "$MAIN_KEY" \
-"$FEEDER_KEY" "$PROTOCOL" "$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY_TICKER" "$NO_PRICE_LEASE_CURRENCY_TICKER" \
-"$NO_PRICE_LEASE_CURRENCY_DENOM" "$ACTIVE_LEASE_ADDRESS" \
-"" "$DEX_ADMIN_KEY" "" "" "" "" "" "" "" "" "" "" "" "" "$ENV_FILE"
+  "$FEEDER_KEY" "$PROTOCOL" "$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY_TICKER" "$NO_PRICE_LEASE_CURRENCY_TICKER" \
+  "$NO_PRICE_LEASE_CURRENCY_DENOM" "$ACTIVE_LEASE_ADDRESS" \
+  "" "$DEX_ADMIN_KEY" "$LEASE_ADMIN_KEY" "" "" "" "" "" "" "" "" "" "" "" "" "$ENV_FILE"
