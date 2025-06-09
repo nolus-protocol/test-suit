@@ -1,10 +1,15 @@
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
-import { runOrSkip } from '../util/testingRules';
-import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
+import { runOrSkip, runTestIfLocal } from '../util/testingRules';
+import NODE_ENDPOINT, {
+  createWallet,
+  getUser1Wallet,
+  getWallet,
+} from '../util/clients';
 import { customFees } from '../util/utils';
 import { sendSudoContractProposal } from '../util/proposals';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
+import { fromHex } from '@cosmjs/encoding';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Leaser contract tests - Config',
@@ -35,6 +40,30 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(broadcastTx.rawLog).toContain(message);
     }
 
+    async function tryChangeConfig(
+      leaseAdminWallet: NolusWallet,
+      message: string,
+    ) {
+      const updateConfigMsg = {
+        config_leases: leaserConfigMsg.config,
+      };
+
+      await userWithBalanceWallet.transferAmount(
+        leaseAdminWallet.address as string,
+        customFees.configs.amount,
+        customFees.transfer,
+      );
+
+      const broadcastTx = () =>
+        leaseAdminWallet.executeContract(
+          leaserContractAddress,
+          updateConfigMsg,
+          customFees.configs,
+        );
+
+      await expect(broadcastTx).rejects.toThrow(message);
+    }
+
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
       const cosm = await NolusClient.getInstance().getCosmWasmClient();
@@ -55,6 +84,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaserConfigMsg.config.time_alarms = undefined;
       leaserConfigMsg.config.reserve = undefined;
       leaserConfigMsg.config.protocols_registry = undefined;
+      leaserConfigMsg.config.lease_admin = undefined;
     });
 
     afterEach(async () => {
@@ -66,6 +96,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       leaserConfigMsg.config.lease_interest_rate_margin = JSON.parse(
         JSON.stringify(configBefore.config.lease_interest_rate_margin),
       );
+      leaserConfigMsg.config.lease_max_slippages = JSON.parse(
+        JSON.stringify(configBefore.config.lease_max_slippages),
+      );
+
       const configAfter = await leaserInstance.getLeaserConfig();
 
       expect(configAfter).toStrictEqual(configBefore);
@@ -182,5 +216,92 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         `Found a symbol '${invalidTicker}' pretending to be ticker of a currency pertaining to the lpns group`,
       );
     });
+
+    test('try to set "slippage protection percent" outside the limit of min_transaction - should produce an error', async () => {
+      const lowerBound =
+        1000 -
+        1000 /
+          +leaserConfigMsg.config.lease_position_spec.min_transaction.amount;
+      const invalidSlippagePercent = Math.ceil(lowerBound) + 1;
+
+      leaserConfigMsg.config.lease_max_slippages.liquidation =
+        invalidSlippagePercent;
+
+      await trySendPropToSetConfig(
+        'The min output from a dex transaction of the min transaction amount should be positive',
+      );
+    });
+
+    runTestIfLocal(
+      'try to set "slippage protection percent" outside the limit of min_transaction - exec - should produce an error',
+      async () => {
+        const leaseAdminWallet = await getWallet(
+          fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
+        );
+
+        const lowerBound =
+          1000 -
+          1000 /
+            +leaserConfigMsg.config.lease_position_spec.min_transaction.amount;
+        const invalidSlippagePercent = Math.ceil(lowerBound) + 1;
+        leaserConfigMsg.config.lease_max_slippages.liquidation =
+          invalidSlippagePercent;
+
+        await tryChangeConfig(
+          leaseAdminWallet,
+          'The min output from a dex transaction of the min transaction amount should be positive',
+        );
+      },
+    );
+
+    runTestIfLocal(
+      'try to set "min_asset" amount = 0 - exec - should produce an error',
+      async () => {
+        const leaseAdminWallet = await getWallet(
+          fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
+        );
+
+        leaserConfigMsg.config.lease_position_spec.min_asset = {
+          amount: '0',
+          ticker: process.env.LPP_BASE_CURRENCY,
+        };
+
+        await tryChangeConfig(
+          leaseAdminWallet,
+          'Min asset amount should be positive',
+        );
+      },
+    );
+
+    runTestIfLocal(
+      'try to set invalid lease admin address - should produce an error',
+      async () => {
+        const leaseAdminWallet = await getWallet(
+          fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
+        );
+
+        const changeLeaseAdminMsg = {
+          change_lease_admin: {
+            new: 'blabla',
+          },
+        };
+
+        await userWithBalanceWallet.transferAmount(
+          leaseAdminWallet.address as string,
+          customFees.configs.amount,
+          customFees.transfer,
+        );
+        const broadcastTx = () =>
+          leaseAdminWallet.executeContract(
+            leaserContractAddress,
+            changeLeaseAdminMsg,
+            customFees.configs,
+          );
+
+        await expect(broadcastTx).rejects.toThrow(
+          /^.*Address validation failed.*/,
+        );
+      },
+    );
   },
 );

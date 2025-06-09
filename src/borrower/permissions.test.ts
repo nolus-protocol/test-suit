@@ -13,10 +13,15 @@ runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Permissions',
   () => {
     let userWithBalanceWallet: NolusWallet;
+    let leaserInstance: NolusContracts.Leaser;
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
 
     beforeAll(async () => {
       NolusClient.setInstance(NODE_ENDPOINT);
+      const cosm = await NolusClient.getInstance().getCosmWasmClient();
+
+      leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
+
       userWithBalanceWallet = await getUser1Wallet();
     });
 
@@ -186,6 +191,49 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(broadcastTx.rawLog).toContain(
         'The protocol is still in use. There are open leases',
       );
+    });
+
+    test('update config msg should only be exec by the lease admin', async () => {
+      const leaserConfig = (await leaserInstance.getLeaserConfig()).config;
+
+      leaserConfig.lease_max_slippages.liquidation = 500;
+      leaserConfig.lease_code = undefined;
+      leaserConfig.dex = undefined;
+      leaserConfig.lpp = undefined;
+      leaserConfig.market_price_oracle = undefined;
+      leaserConfig.profit = undefined;
+      leaserConfig.time_alarms = undefined;
+      leaserConfig.reserve = undefined;
+      leaserConfig.protocols_registry = undefined;
+      leaserConfig.lease_admin = undefined;
+
+      const updateConfigMsg = {
+        config_leases: leaserConfig,
+      };
+      const broadcastTx = () =>
+        userWithBalanceWallet.executeContract(
+          leaserContractAddress,
+          updateConfigMsg,
+          customFees.configs,
+        );
+
+      await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
+    });
+
+    test('change lease admin msg should only be exec by the current admin', async () => {
+      const changeLeaseAdminMsg = {
+        change_lease_admin: {
+          new: 'adresshere',
+        },
+      };
+
+      const broadcastTx = () =>
+        userWithBalanceWallet.executeContract(
+          leaserContractAddress,
+          changeLeaseAdminMsg,
+          customFees.configs,
+        );
+      await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
     });
   },
 );
