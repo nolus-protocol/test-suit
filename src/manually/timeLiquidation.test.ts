@@ -1,10 +1,5 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import {
-  sleep,
-  undefinedHandler,
-  TONANOSEC,
-  NATIVE_MINIMAL_DENOM,
-} from '../util/utils';
+import { sleep, undefinedHandler, TONANOSEC } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { Lease, LeaseStatus } from '@nolus/nolusjs/build/contracts';
 import { currencyPriceObjToNumbers } from '../util/smart-contracts/calculations';
@@ -15,6 +10,7 @@ import {
   getLeaseObligations,
 } from '../util/smart-contracts/getters';
 import {
+  dispatchAlarms,
   openLease,
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
@@ -23,7 +19,7 @@ import {
 // These tests require the network to be configured with Leaser specific config
 // That`s why, they are only executed locally and in isolation, and only if this requirement is met!
 // Suitable values are :
-// - for the Leaser - {...,"lease_interest_rate_margin":10000000,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"15000","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},...,"lease_due_period":240000000000}
+// - for the Leaser - {...,"lease_max_slippage":{"liquidation":900}, "lease_interest_rate_margin":10000000,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"15000","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},...,"lease_due_period":240000000000}
 // - for the LPP - {...,"min_utilization": 0}
 // - non-working dispatcher
 // - working feeder
@@ -75,18 +71,9 @@ describe.skip('Lease - Time Liquidation tests', () => {
       stateAfterDuePeriod.amount.amount,
     );
 
-    await dispatchAlarms();
+    await dispatchAlarms(timealarmsContractAddress);
 
-    const intervalId = setInterval(async () => {
-      try {
-        await dispatchAlarms();
-      } catch (error) {
-        console.error(error);
-      }
-    }, 7000);
-
-    await waitLeaseInProgressToBeNull(leaseInstance);
-    clearInterval(intervalId);
+    await waitLeaseInProgressToBeNull(leaseInstance, true);
 
     const leaseCurrencyPriceObj =
       await oracleInstance.getBasePrice(leaseCurrency);
@@ -122,25 +109,6 @@ describe.skip('Lease - Time Liquidation tests', () => {
         +stateAfterDuePeriod.amount.amount - interestToLeaseCurrency,
       );
     }
-  }
-
-  async function dispatchAlarms() {
-    const dispatchAlarmMsg = { dispatch_alarms: { max_count: 32000000 } };
-
-    await userWithBalanceWallet.execute(
-      userWithBalanceWallet.address as string,
-      timealarmsContractAddress,
-      dispatchAlarmMsg,
-      {
-        gas: '200000000',
-        amount: [
-          {
-            amount: '200000000',
-            denom: NATIVE_MINIMAL_DENOM,
-          },
-        ],
-      },
-    );
   }
 
   beforeAll(async () => {
