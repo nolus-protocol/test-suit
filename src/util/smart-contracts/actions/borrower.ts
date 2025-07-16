@@ -233,19 +233,7 @@ export async function closeLease(
   expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
 
   const leaseStateAfterRepay = await leaseInstance.getLeaseStatus();
-  expect(leaseStateAfterRepay.paid).toBeDefined();
-
-  await sendInitExecuteFeeTokens(
-    userWithBalanceWallet,
-    borrowerWallet.address as string,
-  );
-
-  await leaseInstance.closeLease(borrowerWallet, customFees.exec);
-
-  expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
-
-  const leaseStateAfterClose = await leaseInstance.getLeaseStatus();
-  expect(leaseStateAfterClose.closed).toBeDefined();
+  expect(leaseStateAfterRepay.closed).toBeDefined();
 
   const leaseCurrencyToIBC = await currencyTicker_To_IBC(
     currentLeaseState.amount.ticker as string,

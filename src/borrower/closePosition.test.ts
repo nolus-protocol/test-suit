@@ -483,15 +483,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseStateAfterPartialClose = await leaseInstance.getLeaseStatus();
 
-      expect(leaseStateAfterPartialClose.paid).toBeDefined();
-
-      await sendInitExecuteFeeTokens(
-        userWithBalanceWallet,
-        borrowerWallet.address as string,
-      );
-
-      await leaseInstance.closeLease(borrowerWallet, customFees.exec);
-      expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
+      expect(leaseStateAfterPartialClose.closed).toBeDefined();
 
       const borrowerBalanceAfterLC = await borrowerWallet.getBalance(
         borrowerWallet.address as string,

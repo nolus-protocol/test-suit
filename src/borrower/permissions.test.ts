@@ -117,7 +117,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await expect(broadcastTx).rejects.toThrow(/^.*No such contract.*/);
     });
 
-    test('close protocol msg should be exec only if there are no leases or the force flag says so', async () => {
+    test('close protocol msg should be exec only if there are no leases', async () => {
       const leases = await userWithBalanceWallet.getContracts(
         +(process.env.LEASE_CODE_ID as string),
       );
@@ -157,10 +157,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
       }
 
-      const forceInvalidValue = 'value';
       const closeProtocolMsg = {
         close_protocol: {
-          new_lease_code_id: '1',
           migration_spec: {
             leaser: { code_id: '1', migrate_message: '{}' },
             lpp: { code_id: '1', migrate_message: '{}' },
@@ -168,21 +166,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
             profit: { code_id: '1', migrate_message: '{}' },
             reserve: { code_id: '1', migrate_message: '{}' },
           },
-          force: forceInvalidValue,
         },
       };
 
-      let broadcastTx = await sendSudoContractProposal(
-        userWithBalanceWallet,
-        leaserContractAddress,
-        JSON.stringify(closeProtocolMsg),
-      );
-
-      expect(broadcastTx.rawLog).toContain('unknown variant');
-
-      closeProtocolMsg.close_protocol.force = 'no';
-
-      broadcastTx = await sendSudoContractProposal(
+      const broadcastTx = await sendSudoContractProposal(
         userWithBalanceWallet,
         leaserContractAddress,
         JSON.stringify(closeProtocolMsg),

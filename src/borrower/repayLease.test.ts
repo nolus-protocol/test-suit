@@ -484,6 +484,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
+      const borrowerBalanceBeforeClose = await borrowerWallet.getBalance(
+        borrowerWallet.address as string,
+        lppCurrencyToIBC,
+      );
+
       await leaseInstance.repayLease(borrowerWallet, customFees.exec, [
         repayWithExcess,
       ]);
@@ -503,7 +508,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const exactExcess = getChangeFromRepayTx(repayTxResponse);
 
       const stateBeforeClose = await leaseInstance.getLeaseStatus();
-      expect(stateBeforeClose.paid).toBeDefined();
+      expect(stateBeforeClose.closed).toBeDefined();
 
       await userWithBalanceWallet.transferAmount(
         borrowerWallet.address as string,
@@ -523,24 +528,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await expect(result).rejects.toThrow(
         /^.*The operation 'repay' is not supported in the current state.*/,
       );
-
-      // close lease
-      const borrowerBalanceBeforeClose = await borrowerWallet.getBalance(
-        borrowerWallet.address as string,
-        lppCurrencyToIBC,
-      );
-
-      await sendInitExecuteFeeTokens(
-        userWithBalanceWallet,
-        borrowerWallet.address as string,
-      );
-
-      await leaseInstance.closeLease(borrowerWallet, customFees.exec);
-
-      await waitLeaseInProgressToBeNull(leaseInstance);
-
-      const leaseStateAfterClose = await leaseInstance.getLeaseStatus();
-      expect(leaseStateAfterClose.closed).toBeDefined();
 
       const borrowerBalanceAfterClose = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
