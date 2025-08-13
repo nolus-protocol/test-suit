@@ -17,7 +17,7 @@ runOrSkip(process.env.TEST_RESERVE as string)(
 
     test('instantiate msg should only be exec via proposal', async () => {
       const instantiateContractMsg = {
-        lease_code_admin: process.env.LEASER_ADDRESS,
+        protocol_admin: process.env.LEASER_ADDRESS,
         lease_code_id: process.env.LEASE_CODE_ID,
       };
 
