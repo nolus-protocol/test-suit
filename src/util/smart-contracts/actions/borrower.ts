@@ -110,7 +110,7 @@ export async function waitLeaseInProgressToBeNull(
     const fullState = await leaseInstance.getLeaseStatus();
     if (
       typeof fullState.opened?.status === 'string' ||
-      fullState.paid?.in_progress === null ||
+      fullState.closing?.in_progress === null ||
       fullState.closed ||
       fullState.liquidated
     ) {
@@ -118,7 +118,7 @@ export async function waitLeaseInProgressToBeNull(
       return undefined;
     }
     newState = JSON.stringify(
-      fullState.opened?.status || fullState.paid?.in_progress,
+      fullState.opened?.status || fullState.closing?.in_progress,
     );
     console.log('Lease is in progress: ', newState);
     timeout--;
