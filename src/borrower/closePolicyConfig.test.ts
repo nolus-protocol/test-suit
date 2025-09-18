@@ -178,7 +178,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      let TP = currentLTV + 100; // + 10%
+      const TP = currentLTV + 10; // + 10%
+
       await changeClosePolicyInvalidCases(
         borrowerWallet,
         `The current lease LTV '${currentLTV / PERMILLE_TO_PERCENT}%' would trigger 'take profit below ${TP / PERMILLE_TO_PERCENT}%'!`,
@@ -187,8 +188,36 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
+    test('try to set TP > max LTV - should produce an error', async () => {
+      const maxLTV = (await leaserInstance.getLeaserConfig()).config
+        .lease_position_spec.liability.max;
+
+      const TP = maxLTV + 10;
+
+      await changeClosePolicyInvalidCases(
+        borrowerWallet,
+        `The new strategy 'take profit below ${TP / PERMILLE_TO_PERCENT}%' is not less than the max lease liability LTV '${maxLTV / PERMILLE_TO_PERCENT}%'!`,
+        null,
+        TP,
+      );
+    });
+
+    test('try to set SL > max LTV - should produce an error', async () => {
+      const maxLTV = (await leaserInstance.getLeaserConfig()).config
+        .lease_position_spec.liability.max;
+
+      const SL = maxLTV + 10;
+
+      await changeClosePolicyInvalidCases(
+        borrowerWallet,
+        `The new strategy 'stop loss above or equal to ${SL / PERMILLE_TO_PERCENT}%' is not less than the max lease liability LTV '${maxLTV / PERMILLE_TO_PERCENT}%'!`,
+        SL,
+        null,
+      );
+    });
+
     test('try to set TP = 0 - should produce an error', async () => {
-      let TP = 0;
+      const TP = 0;
       await changeClosePolicyInvalidCases(
         borrowerWallet,
         `The close policy 'take profit' should not be zero!`,
@@ -204,8 +233,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         return;
       }
 
-      const validTP = currentLTV - 100; // - 20%
-      const validSL = currentLTV + 100; // + 20%
+      const validTP = currentLTV - 10; // - 20%
+      const validSL = currentLTV + 10; // + 20%
 
       await changeClosePolicy(borrowerWallet, validSL, validTP);
 
