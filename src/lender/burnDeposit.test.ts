@@ -122,7 +122,7 @@ maybe('Lender tests - Deposit burn', () => {
     expect(lenderRewardsBeforeFirstBurn.rewards.amount).not.toBe('0');
 
     const burnAmount = Math.ceil(
-      +lenderDepositBeforeFirstBurn.balance / 2,
+      +lenderDepositBeforeFirstBurn.amount / 2,
     ).toString();
 
     const priceBeforeBurn = await lppInstance.getPrice();
@@ -152,8 +152,8 @@ maybe('Lender tests - Deposit burn', () => {
       lenderWallet.address as string,
     );
 
-    expect(BigInt(lenderDepositAfterFirstBurn.balance)).toBe(
-      BigInt(lenderDepositBeforeFirstBurn.balance) - BigInt(burnAmount),
+    expect(BigInt(lenderDepositAfterFirstBurn.amount)).toBe(
+      BigInt(lenderDepositBeforeFirstBurn.amount) - BigInt(burnAmount),
     );
 
     expect(BigInt(lenderBalanceAfterFirstBurn.amount)).toBe(
@@ -177,7 +177,7 @@ maybe('Lender tests - Deposit burn', () => {
 
     await lppInstance.burnDeposit(
       lenderWallet,
-      lenderDepositAfterFirstBurn.balance,
+      lenderDepositAfterFirstBurn.amount,
       customFees.exec,
     );
 
@@ -201,12 +201,12 @@ maybe('Lender tests - Deposit burn', () => {
       /^.*The deposit does not exist.*/,
     );
 
-    expect(lenderDepositAfterSecondBurn.balance).toBe('0');
+    expect(lenderDepositAfterSecondBurn.amount).toBe('0');
 
     expect(BigInt(lenderBalanceAfterSecondBurn.amount)).toBe(
       BigInt(lenderBalanceAfterFirstBurn.amount) +
         NLPNS_To_LPNS(
-          +lenderDepositAfterFirstBurn.balance,
+          +lenderDepositAfterFirstBurn.amount,
           priceBeforeSecondBurn,
         ),
     );
@@ -247,7 +247,7 @@ maybe('Lender tests - Deposit burn', () => {
 
     await testDepositBurnInvalidCases(
       lenderWallet,
-      (BigInt(lenderDeposit.balance) + BigInt(1)).toString(),
+      (BigInt(lenderDeposit.amount) + BigInt(1)).toString(),
       'Insufficient balance',
     );
   });

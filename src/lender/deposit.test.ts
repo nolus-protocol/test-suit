@@ -118,7 +118,7 @@ maybe('Lender tests - Make a deposit', () => {
 
     await lppInstance.burnDeposit(
       lenderWallet,
-      lenderDepositAfter.balance,
+      lenderDepositAfter.amount,
       customFees.exec,
     );
 
@@ -277,9 +277,9 @@ maybe('Lender tests - Make a deposit', () => {
     );
 
     verifyLenderNLPNBalance(
-      BigInt(lenderDepositAfter.balance),
+      BigInt(lenderDepositAfter.amount),
       +deposit,
-      BigInt(lenderDepositBefore.balance),
+      BigInt(lenderDepositBefore.amount),
       priceImmediatlyBeforeDeposit,
       customPriceAfterDeposit,
     );

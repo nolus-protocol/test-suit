@@ -111,8 +111,8 @@ maybe('Lender tests - Claim rewards', () => {
       lenderWallet.address as string,
     );
 
-    expect(BigInt(lenderDepositAfter.balance)).toBeGreaterThan(
-      BigInt(lenderDepositBefore.balance),
+    expect(BigInt(lenderDepositAfter.amount)).toBeGreaterThan(
+      BigInt(lenderDepositBefore.amount),
     );
   });
 
@@ -154,7 +154,7 @@ maybe('Lender tests - Claim rewards', () => {
 
     const calcLenderRewards = Math.trunc(
       (+rewards.amount / +lppBalance.balance_nlpn.amount) *
-        +lenderDeposit.balance,
+        +lenderDeposit.amount,
     );
 
     expect(+lenderRewards.rewards.amount).toBe(calcLenderRewards);
