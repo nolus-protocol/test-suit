@@ -11,16 +11,18 @@ export const GASPRICE = 0.0025;
 
 export const GAS_LIMIT = '100000000';
 export const MIN_DEPOSIT_AMOUNT = process.env.GOV_MIN_DEPOSIT_NATIVE as string;
-export const VALIDATOR_PART = +(process.env.VALIDATOR_FEE_PART as string) / 100; // %
+const rawValidatorPart = Number(process.env.VALIDATOR_FEE_PART);
+export const VALIDATOR_PART = rawValidatorPart > 0 ? rawValidatorPart / 100 : 0;
 
 export const BORROWER_ATTEMPTS_TIMEOUT = 300;
 
+export const fee_divisor = VALIDATOR_PART === 0 ? 1 : VALIDATOR_PART;
 export const customFees = {
   exec: {
-    gas: '1000000',
+    gas: '1300000',
     amount: [
       {
-        amount: Math.floor((1000000 * GASPRICE) / VALIDATOR_PART).toString(),
+        amount: Math.floor((1300000 * GASPRICE) / fee_divisor).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],
@@ -29,7 +31,7 @@ export const customFees = {
     gas: '200000',
     amount: [
       {
-        amount: Math.floor((200000 * GASPRICE) / VALIDATOR_PART).toString(),
+        amount: Math.floor((200000 * GASPRICE) / fee_divisor).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],
@@ -38,7 +40,7 @@ export const customFees = {
     gas: '500000',
     amount: [
       {
-        amount: Math.floor((500000 * GASPRICE) / VALIDATOR_PART).toString(),
+        amount: Math.floor((500000 * GASPRICE) / fee_divisor).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],

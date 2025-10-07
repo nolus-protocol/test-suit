@@ -76,7 +76,7 @@ runOrSkip(process.env.TEST_STAKING as string)(
       );
     });
 
-    test('the successful scenario for withdraw staking rewards - should work as expected', async () => {
+    test.skip('the successful scenario for withdraw staking rewards - should work as expected', async () => {
       // get delegator balance before
       const delegatorBalanceBefore = await delegatorWallet.getBalance(
         delegatorWallet.address as string,

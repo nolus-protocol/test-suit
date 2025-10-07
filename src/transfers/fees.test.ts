@@ -7,6 +7,7 @@ import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import NODE_ENDPOINT, { getUser1Wallet, getUser2Wallet } from '../util/clients';
 import {
   customFees,
+  fee_divisor,
   GASPRICE,
   NATIVE_MINIMAL_DENOM,
   VALIDATOR_PART,
@@ -46,7 +47,7 @@ describe('Fee tests', () => {
       gas: '200000',
       amount: [
         {
-          amount: Math.floor((200000 * GASPRICE) / VALIDATOR_PART).toString(),
+          amount: Math.floor((200000 * GASPRICE) / fee_divisor).toString(),
           denom: '',
         },
       ],

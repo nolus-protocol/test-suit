@@ -22,7 +22,7 @@ import {
   MIN_DEPOSIT_AMOUNT,
   NATIVE_MINIMAL_DENOM,
   undefinedHandler,
-  VALIDATOR_PART,
+  fee_divisor,
 } from '../util/utils';
 import { getProposal } from '../util/proposals';
 import { runOrSkip } from '../util/testingRules';
@@ -31,7 +31,7 @@ import { MsgSubmitPropWValidation } from '../util/codec/cosmos/msgSubmitPropWVal
 
 runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
   let wallet: NolusWallet;
-  let fee = customFees.exec;
+  let fee = customFees.configs;
   let msg: any;
   const authority = process.env.GOV_MODULE_ADDRESS as string;
   const msgSubmitPropWValidationUrl = '/cosmos.gov.v1.MsgSubmitPropWValidation';
@@ -169,7 +169,7 @@ runOrSkip(process.env.TEST_GOV as string)('Proposal submission tests', () => {
       gas: gas,
       amount: [
         {
-          amount: Math.floor((+gas * GASPRICE) / VALIDATOR_PART).toString(),
+          amount: Math.floor((+gas * GASPRICE) / fee_divisor).toString(),
           denom: NATIVE_MINIMAL_DENOM,
         },
       ],
