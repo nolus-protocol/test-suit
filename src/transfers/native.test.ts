@@ -9,10 +9,25 @@ import NODE_ENDPOINT, {
   getUser2Wallet,
   getUser3Wallet,
 } from '../util/clients';
-import { customFees, GASPRICE, NATIVE_MINIMAL_DENOM } from '../util/utils';
-import { NolusWallet, NolusClient } from '@nolus/nolusjs';
+import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
+import { NolusWallet, NolusClient, ChainConstants } from '@nolus/nolusjs';
 import { calcFeeProfit, sendInitTransferFeeTokens } from '../util/transfer';
 import { ifLocal, runOrSkip } from '../util/testingRules';
+import { HDNodeWallet, Wallet } from 'ethers';
+import { Buffer } from 'buffer';
+import * as bech32 from 'bech32';
+import { sha256, ripemd160 } from '@cosmjs/crypto';
+import {
+  AuthInfo,
+  Fee,
+  ModeInfo,
+  SignerInfo,
+  TxBody,
+  TxRaw,
+} from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import { MsgSend } from 'cosmjs-types/cosmos/bank/v1beta1/tx';
+import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing';
+import { PubKey } from 'cosmjs-types/cosmos/crypto/secp256k1/keys';
 
 runOrSkip(process.env.TEST_TRANSFER as string)(
   'Transfers - Native transfer',
@@ -50,6 +65,146 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
         amount: transferAmount.toString(),
       };
     });
+
+    function buildExactSignDoc(
+      accountNumber: bigint | number,
+      sequence: bigint | number,
+      fromAddress: string,
+      toAddress: string,
+      sendAmount: string,
+      feeAmount: string,
+      gas: string,
+      memo: string,
+      chainId: string,
+    ) {
+      return {
+        account_number: accountNumber.toString(),
+        chain_id: chainId,
+        fee: {
+          amount: [
+            {
+              amount: feeAmount,
+              denom: NATIVE_MINIMAL_DENOM,
+            },
+          ],
+          gas: gas,
+        },
+        memo: memo,
+        msgs: [
+          {
+            type: 'cosmos-sdk/MsgSend',
+            value: {
+              amount: [
+                {
+                  amount: sendAmount,
+                  denom: NATIVE_MINIMAL_DENOM,
+                },
+              ],
+              from_address: fromAddress,
+              to_address: toAddress,
+            },
+          },
+        ],
+        sequence: sequence.toString(),
+      };
+    }
+
+    function deriveNolusFromEthCompressedPubkey(compressed: Uint8Array) {
+      const sha = sha256(compressed);
+      const rip = ripemd160(sha);
+
+      return bech32.encode(
+        ChainConstants.BECH32_PREFIX_ACC_ADDR,
+        bech32.toWords(rip),
+      );
+    }
+
+    async function fetchAccountInfo(address: string) {
+      const account = await user1Wallet.getAccount(address);
+      if (!account) return { accountNumber: 0, sequence: 0 };
+
+      return {
+        accountNumber: account.accountNumber,
+        sequence: account.sequence,
+      };
+    }
+
+    function getCompressedPubkeyFromEth(wallet: HDNodeWallet): Uint8Array {
+      const fullUncompressed = wallet.signingKey.publicKey; // 0x04 + X32 + Y32
+      const uncompressedBytes = Buffer.from(fullUncompressed.slice(2), 'hex');
+      const x = uncompressedBytes.subarray(1, 33);
+      const y = uncompressedBytes.subarray(33);
+      const compressed = new Uint8Array(33);
+      compressed[0] = y[y.length - 1] % 2 ? 0x03 : 0x02;
+      compressed.set(x, 1);
+
+      return compressed;
+    }
+
+    async function signWithEip191Async(
+      ethWallet: HDNodeWallet,
+      signDoc: unknown,
+    ) {
+      const signBytes = Buffer.from(JSON.stringify(signDoc, null, 4), 'utf8');
+      const sigHex = await ethWallet.signMessage(signBytes);
+      const sigBuf = Buffer.from(sigHex.slice(2), 'hex');
+
+      return sigBuf.subarray(0, 64); // r||s
+    }
+
+    function buildTxBytesEip191(
+      fromAddress: string,
+      toAddress: string,
+      sendAmount: string,
+      feeAmount: string,
+      gas: string,
+      memo: string,
+      compressedPubkey: Uint8Array,
+      sequence: bigint | number,
+    ) {
+      const msgSend = MsgSend.fromPartial({
+        fromAddress,
+        toAddress,
+        amount: [{ denom: NATIVE_MINIMAL_DENOM, amount: sendAmount }],
+      });
+
+      const txBodyBytes = TxBody.encode(
+        TxBody.fromPartial({
+          messages: [
+            {
+              typeUrl: '/cosmos.bank.v1beta1.MsgSend',
+              value: MsgSend.encode(msgSend).finish(),
+            },
+          ],
+          memo: memo,
+        }),
+      ).finish();
+
+      const pubkeyAny = {
+        typeUrl: '/cosmos.crypto.secp256k1.PubKey',
+        value: PubKey.encode({ key: compressedPubkey }).finish(),
+      };
+
+      const authInfoBytes = AuthInfo.encode(
+        AuthInfo.fromPartial({
+          signerInfos: [
+            SignerInfo.fromPartial({
+              publicKey: pubkeyAny,
+              modeInfo: ModeInfo.fromPartial({
+                single: { mode: SignMode.SIGN_MODE_EIP_191 },
+              }),
+              sequence: BigInt(sequence),
+            }),
+          ],
+          fee: Fee.fromPartial({
+            amount: [{ denom: NATIVE_MINIMAL_DENOM, amount: feeAmount }],
+            gasLimit: BigInt(gas),
+          }),
+        }),
+      ).finish();
+
+      return { txBodyBytes, authInfoBytes };
+    }
 
     test('account should have some balance', async () => {
       const balance = await user1Wallet.getBalance(
@@ -296,6 +451,79 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
 
       expect(BigInt(nextUser2Balance.amount)).toBe(
         BigInt(previousUser2Balance.amount),
+      );
+    });
+
+    test('send tx using EIP-191 signer', async () => {
+      const ethWallet = Wallet.createRandom();
+
+      const compressed = getCompressedPubkeyFromEth(ethWallet);
+
+      const signerAddress = deriveNolusFromEthCompressedPubkey(compressed);
+
+      await user1Wallet.transferAmount(
+        signerAddress,
+        [transfer3],
+        customFees.transfer,
+      );
+      await sendInitTransferFeeTokens(user1Wallet, signerAddress);
+
+      const fromAddress = signerAddress; // EIP-191 signer address
+      const toAddress = (await getUser1Wallet()).address as string; // recipient
+      const sendAmount = transfer3.amount;
+      const memo = 'EIP-191';
+
+      const { accountNumber, sequence } = await fetchAccountInfo(fromAddress);
+
+      const feeAmount = customFees.transfer.amount[0].amount;
+      const gas = String(customFees.transfer.gas);
+
+      const signDoc = buildExactSignDoc(
+        accountNumber,
+        sequence,
+        fromAddress,
+        toAddress,
+        sendAmount,
+        feeAmount,
+        gas,
+        memo,
+        process.env.CHAIN_ID as string,
+      );
+      const sigBytes = await signWithEip191Async(ethWallet, signDoc);
+
+      const { txBodyBytes, authInfoBytes } = buildTxBytesEip191(
+        fromAddress,
+        toAddress,
+        sendAmount,
+        feeAmount,
+        gas,
+        memo,
+        compressed,
+        sequence,
+      );
+
+      const txRaw = TxRaw.fromPartial({
+        bodyBytes: txBodyBytes,
+        authInfoBytes,
+        signatures: [sigBytes],
+      });
+
+      const user1BalanceBefore = await user1Wallet.getBalance(
+        user1Wallet.address as string,
+        NATIVE_MINIMAL_DENOM,
+      );
+
+      const txBytes = TxRaw.encode(txRaw).finish();
+      const res = await user1Wallet.broadcastTx(txBytes);
+      expect(res.code).toBe(0);
+
+      const user1BalanceAfter = await user1Wallet.getBalance(
+        user1Wallet.address as string,
+        NATIVE_MINIMAL_DENOM,
+      );
+
+      expect(BigInt(user1BalanceAfter.amount)).toBe(
+        BigInt(user1BalanceBefore.amount) + BigInt(sendAmount),
       );
     });
   },

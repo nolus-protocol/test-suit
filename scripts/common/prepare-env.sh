@@ -83,6 +83,7 @@ if [ -n "$lease_admin_key" ] ; then
   lease_admin_priv_key=$(_exportKey "$lease_admin_key" "$accounts_dir")
 fi
 
+local -r chain_id=$(run_cmd "$accounts_dir" status $flags | jq -r '.node_info.network')
 
 local -r gov_min_deposit_native=$(run_cmd "$accounts_dir" q gov params $flags | jq -r '.params.min_deposit[0].amount')
 
@@ -140,6 +141,7 @@ fi
 DOT_ENV=$(cat <<-EOF
 NODE_URL=${node_url}
 ENV=${node_env}
+CHAIN_ID=${chain_id}
 
 USER_1_PRIV_KEY=${user_1_priv_key}
 USER_2_PRIV_KEY=${user_2_priv_key}
