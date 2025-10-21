@@ -42,7 +42,7 @@ TEST_PROFIT="true"
 TEST_TIMEALARMS="true"
 TEST_RESERVE="true"
 
-ADMIN_CONTRACT_ADDRESS="nolus17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsmc5xhq"
+ADMIN_CONTRACT_ADDRESS="nolus150ggq0zu22wf7jwehces77j9m7zxarnkd0v0j60cwancqh5cke8sx7x6p7"
 
 ENV_FILE=".env"
 
