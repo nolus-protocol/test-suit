@@ -1,10 +1,15 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { sleep, undefinedHandler, TONANOSEC } from '../util/utils';
+import { sleep, undefinedHandler, TONANOSEC, customFees } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
+import { fromHex } from '@cosmjs/encoding';
 import { Lease, LeaseStatus } from '@nolus/nolusjs/build/contracts';
 import { currencyPriceObjToNumbers } from '../util/smart-contracts/calculations';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
-import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
+import NODE_ENDPOINT, {
+  createWallet,
+  getUser1Wallet,
+  getWallet,
+} from '../util/clients';
 import {
   getLeaseGroupCurrencies,
   getLeaseObligations,
@@ -15,12 +20,10 @@ import {
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
+import { applyLeaserConfig } from '../util/manualTestHelpers';
 
-// These tests require the network to be configured with Leaser specific config
-// That`s why, they are only executed locally and in isolation, and only if this requirement is met!
-// Suitable values are :
-// - for the Leaser - {...,"lease_max_slippage":{"liquidation":900}, "lease_interest_rate_margin":10000000,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":800,"recalc_time":7200000000000},"min_asset":{"amount":"15000","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},...,"lease_due_period":240000000000}
-// - for the LPP - {...,"min_utilization": 0}
+// These tests require the network to be specifically configured
+// That`s why, they are only executed locally and in isolation, and only if this requirement is met:
 // - non-working dispatcher
 // - working feeder
 
@@ -28,10 +31,12 @@ describe.skip('Lease - Time Liquidation tests', () => {
   let cosm: CosmWasmClient;
   let borrowerWallet: NolusWallet;
   let userWithBalanceWallet: NolusWallet;
+  let adminWallet: NolusWallet;
   let leaserInstance: NolusContracts.Leaser;
   let oracleInstance: NolusContracts.Oracle;
   let lppInstance: NolusContracts.Lpp;
   let leaserConfig: NolusContracts.LeaserConfigInfo;
+  let originalLeaserConfig: NolusContracts.LeaserConfigInfo;
   let leaseCurrency: string;
   let downpaymentCurrency: string;
   let duePeriod: number;
@@ -41,6 +46,29 @@ describe.skip('Lease - Time Liquidation tests', () => {
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
   const timealarmsContractAddress = process.env.TIMEALARMS_ADDRESS as string;
+
+  async function updateLeaserConfigForTest() {
+    const leaserCfgMsg = await leaserInstance.getLeaserConfig();
+
+    leaserCfgMsg.config.lease_max_slippages.liquidation = 900;
+    leaserCfgMsg.config.lease_interest_rate_margin = 10000000;
+    leaserCfgMsg.config.lease_position_spec.liability.initial = 650;
+    leaserCfgMsg.config.lease_position_spec.liability.healthy = 700;
+    leaserCfgMsg.config.lease_position_spec.liability.first_liq_warn = 720;
+    leaserCfgMsg.config.lease_position_spec.liability.second_liq_warn = 750;
+    leaserCfgMsg.config.lease_position_spec.liability.third_liq_warn = 780;
+    leaserCfgMsg.config.lease_position_spec.liability.max = 800;
+    leaserCfgMsg.config.lease_position_spec.liability.recalc_time = 7200000000000;
+    leaserCfgMsg.config.lease_due_period = Number(240000000000);
+
+    await applyLeaserConfig(
+      leaserInstance,
+      leaserContractAddress,
+      userWithBalanceWallet,
+      adminWallet,
+      leaserCfgMsg.config,
+    );
+  }
 
   async function timeLiquidationCheck(
     leaseInstance: Lease,
@@ -121,6 +149,12 @@ describe.skip('Lease - Time Liquidation tests', () => {
 
     borrowerWallet = await createWallet();
     userWithBalanceWallet = await getUser1Wallet();
+    adminWallet = await getWallet(
+      fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
+    );
+
+    originalLeaserConfig = (await leaserInstance.getLeaserConfig()).config;
+    await updateLeaserConfigForTest();
 
     leaserConfig = (await leaserInstance.getLeaserConfig()).config;
     duePeriod = +leaserConfig.lease_due_period.toString() / TONANOSEC;
@@ -129,8 +163,18 @@ describe.skip('Lease - Time Liquidation tests', () => {
     leaseCurrency = (await getLeaseGroupCurrencies(oracleInstance))[0];
   });
 
+  afterAll(async () => {
+    await applyLeaserConfig(
+      leaserInstance,
+      leaserContractAddress,
+      userWithBalanceWallet,
+      adminWallet,
+      originalLeaserConfig,
+    );
+  });
+
   test('partial liquidation due to expiry of due_period - should work as expected', async () => {
-    const downpayment = '1000000';
+    const downpayment = '100000';
 
     const leaseAddress = await openLease(
       leaserInstance,
@@ -140,6 +184,9 @@ describe.skip('Lease - Time Liquidation tests', () => {
       leaseCurrency,
       borrowerWallet,
     );
+
+    console.log('Lease address: ', leaseAddress);
+
     const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
     expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
 

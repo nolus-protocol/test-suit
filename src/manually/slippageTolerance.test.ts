@@ -21,11 +21,11 @@ import {
 } from '../util/smart-contracts/calculations';
 import { Lease } from '@nolus/nolusjs/build/contracts';
 import { fromHex } from '@cosmjs/encoding';
+import { applyLeaserConfig } from '../util/manualTestHelpers';
 
 // These tests require the network to be specifically configured
 // That`s why, they only work locally and in isolation, and only if this requirement is met!
 // Suitable values are (Osmosis protocol):
-// - for the Leaser - {..., "lease_max_slippage":{"liquidation":10}, "lease_interest_rate_margin":1000000,"lease_position_spec":{"liability":{"initial":650,"healthy":700,"first_liq_warn":720,"second_liq_warn":750,"third_liq_warn":780,"max":900,"recalc_time":7200000000000},"min_asset":{"amount":"15000","ticker":"<lpn>"},"min_transaction":{"amount":"1000","ticker":"<lpn>"}},...,"lease_due_period":300000000000}
 // - for the Oracle  config - {"config":{....,"price_config":{"min_feeders":500,"sample_period_secs":230,"samples_number":1,"discount_factor":750}},....}
 // - for the LPP - {...,"min_utilization":0}
 // - non-working dispatcher bot
@@ -45,6 +45,7 @@ describe.skip('Lease - Slippage tolerance tests', () => {
   let feederWallet: NolusWallet;
   let adminWallet: NolusWallet;
   let leaserConfig: NolusContracts.LeaserConfig;
+  let originalLeaserConfig: NolusContracts.LeaserConfigInfo;
   let lpnCurrency: string;
   let downpaymentCurrency: string;
   let leaseAddress: string;
@@ -60,9 +61,66 @@ describe.skip('Lease - Slippage tolerance tests', () => {
   const reserveContractAddress = process.env.RESERVE_ADDRESS as string;
 
   const alarmDispatcherPeriod = 120; // DispatcherBot:poll_period_seconds + 5
-  const leaseCurrency = 'NTRN';
-  const validPriceLCtoLPN = 0.284;
+  const leaseCurrency = 'OSMO';
+  const validPriceLCtoLPN = 0.1756;
   const downpayment = '500000';
+
+  async function applyConfig(slippage: number): Promise<void> {
+    const leaserCfgMsg = await leaserInstance.getLeaserConfig();
+    leaserCfgMsg.config.lease_max_slippages.liquidation = slippage;
+    const config = leaserCfgMsg.config;
+
+    await applyLeaserConfig(
+      leaserInstance,
+      leaserContractAddress,
+      userWithBalanceWallet,
+      adminWallet,
+      config,
+    );
+  }
+
+  async function updateLeaserConfigForTest() {
+    const leaserCfgMsg = await leaserInstance.getLeaserConfig();
+    leaserCfgMsg.config.lease_max_slippages.liquidation = 10;
+    leaserCfgMsg.config.lease_interest_rate_margin = 1000000;
+    leaserCfgMsg.config.lease_position_spec.liability.initial = 650;
+    leaserCfgMsg.config.lease_position_spec.liability.healthy = 700;
+    leaserCfgMsg.config.lease_position_spec.liability.first_liq_warn = 720;
+    leaserCfgMsg.config.lease_position_spec.liability.second_liq_warn = 750;
+    leaserCfgMsg.config.lease_position_spec.liability.third_liq_warn = 780;
+    leaserCfgMsg.config.lease_position_spec.liability.max = 900;
+    {
+      const current =
+        leaserCfgMsg.config.lease_position_spec.liability.recalc_time;
+      const desired = '7200000000000'; // ns
+      leaserCfgMsg.config.lease_position_spec.liability.recalc_time = (
+        typeof current === 'bigint' ? BigInt(desired) : Number(desired)
+      ) as typeof current;
+    }
+    leaserCfgMsg.config.lease_position_spec.min_asset = {
+      amount: '15000',
+      ticker: process.env.LPP_BASE_CURRENCY as string,
+    };
+    leaserCfgMsg.config.lease_position_spec.min_transaction = {
+      amount: '1000',
+      ticker: process.env.LPP_BASE_CURRENCY as string,
+    };
+    {
+      const current = leaserCfgMsg.config.lease_due_period;
+      const desired = '300000000000'; // ns
+      leaserCfgMsg.config.lease_due_period = (
+        typeof current === 'bigint' ? BigInt(desired) : Number(desired)
+      ) as typeof current;
+    }
+
+    await applyLeaserConfig(
+      leaserInstance,
+      leaserContractAddress,
+      userWithBalanceWallet,
+      adminWallet,
+      leaserCfgMsg.config,
+    );
+  }
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
@@ -78,7 +136,9 @@ describe.skip('Lease - Slippage tolerance tests', () => {
     adminWallet = await getWallet(
       fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
     );
-    console.log('Admin: ', adminWallet.address);
+
+    originalLeaserConfig = (await leaserInstance.getLeaserConfig()).config;
+    await updateLeaserConfigForTest();
 
     leaserConfig = await leaserInstance.getLeaserConfig();
     duePeriod = +leaserConfig.config.lease_due_period.toString() / TONANOSEC;
@@ -127,6 +187,16 @@ describe.skip('Lease - Slippage tolerance tests', () => {
     );
   });
 
+  afterAll(async () => {
+    await applyLeaserConfig(
+      leaserInstance,
+      leaserContractAddress,
+      userWithBalanceWallet,
+      adminWallet,
+      originalLeaserConfig,
+    );
+  });
+
   async function pushPrice(price: number) {
     let amount = 2;
 
@@ -153,41 +223,6 @@ describe.skip('Lease - Slippage tolerance tests', () => {
     );
 
     await oracleInstance.feedPrices(feederWallet, priceObj, customFees.exec);
-  }
-
-  async function changeConfig(percentPermille: number) {
-    const leaserConfigMsg = await leaserInstance.getLeaserConfig();
-    leaserConfigMsg.config.lease_max_slippages.liquidation = percentPermille;
-    leaserConfigMsg.config.lease_code = undefined;
-    leaserConfigMsg.config.dex = undefined;
-    leaserConfigMsg.config.lpp = undefined;
-    leaserConfigMsg.config.market_price_oracle = undefined;
-    leaserConfigMsg.config.profit = undefined;
-    leaserConfigMsg.config.time_alarms = undefined;
-    leaserConfigMsg.config.reserve = undefined;
-    leaserConfigMsg.config.protocols_registry = undefined;
-    leaserConfigMsg.config.lease_admin = undefined;
-
-    const updateConfigMsg = {
-      config_leases: leaserConfigMsg.config,
-    };
-
-    await userWithBalanceWallet.transferAmount(
-      adminWallet.address as string,
-      customFees.configs.amount,
-      customFees.transfer,
-    );
-
-    await adminWallet.executeContract(
-      leaserContractAddress,
-      updateConfigMsg,
-      customFees.configs,
-    );
-
-    const leaserConfigAfter = await leaserInstance.getLeaserConfig();
-    expect(leaserConfigAfter.config.lease_max_slippages.liquidation).toBe(
-      percentPermille,
-    );
   }
 
   async function timeLiquidationCheck(leaseInstance: Lease) {
@@ -223,7 +258,7 @@ describe.skip('Lease - Slippage tolerance tests', () => {
   }
 
   test('activation of slippage protection - should work as expected', async () => {
-    await changeConfig(0);
+    await applyConfig(0);
 
     await sendInitExecuteFeeTokens(
       userWithBalanceWallet,
@@ -297,7 +332,7 @@ describe.skip('Lease - Slippage tolerance tests', () => {
 
     expect(stateBefore.status).toBe('slippage_protection_activated');
 
-    await changeConfig(900);
+    await applyConfig(900);
 
     await dispatchAlarms(timealarmsContractAddress);
 
@@ -323,7 +358,7 @@ describe.skip('Lease - Slippage tolerance tests', () => {
   });
 
   test('lease recovery - submitting the real price - should work as expected', async () => {
-    await changeConfig(50);
+    await applyConfig(50);
 
     await pushPrice(validPriceLCtoLPN);
     await dispatchAlarms(timealarmsContractAddress);
@@ -355,35 +390,9 @@ describe.skip('Lease - Slippage tolerance tests', () => {
   });
 
   test('lease recovery and LTV=SL - should work as expected', async () => {
-    const leaserConfigMsg = await leaserInstance.getLeaserConfig();
-    leaserConfigMsg.config.lease_max_slippages.liquidation = 900;
-    leaserConfigMsg.config.lease_code = undefined;
-    leaserConfigMsg.config.dex = undefined;
-    leaserConfigMsg.config.lpp = undefined;
-    leaserConfigMsg.config.market_price_oracle = undefined;
-    leaserConfigMsg.config.profit = undefined;
-    leaserConfigMsg.config.time_alarms = undefined;
-    leaserConfigMsg.config.reserve = undefined;
-    leaserConfigMsg.config.protocols_registry = undefined;
-    leaserConfigMsg.config.lease_admin = undefined;
+    await applyConfig(900);
 
     duePeriod = +leaserConfig.config.lease_due_period.toString() / TONANOSEC;
-
-    const updateConfigMsg = {
-      config_leases: leaserConfigMsg.config,
-    };
-
-    await userWithBalanceWallet.transferAmount(
-      adminWallet.address as string,
-      customFees.configs.amount,
-      customFees.transfer,
-    );
-
-    await adminWallet.executeContract(
-      leaserContractAddress,
-      updateConfigMsg,
-      customFees.configs,
-    );
 
     await pushPrice(validPriceLCtoLPN);
     await dispatchAlarms(timealarmsContractAddress);
@@ -439,7 +448,7 @@ describe.skip('Lease - Slippage tolerance tests', () => {
 
     /////////////////////////////////
 
-    await changeConfig(0);
+    await applyConfig(0);
 
     await timeLiquidationCheck(leaseInstance);
 
@@ -457,7 +466,7 @@ describe.skip('Lease - Slippage tolerance tests', () => {
 
     //////////////////////////////////////////
 
-    await changeConfig(900);
+    await applyConfig(900);
 
     await pushPrice(slPrice);
     await sleep(alarmDispatcherPeriod);
