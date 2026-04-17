@@ -52,7 +52,7 @@
     "@cosmjs/math": "^0.36.0",
     "@google-cloud/precise-date": "^5.0.0",
     "@nolus/nolusjs": "^3.7.0",
-    "axios": "^1.11.0",
+    "axios": "^1.15.0",
     "bip32": "^5.0.0-rc.0",
     "bip39": "^3.1.0",
     "cosmjs-types": "^0.10.1",
