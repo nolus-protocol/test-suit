@@ -1,10 +1,15 @@
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
-import { Attribute, Event, TxResponse } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
 import { GROUPS } from '@nolus/nolusjs/build/types/Networks';
 import { AssetUtils, NolusContracts } from '@nolus/nolusjs';
 import { LeaseStatus } from '@nolus/nolusjs/build/contracts';
 import { undefinedHandler } from '../utils';
+
+// `@cosmjs/tendermint-rpc` types are version-specific in CosmJS 0.38+.
+// We only need a tiny subset for parsing events in test helpers.
+type RpcAttribute = { key: Uint8Array | string; value: Uint8Array | string };
+type RpcEvent = { type: string; attributes: readonly RpcAttribute[] };
+type RpcTxResponse = { result: { events: readonly RpcEvent[] } };
 
 export function getProtocol() {
   return process.env.PROTOCOL as string;
@@ -14,7 +19,7 @@ export function findWasmEventPositions(response: any, eType: string): number[] {
   const events = response.events;
   const indexes: number[] = [];
 
-  events.forEach((element: Event, index: number) => {
+  events.forEach((element: RpcEvent, index: number) => {
     if (element.type === eType) {
       indexes.push(index);
     }
@@ -27,7 +32,7 @@ export function findAttributePositions(event: any, aType: string): number[] {
   const attributes = event.attributes;
   const indexes: number[] = [];
 
-  attributes.forEach((attribute: Attribute, index: number) => {
+  attributes.forEach((attribute: RpcAttribute, index: number) => {
     if (attribute.key.toString() === aType) {
       indexes.push(index);
     }
@@ -37,7 +42,7 @@ export function findAttributePositions(event: any, aType: string): number[] {
 }
 
 function getAttributeValueFromWasmRepayEvent(
-  response: TxResponse,
+  response: RpcTxResponse,
   attributeName: string,
 ): bigint {
   const wasmEventIndex = findWasmEventPositions(
@@ -102,23 +107,27 @@ export function getLeaseAddressFromOpenLeaseResponse(
   return response.events[wasmEventIndex[0]].attributes[1].value;
 }
 
-export function getMarginInterestPaidFromRepayTx(response: TxResponse): bigint {
+export function getMarginInterestPaidFromRepayTx(
+  response: RpcTxResponse,
+): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 'due-margin-interest');
 }
 
-export function getLoanInterestPaidFromRepayTx(response: TxResponse): bigint {
+export function getLoanInterestPaidFromRepayTx(
+  response: RpcTxResponse,
+): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 'due-loan-interest');
 }
 
-export function getPrincipalPaidFromRepayTx(response: TxResponse): bigint {
+export function getPrincipalPaidFromRepayTx(response: RpcTxResponse): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 'principal');
 }
 
-export function getChangeFromRepayTx(response: TxResponse): bigint {
+export function getChangeFromRepayTx(response: RpcTxResponse): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 'change');
 }
 
-export function getTotalPaidFromRepayTx(response: TxResponse): bigint {
+export function getTotalPaidFromRepayTx(response: RpcTxResponse): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 'payment-amount');
 }
 

@@ -1,4 +1,4 @@
-import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
+import { connectComet } from '@cosmjs/tendermint-rpc';
 import { QueryProposalResponse } from 'cosmjs-types/cosmos/gov/v1beta1/query';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { QueryClient, setupGovExtension, GovExtension } from '@cosmjs/stargate';
@@ -14,7 +14,7 @@ const NODE_ENDPOINT = process.env.NODE_URL as string;
 let queryClient: QueryClient & GovExtension;
 
 async function loadClient() {
-  const tendermintClient = await Tendermint34Client.connect(NODE_ENDPOINT);
+  const tendermintClient = await connectComet(NODE_ENDPOINT);
   queryClient = QueryClient.withExtensions(tendermintClient, setupGovExtension);
 }
 

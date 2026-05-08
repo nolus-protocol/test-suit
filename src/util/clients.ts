@@ -2,7 +2,6 @@ import { makeCosmoshubPath } from '@cosmjs/amino';
 import { DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
 import { fromHex } from '@cosmjs/encoding';
 import { GeneratedType } from '@cosmjs/proto-signing/build/registry';
-import { TxSearchResponse } from '@cosmjs/tendermint-rpc';
 import {
   ChainConstants,
   KeyUtils,
@@ -15,6 +14,7 @@ const user1PrivKey = fromHex(process.env.USER_1_PRIV_KEY as string);
 const user2PrivKey = fromHex(process.env.USER_2_PRIV_KEY as string);
 const user3PrivKey = fromHex(process.env.USER_3_PRIV_KEY as string);
 const feederPrivKey = fromHex(process.env.FEEDER_PRIV_KEY as string);
+const leaseAdminPrivKey = fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string);
 
 const NODE_ENDPOINT = process.env.NODE_URL as string;
 export default NODE_ENDPOINT;
@@ -53,6 +53,10 @@ export async function getFeederWallet(): Promise<NolusWallet> {
   return await getWallet(feederPrivKey);
 }
 
+export async function getLeaseAdminWallet(): Promise<NolusWallet> {
+  return await getWallet(leaseAdminPrivKey);
+}
+
 export async function createWallet(): Promise<NolusWallet> {
   const mnemonic = KeyUtils.generateMnemonic();
   const accountNumbers = [0];
@@ -66,10 +70,10 @@ export async function txSearchByEvents(
   events: string,
   page: number | undefined,
   perPage: number | undefined,
-): Promise<TxSearchResponse> {
+) {
   const tmClient = await NolusClient.getInstance().getTendermintClient();
 
-  return await tmClient?.txSearch({
+  return await tmClient.txSearch({
     query: events,
     prove: undefined,
     page: page,
