@@ -3,8 +3,8 @@ import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
 import { runOrSkip, runTestIfLocal } from '../util/testingRules';
 import NODE_ENDPOINT, {
   createWallet,
+  getLeaseAdminWallet,
   getUser1Wallet,
-  getWallet,
 } from '../util/clients';
 import { customFees } from '../util/utils';
 import { sendSudoContractProposal } from '../util/proposals';
@@ -20,6 +20,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let oracleInstance: NolusContracts.Oracle;
     let configBefore: NolusContracts.LeaserConfig;
     let leaserConfigMsg: LeaserConfig;
+    let leaseAdminWallet: NolusWallet;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
@@ -73,6 +74,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       userWithBalanceWallet = await getUser1Wallet();
       wallet = await createWallet();
+      leaseAdminWallet = await getLeaseAdminWallet();
 
       configBefore = await leaserInstance.getLeaserConfig();
       leaserConfigMsg = JSON.parse(JSON.stringify(configBefore));
@@ -235,10 +237,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     runTestIfLocal(
       'try to set "slippage protection percent" outside the limit of min_transaction - exec - should produce an error',
       async () => {
-        const leaseAdminWallet = await getWallet(
-          fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
-        );
-
         const lowerBound =
           1000 -
           1000 /
@@ -257,10 +255,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     runTestIfLocal(
       'try to set "min_asset" amount = 0 - exec - should produce an error',
       async () => {
-        const leaseAdminWallet = await getWallet(
-          fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
-        );
-
         leaserConfigMsg.config.lease_position_spec.min_asset = {
           amount: '0',
           ticker: process.env.LPP_BASE_CURRENCY,
@@ -276,10 +270,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     runTestIfLocal(
       'try to set invalid lease admin address - should produce an error',
       async () => {
-        const leaseAdminWallet = await getWallet(
-          fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
-        );
-
         const changeLeaseAdminMsg = {
           change_lease_admin: {
             new: 'blabla',

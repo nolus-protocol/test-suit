@@ -115,8 +115,8 @@ runOrSkip(process.env.TEST_LENDER as string)(
       const minUtilization = 1001;
 
       await sendPropToSetMinUtilization(
-        1001,
-        `Upper bound is: 1000, but got: ${minUtilization}!`,
+        minUtilization,
+        `Upper bound is: 1000, but got: 1001`,
       );
     });
 
@@ -129,9 +129,7 @@ runOrSkip(process.env.TEST_LENDER as string)(
     test('try to set base_interest_rate % > 100% - should produce an error', async () => {
       borrowRateMsg.new_borrow_rate.borrow_rate.base_interest_rate = 1001;
 
-      await sendPropToUpdateBorrowRate(
-        'Rates should not be greater than a hundred percent!',
-      );
+      await sendPropToUpdateBorrowRate(`Upper bound is: 1000, but got: 1001`);
     });
 
     test('try to set utilization_optimal % === 0% - should produce an error', async () => {
@@ -143,7 +141,9 @@ runOrSkip(process.env.TEST_LENDER as string)(
     });
 
     test('try to set utilization_optimal % === 100% - should produce an error', async () => {
-      borrowRateMsg.new_borrow_rate.borrow_rate.utilization_optimal = 1000;
+      const utilizationOptimal = 1000;
+      borrowRateMsg.new_borrow_rate.borrow_rate.utilization_optimal =
+        utilizationOptimal;
 
       await sendPropToUpdateBorrowRate(
         'Rates should not be greater than a hundred percent!',
@@ -157,10 +157,12 @@ runOrSkip(process.env.TEST_LENDER as string)(
     });
 
     test('try to set addon_optimal_interest_rate % > 100% - should produce an error', async () => {
-      borrowRateMsg.new_borrow_rate.borrow_rate.addon_optimal_interest_rate = 1001;
+      const addonOptimalIRate = 1001;
+      borrowRateMsg.new_borrow_rate.borrow_rate.addon_optimal_interest_rate =
+        addonOptimalIRate;
 
       await sendPropToUpdateBorrowRate(
-        'Rates should not be greater than a hundred percent!',
+        `Upper bound is: 1000, but got: ${addonOptimalIRate}`,
       );
     });
   },

@@ -1,7 +1,11 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import { Asset } from '@nolus/nolusjs/build/contracts';
-import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
+import NODE_ENDPOINT, {
+  getLeaseAdminWallet,
+  getUser1Wallet,
+  createWallet,
+} from '../util/clients';
 import { customFees, undefinedHandler } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
@@ -44,7 +48,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
 
-    const downpayment = '100000';
+    const downpayment = '1000';
 
     async function testMarketCloseInvalidCases(
       wallet: NolusWallet,
@@ -110,6 +114,52 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
     });
+
+    runTestIfLocal(
+      'the lease admin closes a position regardless of the owner - should work as expected',
+      async () => {
+        const leaseAddressForAdminClose = await openLease(
+          leaserInstance,
+          lppInstance,
+          downpayment,
+          downpaymentCurrency,
+          leaseCurrency,
+          borrowerWallet,
+        );
+        console.log('leaseAddressForAdminClose', leaseAddressForAdminClose);
+
+        const leaseInstanceForAdminClose = new NolusContracts.Lease(
+          cosm,
+          leaseAddressForAdminClose,
+        );
+
+        expect(await waitLeaseOpeningProcess(leaseInstanceForAdminClose)).toBe(
+          undefined,
+        );
+
+        const leaseAdminWallet = await getLeaseAdminWallet();
+
+        await sendInitExecuteFeeTokens(
+          userWithBalanceWallet,
+          leaseAdminWallet.address as string,
+        );
+
+        await leaseInstanceForAdminClose.closePositionLease(
+          leaseAdminWallet,
+          customFees.exec,
+          undefined,
+        );
+
+        expect(
+          await waitLeaseInProgressToBeNull(leaseInstanceForAdminClose),
+        ).toBe(undefined);
+
+        const leaseStateAfterAdminClose =
+          await leaseInstanceForAdminClose.getLeaseStatus();
+
+        expect(leaseStateAfterAdminClose.closed).toBeDefined();
+      },
+    );
 
     test('an unauthorized user tries to close the position - should produce an error', async () => {
       const leaseAmountBeforeMarketClose = (

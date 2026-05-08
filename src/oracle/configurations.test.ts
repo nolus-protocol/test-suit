@@ -333,7 +333,7 @@ runOrSkip(process.env.TEST_ORACLE as string)(
       await trySendPropToUpdateConfig(
         wallet,
         initConfig,
-        'The minumum feeders should be greater than 0 and less or equal to 100%',
+        'Upper bound is: 1000, but got: 1001',
         1001,
       );
     });

@@ -1,11 +1,10 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { fromHex } from '@cosmjs/encoding';
 import NODE_ENDPOINT, {
   createWallet,
   getFeederWallet,
+  getLeaseAdminWallet,
   getUser1Wallet,
-  getWallet,
   txSearchByEvents,
 } from '../util/clients';
 import { customFees, sleep, undefinedHandler } from '../util/utils';
@@ -56,7 +55,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
-  const alarmDispatcherPeriod = 120; // DispatcherBot:poll_period_seconds + 5
+  const alarmDispatcherPeriod = 150; // DispatcherBot:poll_period_seconds + 5
   const leaseCurrency = 'OSMO';
   const validPriceLCtoLPN = 0.1726;
   const downpayment = '1000000'; // ntrn = '5000000'
@@ -118,9 +117,7 @@ describe.skip('Lease - Price Liquidation tests', () => {
     borrowerWallet = await createWallet();
     userWithBalanceWallet = await getUser1Wallet();
     feederWallet = await getFeederWallet();
-    adminWallet = await getWallet(
-      fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
-    );
+    adminWallet = await getLeaseAdminWallet();
 
     originalLeaserConfig = (await leaserInstance.getLeaserConfig()).config;
     await updateLeaserConfigForTest();
@@ -194,7 +191,6 @@ describe.skip('Lease - Price Liquidation tests', () => {
         undefined,
       )
     ).totalCount;
-
     const repayTxResponse = (
       await txSearchByEvents(
         `wasm-ls-liquidation-warning._contract_address='${leaseAddress}'`,
