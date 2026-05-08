@@ -1,11 +1,10 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { fromHex } from '@cosmjs/encoding';
 import NODE_ENDPOINT, {
   createWallet,
   getFeederWallet,
+  getLeaseAdminWallet,
   getUser1Wallet,
-  getWallet,
 } from '../util/clients';
 import { customFees, sleep, undefinedHandler } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
@@ -51,9 +50,9 @@ describe.skip('Lease - Take Profit tests', () => {
   const lppContractAddress = process.env.LPP_ADDRESS as string;
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
-  const alarmDispatcherPeriod = 100; // DispatcherBot:poll_period_seconds + 5
+  const alarmDispatcherPeriod = 160; // DispatcherBot:poll_period_seconds + 5
   const leaseCurrency = 'OSMO';
-  const validPriceLCtoLPN = 0.172; // amount_quote / amount
+  const validPriceLCtoLPN = 0.1726; // amount_quote / amount
   const downpayment = '500000';
 
   async function updateLeaserConfigForTest() {
@@ -110,9 +109,7 @@ describe.skip('Lease - Take Profit tests', () => {
     borrowerWallet = await createWallet();
     userWithBalanceWallet = await getUser1Wallet();
     feederWallet = await getFeederWallet();
-    adminWallet = await getWallet(
-      fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
-    );
+    adminWallet = await getLeaseAdminWallet();
 
     originalLeaserConfig = (await leaserInstance.getLeaserConfig()).config;
     await updateLeaserConfigForTest();

@@ -1,14 +1,13 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { sleep, undefinedHandler, TONANOSEC, customFees } from '../util/utils';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { fromHex } from '@cosmjs/encoding';
 import { Lease, LeaseStatus } from '@nolus/nolusjs/build/contracts';
 import { currencyPriceObjToNumbers } from '../util/smart-contracts/calculations';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import NODE_ENDPOINT, {
   createWallet,
+  getLeaseAdminWallet,
   getUser1Wallet,
-  getWallet,
 } from '../util/clients';
 import {
   getLeaseGroupCurrencies,
@@ -59,7 +58,7 @@ describe.skip('Lease - Time Liquidation tests', () => {
     leaserCfgMsg.config.lease_position_spec.liability.third_liq_warn = 780;
     leaserCfgMsg.config.lease_position_spec.liability.max = 800;
     leaserCfgMsg.config.lease_position_spec.liability.recalc_time = 7200000000000;
-    leaserCfgMsg.config.lease_due_period = Number(240000000000);
+    leaserCfgMsg.config.lease_due_period = BigInt(240000000000);
 
     await applyLeaserConfig(
       leaserInstance,
@@ -149,9 +148,7 @@ describe.skip('Lease - Time Liquidation tests', () => {
 
     borrowerWallet = await createWallet();
     userWithBalanceWallet = await getUser1Wallet();
-    adminWallet = await getWallet(
-      fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
-    );
+    adminWallet = await getLeaseAdminWallet();
 
     originalLeaserConfig = (await leaserInstance.getLeaserConfig()).config;
     await updateLeaserConfigForTest();

@@ -104,8 +104,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await changeClosePolicyInvalidCases(
         userWithBalanceWallet,
         `The operation 'change close policy' is not supported in the current state`,
-        1110, // any values
-        1110,
+        1000, // any values
+        1000,
       );
 
       await waitLeaseOpeningProcess(leaseInstance);
@@ -121,8 +121,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await changeClosePolicyInvalidCases(
         userWithBalanceWallet,
         'Unauthorized access',
-        1110, // any values
-        1110,
+        1000, // any values
+        1000,
       );
     });
 

@@ -3,8 +3,8 @@ import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
 import NODE_ENDPOINT, {
   createWallet,
   getFeederWallet,
+  getLeaseAdminWallet,
   getUser1Wallet,
-  getWallet,
 } from '../util/clients';
 import { customFees, sleep, TONANOSEC, undefinedHandler } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
@@ -20,7 +20,6 @@ import {
   currencyTicker_To_IBC,
 } from '../util/smart-contracts/calculations';
 import { Lease } from '@nolus/nolusjs/build/contracts';
-import { fromHex } from '@cosmjs/encoding';
 import { applyLeaserConfig } from '../util/manualTestHelpers';
 
 // These tests require the network to be specifically configured
@@ -133,9 +132,7 @@ describe.skip('Lease - Slippage tolerance tests', () => {
     borrowerWallet = await createWallet();
     userWithBalanceWallet = await getUser1Wallet();
     feederWallet = await getFeederWallet();
-    adminWallet = await getWallet(
-      fromHex(process.env.LEASE_ADMIN_PRIV_KEY as string),
-    );
+    adminWallet = await getLeaseAdminWallet();
 
     originalLeaserConfig = (await leaserInstance.getLeaserConfig()).config;
     await updateLeaserConfigForTest();
