@@ -1,0 +1,13 @@
+diff --git a/node_modules/@cosmjs/cosmwasm/node_modules/@cosmjs/stargate/build/accounts.js b/node_modules/@cosmjs/cosmwasm/node_modules/@cosmjs/stargate/build/accounts.js
+index f3272d6..10c4bf9 100644
+--- a/node_modules/@cosmjs/cosmwasm/node_modules/@cosmjs/stargate/build/accounts.js
++++ b/node_modules/@cosmjs/cosmwasm/node_modules/@cosmjs/stargate/build/accounts.js
+@@ -15,7 +15,7 @@ function accountFromBaseAccount(input) {
+     return {
+         address: address,
+         pubkey: pubkey,
+-        accountNumber: uint64FromProto(accountNumber).toNumber(),
++        accountNumber: uint64FromProto(accountNumber).toBigInt(),
+         sequence: uint64FromProto(sequence).toNumber(),
+     };
+ }

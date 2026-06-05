@@ -1,0 +1,13 @@
+diff --git a/node_modules/@cosmjs/cosmwasm-stargate/package.json b/node_modules/@cosmjs/cosmwasm-stargate/package.json
+index 02b79f0..971a284 100644
+--- a/node_modules/@cosmjs/cosmwasm-stargate/package.json
++++ b/node_modules/@cosmjs/cosmwasm-stargate/package.json
+@@ -6,6 +6,8 @@
+     "Simon Warta <webmaster128@users.noreply.github.com>"
+   ],
+   "license": "Apache-2.0",
++  "main": "build/index.js",
++  "types": "build/index.d.ts",
+   "exports": {
+     "types": "./build/index.d.ts",
+     "default": "./build/index.js"

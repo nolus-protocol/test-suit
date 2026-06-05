@@ -10,7 +10,8 @@
     "prepare-env-local": "/bin/bash ./scripts/prepare-env-local.sh",
     "fund-main-account": "/bin/bash ./scripts/helpers/fund-with-supported-currencies.sh",
     "test": "npx jest --runInBand",
-    "lint": "eslint 'src/**/*.{js,ts,tsx}' --quiet --fix"
+    "lint": "eslint 'src/**/*.{js,ts,tsx}' --quiet --fix",
+    "postinstall": "patch-package"
   },
   "keywords": [],
   "author": "",
@@ -41,6 +42,7 @@
     "ethers": "^6.14.1",
     "globals": "^16.3.0",
     "jest": "^30.0.5",
+    "patch-package": "^8.0.1",
     "prettier": "^3.6.2",
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.1",
