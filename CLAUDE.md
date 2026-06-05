@@ -74,10 +74,6 @@ Additions and overrides for this repo:
   `sleep`/poll is unavoidable), and *no shared mutable fixture state* (suites deliberately
   share one funded wallet + sequential nonce — hence `--runInBand`). Everything else in the
   snippet still applies. Where feasible, prefer **poll-until-condition** over a fixed `sleep`.
-- **Shipping rule** (project rule): direct pushes to `main` are not allowed. When the
-  user asks to "ship" code in this repo, **first ask where it goes**:
-  - **To `main`** → use the `ship-pr` skill.
-  - **Anywhere else** → just commit and push to the current branch directly.
 
 ## Gotchas
 
