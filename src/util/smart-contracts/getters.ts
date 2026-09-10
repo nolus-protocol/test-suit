@@ -1,5 +1,5 @@
 import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
-import { Attribute, Event, TxResponse } from '@cosmjs/tendermint-rpc';
+import { comet38 } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
 import { GROUPS } from '@nolus/nolusjs/build/types/Networks';
 import { AssetUtils, NolusContracts } from '@nolus/nolusjs';
@@ -14,7 +14,7 @@ export function findWasmEventPositions(response: any, eType: string): number[] {
   const events = response.events;
   const indexes: number[] = [];
 
-  events.forEach((element: Event, index: number) => {
+  events.forEach((element: comet38.Event, index: number) => {
     if (element.type === eType) {
       indexes.push(index);
     }
@@ -27,7 +27,7 @@ export function findAttributePositions(event: any, aType: string): number[] {
   const attributes = event.attributes;
   const indexes: number[] = [];
 
-  attributes.forEach((attribute: Attribute, index: number) => {
+  attributes.forEach((attribute: comet38.Attribute, index: number) => {
     if (attribute.key.toString() === aType) {
       indexes.push(index);
     }
@@ -37,7 +37,7 @@ export function findAttributePositions(event: any, aType: string): number[] {
 }
 
 function getAttributeValueFromWasmRepayEvent(
-  response: TxResponse,
+  response: comet38.TxResponse,
   attributeName: string,
 ): bigint {
   const wasmEventIndex = findWasmEventPositions(
@@ -102,23 +102,29 @@ export function getLeaseAddressFromOpenLeaseResponse(
   return response.events[wasmEventIndex[0]].attributes[1].value;
 }
 
-export function getMarginInterestPaidFromRepayTx(response: TxResponse): bigint {
+export function getMarginInterestPaidFromRepayTx(
+  response: comet38.TxResponse,
+): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 'due-margin-interest');
 }
 
-export function getLoanInterestPaidFromRepayTx(response: TxResponse): bigint {
+export function getLoanInterestPaidFromRepayTx(
+  response: comet38.TxResponse,
+): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 'due-loan-interest');
 }
 
-export function getPrincipalPaidFromRepayTx(response: TxResponse): bigint {
+export function getPrincipalPaidFromRepayTx(
+  response: comet38.TxResponse,
+): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 'principal');
 }
 
-export function getChangeFromRepayTx(response: TxResponse): bigint {
+export function getChangeFromRepayTx(response: comet38.TxResponse): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 'change');
 }
 
-export function getTotalPaidFromRepayTx(response: TxResponse): bigint {
+export function getTotalPaidFromRepayTx(response: comet38.TxResponse): bigint {
   return getAttributeValueFromWasmRepayEvent(response, 'payment-amount');
 }
 

@@ -5,7 +5,7 @@ import NODE_ENDPOINT, {
   getUser1Wallet,
 } from '../util/clients';
 import { returnRestToMainAccount } from '../util/transfer';
-import { runOrSkip, runTestIfLocal } from '../util/testingRules';
+import { runOrSkip, withFeederTest } from '../util/testingRules';
 
 // !!! Since the feeder we use in the locally started bot (oracle-price-feeder) is also used here
 // - running the tests in this file requires the bot to be stopped
@@ -45,7 +45,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
   });
 
-  runTestIfLocal(
+  withFeederTest(
     'a registered feeder tries to feed a price for an invalid pair - should produce an error',
     async () => {
       const secondPairMember = process.env.NO_PRICE_CURRENCY_TICKER as string;
@@ -66,7 +66,7 @@ runOrSkip(process.env.TEST_ORACLE as string)('Oracle tests - Prices', () => {
     },
   );
 
-  runTestIfLocal(
+  withFeederTest(
     'a registered feeder tries to feed price = 0 - should produce an error',
     async () => {
       const currenciesPairs = await oracleInstance.getCurrencyPairs();

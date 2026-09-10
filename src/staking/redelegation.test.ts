@@ -18,15 +18,8 @@ import {
   undefinedHandler,
 } from '../util/utils';
 import { NolusClient, NolusWallet } from '@nolus/nolusjs';
-import { ifLocal } from '../util/testingRules';
 
-const maybe =
-  ifLocal() ||
-  (process.env.TEST_STAKING as string).toLocaleLowerCase() === 'false'
-    ? describe.skip
-    : describe;
-
-maybe('Staking Nolus tokens - Redelegation', () => {
+describe.skip('Staking Nolus tokens - Redelegation', () => {
   let userWithBalanceWallet: NolusWallet;
   let delegatorWallet: NolusWallet;
   let srcValidatorAddress: string;

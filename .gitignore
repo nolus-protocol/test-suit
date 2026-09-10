@@ -1,6 +1,6 @@
 node_modules/
 .*
 nolus.tar.gz
-accounts
-nolusd
+accounts*
+nolusd*
 deploy-platform.sh

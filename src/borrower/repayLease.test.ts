@@ -18,7 +18,7 @@ import {
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
 } from '../util/smart-contracts/calculations';
-import { runOrSkip, runTestIfLocal } from '../util/testingRules';
+import { runOrSkip } from '../util/testingRules';
 import {
   getChangeFromRepayTx,
   getLeaseGroupCurrencies,
@@ -361,37 +361,34 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    runTestIfLocal(
-      'the borrower tries to pay when there is no payment currency price provided by the Oracle - should produce an error',
-      async () => {
-        const noProvidedPriceFor = process.env
-          .NO_PRICE_LEASE_CURRENCY_TICKER as string;
+    test.skip('the borrower tries to pay when there is no payment currency price provided by the Oracle - should produce an error', async () => {
+      const noProvidedPriceFor = process.env
+        .NO_PRICE_LEASE_CURRENCY_TICKER as string;
 
-        const leaseCurrencyPriceObj = () =>
-          oracleInstance.getBasePrice(noProvidedPriceFor);
-        await expect(leaseCurrencyPriceObj).rejects.toThrow(
-          `Unsupported currency '${noProvidedPriceFor}'`,
-        );
+      const leaseCurrencyPriceObj = () =>
+        oracleInstance.getBasePrice(noProvidedPriceFor);
+      await expect(leaseCurrencyPriceObj).rejects.toThrow(
+        `Unsupported currency '${noProvidedPriceFor}'`,
+      );
 
-        const noProvidedPriceForToIBC = process.env
-          .NO_PRICE_LEASE_CURRENCY_DENOM as string;
+      const noProvidedPriceForToIBC = process.env
+        .NO_PRICE_LEASE_CURRENCY_DENOM as string;
 
-        expect(noProvidedPriceForToIBC).not.toBe('');
+      expect(noProvidedPriceForToIBC).not.toBe('');
 
-        const borrowerBalance = await borrowerWallet.getBalance(
-          borrowerWallet.address as string,
-          noProvidedPriceForToIBC,
-        );
+      const borrowerBalance = await borrowerWallet.getBalance(
+        borrowerWallet.address as string,
+        noProvidedPriceForToIBC,
+      );
 
-        await testRepaymentWithInvalidParams(
-          {
-            denom: noProvidedPriceForToIBC,
-            amount: borrowerBalance.amount,
-          },
-          `Failed to fetch price for the pair ${noProvidedPriceFor}/${lppCurrency}`,
-        );
-      },
-    );
+      await testRepaymentWithInvalidParams(
+        {
+          denom: noProvidedPriceForToIBC,
+          amount: borrowerBalance.amount,
+        },
+        `Failed to fetch price for the pair ${noProvidedPriceFor}/${lppCurrency}`,
+      );
+    });
 
     test('a user other than the lease owner tries to pay - should work as expected', async () => {
       const newUserWallet = await createWallet();

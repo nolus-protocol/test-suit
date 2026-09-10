@@ -1,9 +1,13 @@
 #!/bin/bash
-CMD="nolusd"
-command -v "$CMD" >/dev/null 2>&1 || {
-  echo >&2 "$CMD is not found in \$PATH."
+
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.. && pwd)
+CMD="$REPO_ROOT/nolusd"
+
+if [[ ! -x "$CMD" ]]; then
+  echo >&2 "No nolusd at $CMD."
+  echo >&2 "Run 'yarn prepare-env' - it downloads the nolus-core release and leaves the client there."
   exit 1
-}
+fi
 
 run_cmd() {
   local home="$1"
@@ -11,5 +15,3 @@ run_cmd() {
 
   "$CMD" "$@" --home "$home" 2>&1
 }
-
-

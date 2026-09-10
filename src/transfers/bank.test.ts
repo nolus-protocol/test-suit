@@ -11,7 +11,7 @@ import NODE_ENDPOINT, {
   getUser3Wallet,
 } from '../util/clients';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
-import { ifLocal, runOrSkip } from '../util/testingRules';
+import { ASSERT_EXACT_DELTAS, runOrSkip } from '../util/testingRules';
 import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
 
 runOrSkip(process.env.TEST_TRANSFER as string)(
@@ -105,7 +105,7 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      if (ifLocal()) {
+      if (ASSERT_EXACT_DELTAS) {
         expect(BigInt(treasuryBalanceAfter.amount)).toBe(
           BigInt(treasuryBalanceBefore.amount) +
             BigInt(calcFeeProfit(customFees.transfer)),

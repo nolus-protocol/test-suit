@@ -12,7 +12,7 @@ import NODE_ENDPOINT, {
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { NolusWallet, NolusClient, ChainConstants } from '@nolus/nolusjs';
 import { calcFeeProfit, sendInitTransferFeeTokens } from '../util/transfer';
-import { ifLocal, runOrSkip } from '../util/testingRules';
+import { ASSERT_EXACT_DELTAS, runOrSkip } from '../util/testingRules';
 import { HDNodeWallet, Wallet } from 'ethers';
 import { Buffer } from 'buffer';
 import * as bech32 from 'bech32';
@@ -241,7 +241,7 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      if (ifLocal()) {
+      if (ASSERT_EXACT_DELTAS) {
         expect(BigInt(treasuryBalanceAfter.amount)).toBe(
           BigInt(treasuryBalanceBefore.amount) +
             BigInt(calcFeeProfit(customFees.transfer)),

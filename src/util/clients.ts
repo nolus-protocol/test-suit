@@ -2,7 +2,6 @@ import { makeCosmoshubPath } from '@cosmjs/amino';
 import { DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
 import { fromHex } from '@cosmjs/encoding';
 import { GeneratedType } from '@cosmjs/proto-signing/build/registry';
-import { TxSearchResponse } from '@cosmjs/tendermint-rpc';
 import {
   ChainConstants,
   KeyUtils,
@@ -53,6 +52,19 @@ export async function getFeederWallet(): Promise<NolusWallet> {
   return await getWallet(feederPrivKey);
 }
 
+export async function getLeaseAdminWallet(): Promise<NolusWallet> {
+  const privKey = process.env.LEASE_ADMIN_PRIV_KEY?.trim();
+
+  if (privKey === undefined || privKey === '') {
+    throw new Error(
+      'LEASE_ADMIN_PRIV_KEY is not set. Gate lease-admin cases behind withLeaseAdmin / ' +
+        'withLeaseAdminTest so they skip where the key is absent.',
+    );
+  }
+
+  return await getWallet(fromHex(privKey));
+}
+
 export async function createWallet(): Promise<NolusWallet> {
   const mnemonic = KeyUtils.generateMnemonic();
   const accountNumbers = [0];
@@ -66,10 +78,10 @@ export async function txSearchByEvents(
   events: string,
   page: number | undefined,
   perPage: number | undefined,
-): Promise<TxSearchResponse> {
-  const tmClient = await NolusClient.getInstance().getTendermintClient();
+) {
+  const cometClient = await NolusClient.getInstance().getTendermintClient();
 
-  return await tmClient?.txSearch({
+  return await cometClient.txSearch({
     query: events,
     prove: undefined,
     page: page,

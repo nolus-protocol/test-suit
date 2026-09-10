@@ -1,27 +1,29 @@
 /* eslint-disable */
-import _m0, { BinaryReader, BinaryWriter } from "cosmjs-types/binary";
+import _m0, { BinaryReader, BinaryWriter } from 'cosmjs-types/binary';
 
 export const protobufPackage = 'cosmwasm.wasm.v1';
 
 export interface MsgSudoContract {
-  authority: string,
-  contract: string,
-  msg: Uint8Array,
+  authority: string;
+  contract: string;
+  msg: Uint8Array;
 }
 
-export interface MsgSudoContractResponse {
-}
+export interface MsgSudoContractResponse {}
 
 function createBaseMsgSudoContract(): MsgSudoContract {
-  return { authority: "", contract: "", msg: new Uint8Array() };
+  return { authority: '', contract: '', msg: new Uint8Array() };
 }
 
 export const MsgSudoContract = {
-  encode(message: MsgSudoContract, writer: _m0.BinaryWriter = BinaryWriter.create()): _m0.BinaryWriter {
-    if (message.authority !== "") {
+  encode(
+    message: MsgSudoContract,
+    writer: _m0.BinaryWriter = BinaryWriter.create(),
+  ): _m0.BinaryWriter {
+    if (message.authority !== '') {
       writer.uint32(10).string(message.authority);
     }
-    if (message.contract !== "") {
+    if (message.contract !== '') {
       writer.uint32(18).string(message.contract);
     }
     if (message.msg.length !== 0) {
@@ -30,8 +32,12 @@ export const MsgSudoContract = {
     return writer;
   },
 
-  decode(input: _m0.BinaryReader | Uint8Array, length?: number): MsgSudoContract {
-    const reader = input instanceof _m0.BinaryReader ? input : new _m0.BinaryReader(input);
+  decode(
+    input: _m0.BinaryReader | Uint8Array,
+    length?: number,
+  ): MsgSudoContract {
+    const reader =
+      input instanceof _m0.BinaryReader ? input : new _m0.BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseMsgSudoContract();
     while (reader.pos < end) {
@@ -69,8 +75,8 @@ export const MsgSudoContract = {
 
   fromJSON(object: any): MsgSudoContract {
     return {
-      authority: isSet(object.authority) ? String(object.authority) : "",
-      contract: isSet(object.contract) ? String(object.contract) : "",
+      authority: isSet(object.authority) ? String(object.authority) : '',
+      contract: isSet(object.contract) ? String(object.contract) : '',
       msg: isSet(object.msg) ? new Uint8Array(object.msg) : new Uint8Array(),
     };
   },
@@ -83,14 +89,18 @@ export const MsgSudoContract = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<MsgSudoContract>, I>>(base?: I): MsgSudoContract {
+  create<I extends Exact<DeepPartial<MsgSudoContract>, I>>(
+    base?: I,
+  ): MsgSudoContract {
     return MsgSudoContract.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<MsgSudoContract>, I>>(object: I): MsgSudoContract {
+  fromPartial<I extends Exact<DeepPartial<MsgSudoContract>, I>>(
+    object: I,
+  ): MsgSudoContract {
     const message = createBaseMsgSudoContract();
-    message.authority = object.authority ?? "";
-    message.contract = object.contract ?? "";
+    message.authority = object.authority ?? '';
+    message.contract = object.contract ?? '';
     message.msg = object.msg ?? new Uint8Array();
     return message;
   },
@@ -101,12 +111,19 @@ function createBaseMsgSudoContractResponse(): MsgSudoContractResponse {
 }
 
 export const MsgSudoContractResponse = {
-  encode(_: MsgSudoContractResponse, writer: _m0.BinaryWriter = new _m0.BinaryWriter()): _m0.BinaryWriter {
+  encode(
+    _: MsgSudoContractResponse,
+    writer: _m0.BinaryWriter = new _m0.BinaryWriter(),
+  ): _m0.BinaryWriter {
     return writer;
   },
 
-  decode(input: _m0.BinaryReader | Uint8Array, length?: number): MsgSudoContractResponse {
-    const reader = input instanceof _m0.BinaryReader ? input : new _m0.BinaryReader(input);
+  decode(
+    input: _m0.BinaryReader | Uint8Array,
+    length?: number,
+  ): MsgSudoContractResponse {
+    const reader =
+      input instanceof _m0.BinaryReader ? input : new _m0.BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseMsgSudoContractResponse();
     while (reader.pos < end) {
@@ -130,11 +147,15 @@ export const MsgSudoContractResponse = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<MsgSudoContractResponse>, I>>(base?: I): MsgSudoContractResponse {
+  create<I extends Exact<DeepPartial<MsgSudoContractResponse>, I>>(
+    base?: I,
+  ): MsgSudoContractResponse {
     return MsgSudoContractResponse.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<MsgSudoContractResponse>, I>>(_: I): MsgSudoContractResponse {
+  fromPartial<I extends Exact<DeepPartial<MsgSudoContractResponse>, I>>(
+    _: I,
+  ): MsgSudoContractResponse {
     const message = createBaseMsgSudoContractResponse();
     return message;
   },
@@ -154,27 +175,48 @@ export class MsgClientImpl implements Msg {
   }
   SudoContract(request: MsgSudoContract): Promise<MsgSudoContractResponse> {
     const data = MsgSudoContract.encode(request).finish();
-    const promise = this.rpc.request(this.service, "SudoContract", data);
-    return promise.then((data) => MsgSudoContractResponse.decode(new BinaryReader(data)));
+    const promise = this.rpc.request(this.service, 'SudoContract', data);
+    return promise.then((data) =>
+      MsgSudoContractResponse.decode(new BinaryReader(data)),
+    );
   }
 }
 
 interface Rpc {
-  request(service: string, method: string, data: Uint8Array): Promise<Uint8Array>;
+  request(
+    service: string,
+    method: string,
+    data: Uint8Array,
+  ): Promise<Uint8Array>;
 }
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends number | string | bigint ? T
-  : T extends Array<infer U> ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : Partial<T>;
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends number | string | bigint
+    ? T
+    : T extends Array<infer U>
+      ? Array<DeepPartial<U>>
+      : T extends ReadonlyArray<infer U>
+        ? ReadonlyArray<DeepPartial<U>>
+        : T extends {}
+          ? { [K in keyof T]?: DeepPartial<T[K]> }
+          : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+      [K in Exclude<keyof I, KeysOfUnion<P>>]: never;
+    };
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

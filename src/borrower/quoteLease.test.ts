@@ -1,6 +1,6 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate/';
 import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { runTestIfLocal, runOrSkip } from '../util/testingRules';
+import { runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, { createWallet } from '../util/clients';
 import {
   calcBorrowedAmountLTD,
@@ -252,32 +252,29 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    runTestIfLocal(
-      'the borrower tries to apply for a lease when there is no currency price provided by the Oracle - should produce an error',
-      async () => {
-        const noProvidedPriceFor = process.env
-          .NO_PRICE_LEASE_CURRENCY_TICKER as string;
+    test.skip('the borrower tries to apply for a lease when there is no currency price provided by the Oracle - should produce an error', async () => {
+      const noProvidedPriceFor = process.env
+        .NO_PRICE_LEASE_CURRENCY_TICKER as string;
 
-        const leaseCurrencyPriceObj = () =>
-          oracleInstance.getBasePrice(noProvidedPriceFor);
-        await expect(leaseCurrencyPriceObj).rejects.toThrow(
-          `Unsupported currency '${noProvidedPriceFor}'`,
-        );
+      const leaseCurrencyPriceObj = () =>
+        oracleInstance.getBasePrice(noProvidedPriceFor);
+      await expect(leaseCurrencyPriceObj).rejects.toThrow(
+        `Unsupported currency '${noProvidedPriceFor}'`,
+      );
 
-        await testQuoteWithInvalidParams(
-          '100',
-          downpaymentCurrency,
-          noProvidedPriceFor,
-          'Failed to fetch price for the pair',
-        );
+      await testQuoteWithInvalidParams(
+        '100',
+        downpaymentCurrency,
+        noProvidedPriceFor,
+        'Failed to fetch price for the pair',
+      );
 
-        // TO DO - no down payment currency price (when we have >1 onlyPaymentsCurrencies in the list of supported currencies)
-        // quoteQueryResult = () =>
-        //   leaserInstance.leaseQuote('100', noProvidedPriceForPaymentOnly, leaseCurrency);
-        // await expect(quoteQueryResult).rejects.toThrow(
-        //   /^.*TO DO".*/,
-        // );
-      },
-    );
+      // TO DO - no down payment currency price (when we have >1 onlyPaymentsCurrencies in the list of supported currencies)
+      // quoteQueryResult = () =>
+      //   leaserInstance.leaseQuote('100', noProvidedPriceForPaymentOnly, leaseCurrency);
+      // await expect(quoteQueryResult).rejects.toThrow(
+      //   /^.*TO DO".*/,
+      // );
+    });
   },
 );

@@ -23,7 +23,7 @@ import {
   NATIVE_MINIMAL_DENOM,
   undefinedHandler,
 } from '../util/utils';
-import { ifLocal, runOrSkip } from '../util/testingRules';
+import { ASSERT_EXACT_DELTAS, runOrSkip } from '../util/testingRules';
 import { calcFeeProfit } from '../util/transfer';
 
 runOrSkip(process.env.TEST_STAKING as string)(
@@ -148,7 +148,7 @@ runOrSkip(process.env.TEST_STAKING as string)(
         NATIVE_MINIMAL_DENOM,
       );
 
-      if (ifLocal()) {
+      if (ASSERT_EXACT_DELTAS) {
         expect(BigInt(treasuryBalanceAfter.amount)).toBe(
           BigInt(treasuryBalanceBefore.amount) +
             BigInt(calcFeeProfit(customFees.configs)),

@@ -1,16 +1,21 @@
 #!/bin/bash
-set -euxo pipefail
+
+set -exuo pipefail
 
 _downloadArtifact() {
   local -r name="$1"
   local -r version="$2"
-  local response
+  local response=""
 
-  rm -rf "$name"
+  rm -rf "${HOME_DIR:?}/$name"
 
-  response=$(curl -L --output "$name" -w '%{http_code}' "$GITHUB_NOLUS_CORE_RELEASES/download/$version/$name")
-  if [[ $response -ne 200 ]]; then
-    echo "Error: failed to retrieve artifact $name, version $version. Are you sure that the artifact and the tag both exist?"
+  # `|| response=""` so a failed curl reports below instead of aborting the script under `set -e`.
+  response=$(curl -L --output "$HOME_DIR/$name" -w '%{http_code}' \
+    "$GITHUB_NOLUS_CORE_RELEASES/download/$version/$name") || response=""
+
+  if [[ "$response" != "200" ]]; then
+    echo >&2 "Failed to retrieve $name for $version (HTTP '${response:-no response}')."
+    echo >&2 "  Check that the release and the artifact both exist."
     exit 1
   fi
 }
@@ -20,7 +25,8 @@ HOME_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
 GITHUB_NOLUS_CORE_RELEASES="https://github.com/Nolus-Protocol/nolus-core/releases"
 NOLUS_BUILD_BINARY_ARTIFACT="nolus.tar.gz"
 
-NOLUS_DEV_NET="https://vitosha-rpc.nolus.network"
+NODE_URL="https://rila-rpc.nolus.network"
+CHAIN_ID="rila-3"
 NOLUS_CORE_TAG=""
 TEST_WALLET_MNEMONIC=""
 
@@ -31,20 +37,20 @@ ORACLE_CODE_ID_DIFFERENT_PROTOCOL=""
 
 TEST_TRANSFER="true"
 TEST_ORACLE="true"
-TEST_STAKING="true"
+TEST_STAKING="false"
 TEST_BORROWER="true"
 TEST_LENDER="true"
 TEST_TREASURY="true"
-TEST_VESTING="true"
-TEST_GOV="true"
-TEST_ADMIN="true"
+TEST_VESTING="false"
+TEST_GOV="false"
+TEST_ADMIN="false"
 TEST_PROFIT="true"
 TEST_TIMEALARMS="true"
 TEST_RESERVE="true"
 
-ADMIN_CONTRACT_ADDRESS="nolus150ggq0zu22wf7jwehces77j9m7zxarnkd0v0j60cwancqh5cke8sx7x6p7"
+ADMIN_CONTRACT_ADDRESS="nolus17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsmc5xhq"
 
-ENV_FILE=".env"
+readonly ENV_FILE=".env"
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -54,7 +60,8 @@ while [[ $# -gt 0 ]]; do
   -h | --help)
     printf \
     "Usage: %s
-    [--nolus-dev-net <nolus_dev_url>]
+    [--node-url <node_url>]
+    [--chain-id <chain_id>]
     [--nolus-core-version-tag <nolus_core_preferred_tag>]
     [--test-wallet-mnemonic <mnemonic_phrase>]
     [--protocol <protocol_name_to_test>]
@@ -72,15 +79,22 @@ while [[ $# -gt 0 ]]; do
     [--test-admin-flag <test_admin_true_or_false>]
     [--test-profit-flag <test_profit_true_or_false>]
     [--test-timealarms-flag <test_timealarms_true_or_false>]
-    [--no-price-currency-ticker <no_price_currency_ticker>]
     [--test-reserve-flag <test_reserve_true_or_false>]
-    [--env-file <env_file_name>]" \
+    [--no-price-currency-ticker <no_price_currency_ticker>]
+
+Always downloads the nolus-core release into the repo root and uses that client - the latest
+release, or the one named by --nolus-core-version-tag. A nolusd on PATH is ignored." \
     "$0"
     exit 0
     ;;
 
-  --nolus-dev-net)
-    NOLUS_DEV_NET="$2"
+  --node-url)
+    NODE_URL="$2"
+    shift 2
+    ;;
+
+  --chain-id)
+    CHAIN_ID="$2"
     shift 2
     ;;
 
@@ -179,10 +193,6 @@ while [[ $# -gt 0 ]]; do
     shift 2
     ;;
 
-  --output-file)
-    ENV_FILE="$2"
-    shift 2
-    ;;
   *)
     echo "unknown option '$key'"
     exit 1
@@ -198,25 +208,67 @@ verify_mandatory "$TEST_WALLET_MNEMONIC" "test wallet mnemonic"
 verify_mandatory "$PROTOCOL" "protocol name"
 verify_mandatory "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "oracle code id different protocol"
 
-if [[ -z ${NOLUS_CORE_TAG} ]]; then
-    NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq -r '.tag_name')
+# TODO
+for policy in TEST_GOV TEST_STAKING TEST_VESTING TEST_ADMIN; do
+  if [[ "${!policy}" != "false" ]]; then
+    echo >&2 "Refusing to prepare an env file with $policy='${!policy}'."
+    echo >&2 "  These four are 'false' by policy, not by capability: $CHAIN_ID cannot host them."
+    exit 1
+  fi
+done
+
+if [[ -z "$NOLUS_CORE_TAG" ]]; then
+  NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' \
+    "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq -r '.tag_name') || NOLUS_CORE_TAG=""
+
+  if [[ -z "$NOLUS_CORE_TAG" || "$NOLUS_CORE_TAG" == "null" ]]; then
+    echo >&2 "Could not resolve the latest nolus-core release from GitHub."
+    echo >&2 "  Pass --nolus-core-version-tag to pin one explicitly."
+    exit 1
+  fi
+
+  echo "No --nolus-core-version-tag given; using the latest release, '$NOLUS_CORE_TAG'."
 fi
 
 _downloadArtifact "$NOLUS_BUILD_BINARY_ARTIFACT" "$NOLUS_CORE_TAG"
-tar -xvf "$NOLUS_BUILD_BINARY_ARTIFACT"
+tar -xf "$HOME_DIR/$NOLUS_BUILD_BINARY_ARTIFACT" -C "$HOME_DIR"
 
-export PATH
-PATH=$HOME_DIR:$PATH
-rm -rf "$HOME_DIR/accounts"
-mkdir "$HOME_DIR/accounts"
-ACCOUNTS_DIR="$HOME_DIR/accounts"
+NOLUSD="$HOME_DIR/nolusd"
+
+if [[ ! -x "$NOLUSD" ]]; then
+  echo >&2 "The $NOLUS_CORE_TAG artifact left no executable at $NOLUSD."
+  exit 1
+fi
+
+echo "Using nolusd $NOLUS_CORE_TAG."
 
 source "$SCRIPT_DIR"/common/cmd.sh
+
+
+
+ACCOUNTS_DIR="$HOME_DIR/accounts"
+
+case "$ACCOUNTS_DIR" in
+  "$HOME_DIR"/*) ;;
+  *)
+    echo >&2 "Refusing to wipe '$ACCOUNTS_DIR': it is outside the repository."
+    exit 1
+    ;;
+esac
+
+rm -rf "$ACCOUNTS_DIR"
+mkdir "$ACCOUNTS_DIR"
+
 TEST_ACCOUNT_KEY="test-main-account"
 echo "$TEST_WALLET_MNEMONIC" | run_cmd "$ACCOUNTS_DIR"  keys add "$TEST_ACCOUNT_KEY" --recover --keyring-backend "test"
 
 source "$SCRIPT_DIR"/common/prepare-env.sh
-prepareEnv "$NOLUS_DEV_NET" "dev" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
+prepareEnv "$NODE_URL" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
 "$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY_TICKER" "" "" "$ACTIVE_LEASE_ADDRESS" "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "" "" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
 "$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN" \
 "$TEST_PROFIT" "$TEST_TIMEALARMS" "$TEST_RESERVE" "$ENV_FILE"
+
+echo "Wrote $ENV_FILE for $PROTOCOL on $CHAIN_ID."
+echo "This script does not fund anything. It assumes the main test key already holds the"
+echo "  currencies the suites spend - that is yours to arrange before the run, by hand, with"
+echo "  scripts/helpers/fund-main-account-from-solana.sh if the funds come from Solana."

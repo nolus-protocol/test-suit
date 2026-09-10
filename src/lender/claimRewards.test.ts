@@ -10,12 +10,12 @@ import {
 } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { currencyTicker_To_IBC } from '../util/smart-contracts/calculations';
+import { describeIfLenderDepositRestriction } from '../util/testingRules';
 
 const maybe =
-  (process.env.TEST_LENDER as string).toLowerCase() !== 'false' &&
-  +(process.env.LENDER_DEPOSIT_CAPACITY as string) !== 0
-    ? describe
-    : describe.skip;
+  (process.env.TEST_LENDER as string).toLowerCase() === 'false'
+    ? describe.skip
+    : describeIfLenderDepositRestriction;
 
 maybe('Lender tests - Claim rewards', () => {
   let cosm: CosmWasmClient;
@@ -84,9 +84,9 @@ maybe('Lender tests - Claim rewards', () => {
     rewards = { amount: '200000000', denom: NATIVE_MINIMAL_DENOM };
 
     const depositCapacity = await lppInstance.getDepositCapacity();
-    depositCapacity
-      ? (deposit = Math.ceil(depositCapacity.amount / 10000).toString())
-      : (deposit = '100');
+    deposit = depositCapacity
+      ? Math.ceil(depositCapacity.amount / 10000).toString()
+      : '100';
 
     const lenderDepositBefore = await lppInstance.getLenderDeposit(
       lenderWallet.address as string,

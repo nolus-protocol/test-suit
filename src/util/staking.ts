@@ -1,4 +1,4 @@
-import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
+import { connectComet } from '@cosmjs/tendermint-rpc';
 import {
   QueryValidatorResponse,
   QueryDelegatorDelegationsResponse,
@@ -19,11 +19,8 @@ export const stakingModule = '/cosmos.staking.v1beta1';
 let queryClient: QueryClient & StakingExtension;
 
 async function loadClient() {
-  const tendermintClient = await Tendermint34Client.connect(NODE_ENDPOINT);
-  queryClient = QueryClient.withExtensions(
-    tendermintClient,
-    setupStakingExtension,
-  );
+  const cometClient = await connectComet(NODE_ENDPOINT);
+  queryClient = QueryClient.withExtensions(cometClient, setupStakingExtension);
 }
 
 export async function getValidatorInformation(

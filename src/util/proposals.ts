@@ -1,4 +1,4 @@
-import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
+import { connectComet } from '@cosmjs/tendermint-rpc';
 import { QueryProposalResponse } from 'cosmjs-types/cosmos/gov/v1beta1/query';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { QueryClient, setupGovExtension, GovExtension } from '@cosmjs/stargate';
@@ -10,12 +10,14 @@ import { MsgSudoContract } from './codec/cosmos/msgSudoContract/tx';
 import { getUser1Wallet } from './clients';
 import { MsgSubmitPropWValidation } from './codec/cosmos/msgSubmitPropWValidation/tx';
 
+const PROPOSALS_REFUSED: boolean = true;
+
 const NODE_ENDPOINT = process.env.NODE_URL as string;
 let queryClient: QueryClient & GovExtension;
 
 async function loadClient() {
-  const tendermintClient = await Tendermint34Client.connect(NODE_ENDPOINT);
-  queryClient = QueryClient.withExtensions(tendermintClient, setupGovExtension);
+  const cometClient = await connectComet(NODE_ENDPOINT);
+  queryClient = QueryClient.withExtensions(cometClient, setupGovExtension);
 }
 
 export async function getProposal(id: number): Promise<QueryProposalResponse> {
@@ -29,6 +31,14 @@ export async function sendSudoContractProposal(
   contract: string,
   message: string,
 ): Promise<DeliverTxResponse> {
+  if (PROPOSALS_REFUSED) {
+    throw new Error(
+      'Refusing to submit a governance proposal. Each one locks ' +
+        `${MIN_DEPOSIT_AMOUNT} unls for a 48 h voting period, and a run that changes a setting ` +
+        'on a live network invalidates its own results. Skip the case instead.',
+    );
+  }
+
   const authority = process.env.GOV_MODULE_ADDRESS as string;
   const msgSudoContractUrl = '/cosmwasm.wasm.v1.MsgSudoContract';
   const msgSubmitPropWValidationUrl = '/cosmos.gov.v1.MsgSubmitPropWValidation';

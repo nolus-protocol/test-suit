@@ -1,175 +1,164 @@
 # test-suit — docs
 
-Per-component and deeper documentation for the Nolus UAT integration tests. The project
-root [`CLAUDE.md`](../CLAUDE.md) is the entry point and carries the quick reference (stack,
-commands, conventions, gotchas); this directory holds the longer-form detail that doesn't
-belong inline there.
+Longer-form detail for the Nolus UAT integration tests. [`CLAUDE.md`](../CLAUDE.md) is the entry
+point and carries the quick reference; [`README.md`](../README.md) is setup and operation.
 
-## Index
-
+- [The network under test](#the-network-under-test)
 - [Architecture](#architecture) — how a suite reaches the chain
-- [Runbooks](#runbooks) — environment setup, funding, running suites
-- [Decisions](#decisions) — why the suite is built the way it is
+- [Runbooks](#runbooks) — prep, funding, running, CI
+- [Deliberately absent](#deliberately-absent) — removed on purpose, so it is not re-added
+- [Decisions](#decisions)
+
+---
+
+## The network under test
+
+**One target: the deployed contracts on `rila`.** It runs after a protocol update, against a live
+network.
 
 ---
 
 ## Architecture
 
-These are **live on-chain integration tests**. There is no system-under-test process of
-our own and nothing is mocked — each test signs real transactions against a running
-`nolusd` node and asserts on the on-chain result (query responses, balances, emitted
-events, rejected txs).
+These are **live on-chain integration tests**. Nothing is mocked — each test signs real
+transactions against a running `nolusd` node and asserts on the on-chain result.
 
-### From `jest` to the chain
-
-1. **Jest boot** ([`jest.config.js`](../jest.config.js)) — `ts-jest` transpiles the
-   suites; `setupFiles: ['dotenv/config']` loads the generated `.env` into
-   `process.env` before any test runs; `testTimeout` is ~2000 s because on-chain
-   settlement is wall-clock-bound. `transformIgnorePatterns` allow-lists `@nolus/nolusjs`
-   so its ESM ships through the transform — do not remove it.
-2. **Client** ([`src/util/clients.ts`](../src/util/clients.ts)) — `NODE_ENDPOINT` comes
-   from `process.env.NODE_URL`. Each suite calls `NolusClient.setInstance(NODE_ENDPOINT)`
-   in `beforeAll`, then talks to the chain through `@nolus/nolusjs` contract wrappers
-   (`NolusContracts.Leaser`, `Oracle`, `Lpp`, …).
-3. **Wallets** — two flavours:
-   - **Fixed funded keys** read from env private keys (`USER_1_PRIV_KEY`,
-     `FEEDER_PRIV_KEY`, …) via `DirectSecp256k1Wallet`. These share on-chain account
-     state across the run.
-   - **Fresh wallets** from `createWallet()` (random mnemonic) for actors that should
-     start empty, e.g. a new borrower.
-4. **Contract addresses** are not hard-coded in tests — they're read from env
-   (`LEASER_ADDRESS`, `LPP_ADDRESS`, `ORACLE_ADDRESS`, …), which the env-prep scripts
-   populate by querying the live admin contract.
+1. **Jest boot** ([`jest.config.js`](../jest.config.js)) — `ts-jest` transpiles the suites.
+   `setupFiles` runs [`src/setup.ts`](../src/setup.ts) inside each worker, which loads the env file
+   named by `TEST_ENV_FILE` (default `.env`) through [`src/util/env.ts`](../src/util/env.ts); a
+   config-time load would not reach the workers. `testTimeout` is ~2000 s because on-chain
+   settlement is wall-clock-bound.
+2. **Client** ([`src/util/clients.ts`](../src/util/clients.ts)) — `NODE_ENDPOINT` comes from
+   `process.env.NODE_URL`; each suite calls `NolusClient.setInstance()` in `beforeAll` and talks to
+   the chain through `@nolus/nolusjs` contract wrappers.
+3. **Wallets** — fixed funded keys from env private keys (`USER_1_PRIV_KEY`, …), which share
+   on-chain account state across the run, plus fresh `createWallet()` wallets for actors that
+   should start empty.
+4. **Contract addresses** are never hardcoded — they come from env, which the prep resolves by
+   querying the live admin contract.
 
 ### Suite gating
 
-Suites are switched on/off by env flags:
+[`src/util/testingRules.ts`](../src/util/testingRules.ts) has two computed axes; everything else is
+a hardcoded skip. Every gate names its reason in the skipped case's own name.
 
-- `runOrSkip(process.env.TEST_<DOMAIN>)` resolves to `describe` or `describe.skip`, so a
-  suite whose flag is `"false"` is skipped wholesale. The env-prep scripts write every
-  `TEST_TRANSFER` / `TEST_BORROWER` / … flag.
-- `runTestIfLocal` / `runTestIfDev` (driven by `process.env.ENV`) gate individual cases
-  that only make sense on one network.
+| Axis | Form | For |
+|---|---|---|
+| Domain | `runOrSkip(process.env.TEST_<DOMAIN>)` | A whole suite switched off from the env file. Only the literal `false` skips |
+| Capability | `withLeaseAdmin` / `withFeeder` / `withDexAdmin`, each with a `…Test` form | A case needing a privileged key, so it runs wherever that key is configured |
+| *(neither)* | `describe.skip` / `test.skip` with a comment | A case a network cannot host |
 
 ---
 
 ## Runbooks
 
-> The funded keys, faucet keys, and mnemonics these procedures need live in gitignored
-> `.env*` files — never paste them into chat, a terminal you're screen-sharing, or a
-> commit. See the Secrets gotcha in [`CLAUDE.md`](../CLAUDE.md).
+> Mnemonics and private keys live in the gitignored `.env`. Never paste them into chat, a shared
+> terminal, or a log that leaves the machine — see the Secrets gotcha in [`CLAUDE.md`](../CLAUDE.md).
 
 ### Install
 
 ```sh
-yarn            # installs deps; postinstall runs patch-package (see Decisions)
+yarn
 ```
 
-Prereqs: Node 14+, `yarn`, `jq`, and `jest` on PATH (`yarn global add jest`).
+Node 18+ (tested on 22), `yarn` and `jq`. No `nolusd` of your own: the prep downloads the
+nolus-core release into the repo root, and [`cmd.sh`](../scripts/common/cmd.sh) points every
+script at that one binary. `rila` always runs the latest nolus-core, so the latest release is
+the right client; `--nolus-core-version-tag` pins another.
 
-### Prepare the environment — dev network
-
-Downloads the `nolusd` binary (`nolus.tar.gz`) from the matching `nolus-core` release,
-recovers the test wallet, queries contract addresses, and writes `.env`:
+### Prepare the environment
 
 ```sh
-yarn prepare-env-dev \
-  --test-wallet-mnemonic <mnemonic> \
-  --mnemonic-faucet <mnemonic> \
-  --protocol <protocol> \
+read -rs MNEMO            # keeps the mnemonic out of shell history — and only there
+yarn prepare-env \
+  --test-wallet-mnemonic "$MNEMO" \
+  --protocol SOLANA-METIS-USDC \
   --oracle-code-id-different-protocol <code_id>
+unset MNEMO
 ```
 
-`yarn prepare-env-dev --help` lists every flag, including the per-domain `--test-*-flag`
-toggles that become the `TEST_<DOMAIN>` gates above.
+Downloads the nolus-core release, recovers the wallet, resolves all 44 variables by query, and writes `.env`. `--help` lists every flag, including the per-domain
+`--test-*-flag` toggles.
 
-### Prepare the environment — local network
-
-A local run has external prerequisites this repo does **not** start for you:
-
-- A local `nolusd` network running (default RPC `http://localhost:26612`). The `reserve`
-  account must be funded with native currency — reflect this when you start the network
-  via `nolus-core`'s `scripts/init-local-network.sh`.
-- The **feeder & dispatcher** must be started manually first — see the
-  [oracle-price-feeder](https://github.com/Nolus-Protocol/oracle-price-feeder) repo. The
-  feeder key name is passed via `--feeder-key`.
-
-```sh
-yarn prepare-env-local \
-  --feeder-key <feeder_key_name> \
-  --dex-admin-key <dex_admin_key> \
-  --lease-admin-key <lease_admin_key> \
-  --protocol <protocol> \
-  --no-price-currency-ticker <ticker> \
-  --no-price-lease-currency-ticker <ticker> \
-  --no-price-lease-currency-denom <denom>
-```
+**Nothing in the file is hand-written**, so a re-prep loses nothing and there is no `env.example`.
+It always writes `.env`; keep a per-protocol copy with `cp .env .env-osmosis` and point
+`TEST_ENV_FILE` at it.
 
 ### Fund the test wallet
 
-The wallet must hold every system-supported currency regardless of which suite runs.
-Edit [`scripts/helpers/fund-with-supported-currencies.sh`](../scripts/helpers/fund-with-supported-currencies.sh)
-to list the currencies first (a DEX-network binary and a pre-funded DEX account are
-required):
+The prep funds nothing. Bridging in what the suites spend is a deliberate hand-run step with
+[`fund-main-account-from-solana.sh`](../scripts/helpers/fund-main-account-from-solana.sh):
 
 ```sh
-yarn fund-main-account "<dex_mnemonic>" "<dex_address>" "<dex_network>" \
-  "<dex_node_url>" "<dex_binary_dir>" "<dex_home_dir>" "<dex_native_denom>" \
-  "<leaser_address>" "<receiver_nolus_address>"
+yarn fund-main-account --recipient nolus1... --keypair … --program-id … \
+  --cluster … --channel-ordinal 0 --solray-admin … --dry-run
 ```
+
+It reads **nothing** from this repo and nothing from an env file — every value arrives on the
+command line or from the `SEND` table at the top of the script, so it works against any cluster
+without an edit. Its header records where to get the mint and the channel ordinal.
 
 ### Run
 
 ```sh
-# default smoke test (pinned to one file)
-yarn test
-
-# a specific suite — ALWAYS --runInBand (see Decisions)
-npx jest --runInBand src/borrower/quoteLease.test.ts
+yarn test                                  # preflight, then the suites
+yarn test src/borrower src/lender          # narrowed to some paths
+TEST_ENV_FILE=.env-osmosis yarn test       # a different env file
 ```
 
-`manually/` suites need bespoke setup documented in each file and must be run in
-isolation — keep them out of the default run.
+### Preflight — before a run spends anything
 
+```sh
+yarn preflight
+```
+
+Read-only, needs no environment variables and no Solana tooling. Three checks:
+
+1. **Every lease currency has a price.** The oracle drops a price past its window, so presence *is*
+   freshness.
+2. **No packet is in flight** on `ICS20_CHANNEL_LOCAL` or `LEASE_CHANNEL` — one left over makes the
+   next run fail ambiguously.
+3. **The main account holds native currency.** `USER_1` only, and only that the balance is above
+   zero, which also proves the account exists. No floor, deliberately: how much a pass needs
+   depends on what it does, and every operation checks its own balance before it spends.
+
+### CI
+
+[`.github/workflows/test-suit.yaml`](../.github/workflows/test-suit.yaml) runs the same two
+commands, on `workflow_dispatch` only. Repository variables supply the defaults and the dispatch
+inputs override them per run; the domain checkboxes become the `TEST_<DOMAIN>` flags, and a
+`suites` input narrows the paths.
+
+Needs `secrets.TEST_WALLET_MNEMONIC`, `vars.PROTOCOL` and `vars.ORACLE_CODE_ID_DIFFERENT_PROTOCOL`
+in a `rila` environment; a first step refuses the run if any is missing. `vars.NOLUS_CORE_TAG` is
+optional and normally left unset — the prep downloads the latest nolus-core release, which is what
+`rila` runs.
+
+### The spend guards
+
+> **Not yet on the spend path.** [`src/util/budget.ts`](../src/util/budget.ts) has no callers, so
+> neither limit can fire — an empty ledger means nothing consulted it, not that nothing was spent.
+> Stage 2 wires it into the journeys.
+
+
+### After a run — returning what it gained
+
+**Manual today.** Stage 2 gets a helper alongside the funder that returns **everything** from the
+main Nolus key to the Solana funder. Until then each return is a plain ICS-20 transfer back over
+`ICS20_CHANNEL_LOCAL`:
+
+```sh
+nolusd tx ibc-transfer transfer transfer <ICS20_CHANNEL_LOCAL> <solana funder pubkey> \
+  <amount><ibc/denom> --from <key> --chain-id <chain id> --node <rpc> \
+  --gas auto --gas-adjustment 1.5 --fees 5000unls -y
+```
 ---
 
 ## Decisions
 
-### Why we patch CosmJS (`patch-package`) instead of forking or pinning
+### Why nothing is mocked
 
-Two upstream bugs in the published `@cosmjs` versions break the suite, so
-[`patches/`](../patches/) carries minimal fixes reapplied on every install via the
-`postinstall` hook:
-
-- **`accountNumber` read as `bigint`.** CosmJS read the on-chain account number with
-  `.toNumber()`, which truncates above 2^53. On a long-lived chain the account number
-  grows past that, the wrong number gets signed, and **every tx fails verification.** The
-  patch switches it to `.toBigInt()`.
-- **`cosmwasm-stargate` resolution.** The package shipped only an `exports` map with no
-  legacy `main`/`types`; some resolution paths (incl. ts-jest) need those entry points or
-  the import fails. The patch adds them.
-
-A patch is the smallest durable fix: no fork to maintain, no waiting on an upstream
-release, and it self-documents the exact lines that differ. Revisit when CosmJS ships
-versions that include both fixes.
-
-### Why `--runInBand` (serial) is mandatory
-
-Suites share a single funded wallet and a sequential account nonce. Run in parallel and
-concurrent txs collide on sequence numbers and flake. Serial execution is the price of
-sharing on-chain state — it is not negotiable for this suite.
-
-### Why nothing is mocked / why real-clock waits exist
-
-The entire value of a UAT suite is exercising the real chain and real contracts. That
-makes three otherwise-standard unit-test rules inapplicable here (documented as carve-outs
-in [`CLAUDE.md`](../CLAUDE.md)): no mocking at the boundary, no fake clock (a real chain
-settles in wall-clock time, so waiting on block production is unavoidable), and a
-deliberately shared funded wallet. Where a wait is needed, prefer polling until a
-condition holds over a fixed `sleep`.
-
-### Why suites self-skip on env flags
-
-Which domains run depends on the target network and what's been set up. Gating through
-`TEST_<DOMAIN>` flags + `ENV`-based `runTestIf*` lets one `.env` describe a run without
-editing test files or juggling jest path filters — the env-prep scripts own the policy.
+The value of a UAT suite is exercising the real chain and real contracts. That makes three
+otherwise-standard rules inapplicable, documented as carve-outs in [`CLAUDE.md`](../CLAUDE.md): no
+mocking at the boundary, no fake clock, and a deliberately shared funded wallet. Where a wait is
+needed, prefer polling until a condition holds over a fixed `sleep`.

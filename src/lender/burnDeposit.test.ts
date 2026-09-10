@@ -7,12 +7,12 @@ import {
   currencyTicker_To_IBC,
   NLPNS_To_LPNS,
 } from '../util/smart-contracts/calculations';
+import { describeIfLenderDepositRestriction } from '../util/testingRules';
 
 const maybe =
-  (process.env.TEST_LENDER as string).toLowerCase() !== 'false' &&
-  +(process.env.LENDER_DEPOSIT_CAPACITY as string) !== 0
-    ? describe
-    : describe.skip;
+  (process.env.TEST_LENDER as string).toLowerCase() === 'false'
+    ? describe.skip
+    : describeIfLenderDepositRestriction;
 
 maybe('Lender tests - Deposit burn', () => {
   let cosm: CosmWasmClient;
@@ -71,11 +71,13 @@ maybe('Lender tests - Deposit burn', () => {
     expect(lppCurrencyToIBC).not.toBe('');
 
     const depositCapacity = await lppInstance.getDepositCapacity();
-    depositCapacity
-      ? (deposit = Math.ceil(depositCapacity.amount / 10000).toString())
-      : (deposit = '100');
+    deposit = depositCapacity
+      ? Math.ceil(depositCapacity.amount / 10000).toString()
+      : '100';
 
-    +deposit < 100 ? (deposit = '100') : deposit;
+    if (+deposit < 100) {
+      deposit = '100';
+    }
   });
 
   test('the successful deposit burn scenario - should work as expected', async () => {

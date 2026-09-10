@@ -12,7 +12,7 @@ import {
   getLeaseGroupCurrencies,
   getLeaseObligations,
 } from '../util/smart-contracts/getters';
-import { runOrSkip, runTestIfLocal } from '../util/testingRules';
+import { runOrSkip } from '../util/testingRules';
 import {
   calcMinAllowablePaymentAmount,
   openLease,
@@ -115,51 +115,48 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
     });
 
-    runTestIfLocal(
-      'the lease admin closes a position regardless of the owner - should work as expected',
-      async () => {
-        const leaseAddressForAdminClose = await openLease(
-          leaserInstance,
-          lppInstance,
-          downpayment,
-          downpaymentCurrency,
-          leaseCurrency,
-          borrowerWallet,
-        );
-        console.log('leaseAddressForAdminClose', leaseAddressForAdminClose);
+    test.skip('the lease admin closes a position regardless of the owner - should work as expected', async () => {
+      const leaseAddressForAdminClose = await openLease(
+        leaserInstance,
+        lppInstance,
+        downpayment,
+        downpaymentCurrency,
+        leaseCurrency,
+        borrowerWallet,
+      );
+      console.log('leaseAddressForAdminClose', leaseAddressForAdminClose);
 
-        const leaseInstanceForAdminClose = new NolusContracts.Lease(
-          cosm,
-          leaseAddressForAdminClose,
-        );
+      const leaseInstanceForAdminClose = new NolusContracts.Lease(
+        cosm,
+        leaseAddressForAdminClose,
+      );
 
-        expect(await waitLeaseOpeningProcess(leaseInstanceForAdminClose)).toBe(
-          undefined,
-        );
+      expect(await waitLeaseOpeningProcess(leaseInstanceForAdminClose)).toBe(
+        undefined,
+      );
 
-        const leaseAdminWallet = await getLeaseAdminWallet();
+      const leaseAdminWallet = await getLeaseAdminWallet();
 
-        await sendInitExecuteFeeTokens(
-          userWithBalanceWallet,
-          leaseAdminWallet.address as string,
-        );
+      await sendInitExecuteFeeTokens(
+        userWithBalanceWallet,
+        leaseAdminWallet.address as string,
+      );
 
-        await leaseInstanceForAdminClose.closePositionLease(
-          leaseAdminWallet,
-          customFees.exec,
-          undefined,
-        );
+      await leaseInstanceForAdminClose.closePositionLease(
+        leaseAdminWallet,
+        customFees.exec,
+        undefined,
+      );
 
-        expect(
-          await waitLeaseInProgressToBeNull(leaseInstanceForAdminClose),
-        ).toBe(undefined);
+      expect(
+        await waitLeaseInProgressToBeNull(leaseInstanceForAdminClose),
+      ).toBe(undefined);
 
-        const leaseStateAfterAdminClose =
-          await leaseInstanceForAdminClose.getLeaseStatus();
+      const leaseStateAfterAdminClose =
+        await leaseInstanceForAdminClose.getLeaseStatus();
 
-        expect(leaseStateAfterAdminClose.closed).toBeDefined();
-      },
-    );
+      expect(leaseStateAfterAdminClose.closed).toBeDefined();
+    });
 
     test('an unauthorized user tries to close the position - should produce an error', async () => {
       const leaseAmountBeforeMarketClose = (

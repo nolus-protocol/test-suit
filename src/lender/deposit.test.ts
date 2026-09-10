@@ -17,13 +17,16 @@ import {
   currencyTicker_To_IBC,
   LPNS_To_NLPNS,
 } from '../util/smart-contracts/calculations';
-import { ifLocal, runIfLenderDepositRestriction } from '../util/testingRules';
+import {
+  describeIfLenderDepositRestriction,
+  ASSERT_EXACT_DELTAS,
+  runIfLenderDepositRestriction,
+} from '../util/testingRules';
 
 const maybe =
-  (process.env.TEST_LENDER as string).toLowerCase() !== 'false' &&
-  +(process.env.LENDER_DEPOSIT_CAPACITY as string) !== 0
-    ? describe
-    : describe.skip;
+  (process.env.TEST_LENDER as string).toLowerCase() === 'false'
+    ? describe.skip
+    : describeIfLenderDepositRestriction;
 
 maybe('Lender tests - Make a deposit', () => {
   let cosm: CosmWasmClient;
@@ -191,9 +194,9 @@ maybe('Lender tests - Make a deposit', () => {
     expect(lppCurrencyToIBC).not.toBe('');
 
     const depositCapacity = await lppInstance.getDepositCapacity();
-    depositCapacity
-      ? (deposit = Math.ceil(depositCapacity.amount / 10000).toString())
-      : (deposit = '100');
+    deposit = depositCapacity
+      ? Math.ceil(depositCapacity.amount / 10000).toString()
+      : '100';
   });
 
   test('the successful liquidity provision scenario - should work as expected', async () => {
@@ -428,7 +431,7 @@ maybe('Lender tests - Make a deposit', () => {
         NATIVE_MINIMAL_DENOM,
       );
 
-      if (ifLocal()) {
+      if (ASSERT_EXACT_DELTAS) {
         expect(BigInt(treasuryBalanceAfter.amount)).toBe(
           BigInt(treasuryBalanceBefore.amount) +
             BigInt(calcFeeProfit(customFees.exec)),
