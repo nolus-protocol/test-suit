@@ -11,10 +11,7 @@ module.exports = {
     '^.+\\.jsx?$': 'babel-jest',
   },
   setupFiles: ['<rootDir>/src/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/src/cleanup.ts'],
   testTimeout: 2000000,
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '<rootDir>/src/manually/',
-    '<rootDir>/src/preflight/',
-  ],
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/src/preflight/'],
 };
