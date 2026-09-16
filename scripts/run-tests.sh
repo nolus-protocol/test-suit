@@ -13,8 +13,9 @@ cd "$HOME_DIR"
 export TEST_ENV_FILE="${TEST_ENV_FILE:-.env}"
 export RUN_ID="${RUN_ID:-$(date +%Y%m%d-%H%M%S)}"
 
-if [[ ! "$RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]]; then
-  echo >&2 "RUN_ID='$RUN_ID' is used as a directory name; use only letters, digits, . _ or -."
+if [[ ! "$RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]] || [[ "$RUN_ID" == "." ]] || [[ "$RUN_ID" == ".." ]]; then
+  echo >&2 "RUN_ID='$RUN_ID' is used as a directory name; use only letters, digits, . _ or -"
+  echo >&2 "  (and not '.' or '..')."
   exit 1
 fi
 

@@ -4,3 +4,4 @@ nolus.tar.gz
 accounts*
 nolusd*
 deploy-platform.sh
+.runs/
