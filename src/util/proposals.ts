@@ -1,7 +1,4 @@
-import { connectComet } from '@cosmjs/tendermint-rpc';
-import { QueryProposalResponse } from 'cosmjs-types/cosmos/gov/v1beta1/query';
 import { Any } from 'cosmjs-types/google/protobuf/any';
-import { QueryClient, setupGovExtension, GovExtension } from '@cosmjs/stargate';
 import { DeliverTxResponse } from '@cosmjs/cosmwasm-stargate';
 import { toUtf8 } from '@cosmjs/encoding';
 import { NolusWallet } from '@nolus/nolusjs';
@@ -10,35 +7,14 @@ import { MsgSudoContract } from './codec/cosmos/msgSudoContract/tx';
 import { getUser1Wallet } from './clients';
 import { MsgSubmitPropWValidation } from './codec/cosmos/msgSubmitPropWValidation/tx';
 
-const PROPOSALS_REFUSED: boolean = true;
 
-const NODE_ENDPOINT = process.env.NODE_URL as string;
-let queryClient: QueryClient & GovExtension;
-
-async function loadClient() {
-  const cometClient = await connectComet(NODE_ENDPOINT);
-  queryClient = QueryClient.withExtensions(cometClient, setupGovExtension);
-}
-
-export async function getProposal(id: number): Promise<QueryProposalResponse> {
-  await loadClient();
-
-  return await queryClient.gov.proposal(id);
-}
+const PROPOSAL_MARKER = 'TEST TEST_SUIT proposal';
 
 export async function sendSudoContractProposal(
   wallet: NolusWallet,
   contract: string,
   message: string,
 ): Promise<DeliverTxResponse> {
-  if (PROPOSALS_REFUSED) {
-    throw new Error(
-      'Refusing to submit a governance proposal. Each one locks ' +
-        `${MIN_DEPOSIT_AMOUNT} unls for a 48 h voting period, and a run that changes a setting ` +
-        'on a live network invalidates its own results. Skip the case instead.',
-    );
-  }
-
   const authority = process.env.GOV_MODULE_ADDRESS as string;
   const msgSudoContractUrl = '/cosmwasm.wasm.v1.MsgSudoContract';
   const msgSubmitPropWValidationUrl = '/cosmos.gov.v1.MsgSubmitPropWValidation';
@@ -80,9 +56,8 @@ export async function sendSudoContractProposal(
       ],
       metadata: '',
       proposer: wallet.address as string,
-      summary:
-        'This proposal proposes to test whether this SudoContract proposal passes',
-      title: 'Test Proposal',
+      summary: PROPOSAL_MARKER,
+      title: PROPOSAL_MARKER,
       initialDeposit: [deposit],
     },
   };
