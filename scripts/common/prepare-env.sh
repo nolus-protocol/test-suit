@@ -47,6 +47,8 @@ prepareEnv() {
 local -r node_url="$1"
 local -r accounts_dir="$2"
 local -r main_account_key="$3"
+# Positional slot kept so the caller's argument list does not shift; nothing reads a
+# feeder key any more, and prepare-env.sh has always passed "" for it.
 local -r feeder_key="$4"
 local -r protocol="$5"
 local -r admin_contract_address="$6"
@@ -64,12 +66,11 @@ local -r test_borrower="${17}"
 local -r test_lender="${18}"
 local -r test_treasury="${19}"
 local -r test_vesting="${20}"
-local -r test_gov="${21}"
-local -r test_admin="${22}"
-local -r test_profit="${23}"
-local -r test_timealarms="${24}"
-local -r test_reserve="${25}"
-local env_file="${26}"
+local -r test_admin="${21}"
+local -r test_profit="${22}"
+local -r test_timealarms="${23}"
+local -r test_reserve="${24}"
+local env_file="${25}"
 
 local -r flags=(--output json --node "$node_url")
 
@@ -99,11 +100,6 @@ if [ "$bonded_count" -ge 2 ]; then
 else
   echo >&2 "Warning: only 1 bonded validator on $node_url. VALIDATOR_2_ADDRESS is left empty;"
   echo >&2 "  staking redelegation and any two-validator case cannot run against this network."
-fi
-
-local feeder_priv_key=""
-if [ -n "$feeder_key" ] ; then
-  feeder_priv_key=$(_exportKey "$feeder_key" "$accounts_dir")
 fi
 
 local dex_admin_priv_key=""
@@ -225,7 +221,6 @@ CHAIN_ID=${chain_id}
 USER_1_PRIV_KEY=${user_1_priv_key}
 USER_2_PRIV_KEY=${user_2_priv_key}
 USER_3_PRIV_KEY=${user_3_priv_key}
-FEEDER_PRIV_KEY=${feeder_priv_key}
 DEX_ADMIN_PRIV_KEY=${dex_admin_priv_key}
 LEASE_ADMIN_PRIV_KEY=${lease_admin_priv_key}
 
@@ -273,7 +268,6 @@ TEST_BORROWER=${test_borrower}
 TEST_LENDER=${test_lender}
 TEST_TREASURY=${test_treasury}
 TEST_VESTING=${test_vesting}
-TEST_GOV=${test_gov}
 TEST_ADMIN=${test_admin}
 TEST_BORROWER_INTEREST=${test_interest}
 TEST_PROFIT=${test_profit}

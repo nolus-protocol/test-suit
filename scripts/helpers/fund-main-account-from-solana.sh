@@ -12,7 +12,10 @@
 #     --cluster https://api.... \
 #     --channel-ordinal 0 \
 #     --solray-admin ~/path/to/solray-admin \
-#     [--send LABEL:MINT:AMOUNT ...] [--confirm] [--dry-run]
+#     [--send LABEL:MINT:AMOUNT ...] --confirm
+#
+# Nothing leaves the funder without `--confirm`. Run it without that flag to see the plan first;
+# `--dry-run` says the same thing explicitly.
 #
 
 set -euo pipefail
@@ -45,7 +48,7 @@ PROGRAM_ID=""
 CLUSTER=""
 ORDINAL=""
 SOLRAY_ADMIN_BIN="${SOLRAY_ADMIN_BIN:-}"
-ASSUME_YES=true
+CONFIRMED=false
 DRY_RUN=false
 CLI_SEND=()
 
@@ -93,12 +96,8 @@ while [[ $# -gt 0 ]]; do
       CLI_SEND+=("${2//:/ }")
       shift 2
       ;;
-    --yes)
-      ASSUME_YES=true
-      shift
-      ;;
     --confirm)
-      ASSUME_YES=false
+      CONFIRMED=true
       shift
       ;;
     --dry-run)
@@ -199,13 +198,11 @@ if [[ "$DRY_RUN" == true ]]; then
   exit 0
 fi
 
-if [[ "$ASSUME_YES" != true ]]; then
-  read -rp "Send these? Type yes to continue: " answer
-
-  if [[ "$answer" != "yes" ]]; then
-    echo "Nothing was sent."
-    exit 1
-  fi
+# Withholding the flag is the default, not the exception: this moves real value off a mainnet
+# funder, and the earlier spelling sent on a bare invocation while `--confirm` only asked first.
+if [[ "$CONFIRMED" != true ]]; then
+  echo "Nothing was sent. Pass --confirm to send the transfer(s) above."
+  exit 0
 fi
 
 # ── Send ──────────────────────────────────────────────────────────────────────────────────────

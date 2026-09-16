@@ -42,7 +42,6 @@ TEST_BORROWER="true"
 TEST_LENDER="true"
 TEST_TREASURY="true"
 TEST_VESTING="false"
-TEST_GOV="false"
 TEST_ADMIN="false"
 TEST_PROFIT="true"
 TEST_TIMEALARMS="true"
@@ -75,7 +74,6 @@ while [[ $# -gt 0 ]]; do
     [--test-lender-flag <test_lender_true_or_false>]
     [--test-treasury-flag <test_treasury_true_or_false>]
     [--test-vesting-flag <test_vesting_true_or_false>]
-    [--test-gov-flag <test_gov_true_or_false>]
     [--test-admin-flag <test_admin_true_or_false>]
     [--test-profit-flag <test_profit_true_or_false>]
     [--test-timealarms-flag <test_timealarms_true_or_false>]
@@ -168,10 +166,6 @@ release, or the one named by --nolus-core-version-tag. A nolusd on PATH is ignor
     shift 2
     ;;
 
-  --test-gov-flag)
-    TEST_GOV="$2"
-    shift 2
-    ;;
 
   --test-admin-flag)
     TEST_ADMIN="$2"
@@ -208,11 +202,11 @@ verify_mandatory "$TEST_WALLET_MNEMONIC" "test wallet mnemonic"
 verify_mandatory "$PROTOCOL" "protocol name"
 verify_mandatory "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "oracle code id different protocol"
 
-# TODO
-for policy in TEST_GOV TEST_STAKING TEST_VESTING TEST_ADMIN; do
+for policy in TEST_STAKING TEST_VESTING; do
   if [[ "${!policy}" != "false" ]]; then
     echo >&2 "Refusing to prepare an env file with $policy='${!policy}'."
-    echo >&2 "  These four are 'false' by policy, not by capability: $CHAIN_ID cannot host them."
+    echo >&2 "  Both are 'false' by policy, not by capability: the fund sweep cannot recover"
+    echo >&2 "  delegated or unbonding NLS, so $CHAIN_ID would lose it on every run."
     exit 1
   fi
 done
@@ -265,7 +259,7 @@ echo "$TEST_WALLET_MNEMONIC" | run_cmd "$ACCOUNTS_DIR"  keys add "$TEST_ACCOUNT_
 source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NODE_URL" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
 "$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY_TICKER" "" "" "$ACTIVE_LEASE_ADDRESS" "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "" "" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
-"$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_GOV" "$TEST_ADMIN" \
+"$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_ADMIN" \
 "$TEST_PROFIT" "$TEST_TIMEALARMS" "$TEST_RESERVE" "$ENV_FILE"
 
 echo "Wrote $ENV_FILE for $PROTOCOL on $CHAIN_ID."
