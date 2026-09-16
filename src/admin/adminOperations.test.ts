@@ -1,26 +1,48 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
 import { sendSudoContractProposal } from '../util/proposals';
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 import { customFees } from '../util/utils';
+import { Admin, Protocol } from '../util/contracts';
 
 runOrSkip(process.env.TEST_ADMIN as string)('Admin contract tests', () => {
   let userWithBalanceWallet: NolusWallet;
   let cosm: CosmWasmClient;
-  let adminInstance: NolusContracts.Admin;
+  let adminInstance: Admin;
   let protocols: string[];
-  let existingProtocol: NolusContracts.Protocol;
+  let existingProtocolName: string;
+  let existingProtocol: Protocol;
   const adminContractAddress = process.env.ADMIN_CONTRACT_ADDRESS as string;
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     cosm = await NolusClient.getInstance().getCosmWasmClient();
-    adminInstance = new NolusContracts.Admin(cosm, adminContractAddress);
+    adminInstance = new Admin(cosm, adminContractAddress);
     userWithBalanceWallet = await getUser1Wallet();
 
     protocols = await adminInstance.getProtocols();
-    existingProtocol = await adminInstance.getProtocol(protocols[0]);
+    const named = await Promise.all(
+      protocols.map(async (name) => ({
+        name,
+        protocol: await adminInstance.getProtocol(name),
+      })),
+    );
+
+    const registrable = named.find(
+      (entry) => entry.protocol.contracts.remote_lease !== undefined,
+    );
+
+    if (!registrable) {
+      throw new Error(
+        'No registered protocol carries a `remote_lease` contract, so no payload can reach the ' +
+          'duplicate-name check. Protocols seen: ' +
+          `${protocols.join(', ')}.`,
+      );
+    }
+
+    existingProtocolName = registrable.name;
+    existingProtocol = registrable.protocol;
   });
 
   test('an unregistered account tries to instantiate a contract - should produce an error', async () => {
@@ -65,7 +87,7 @@ runOrSkip(process.env.TEST_ADMIN as string)('Admin contract tests', () => {
   test('user tries to propose registration of an already existing protocol - should produce an error', async () => {
     const registerPtotocolMsg = {
       register_protocol: {
-        name: protocols[0],
+        name: existingProtocolName,
         protocol: existingProtocol,
       },
     };

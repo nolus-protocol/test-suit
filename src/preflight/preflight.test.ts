@@ -1,14 +1,11 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { connectComet } from '@cosmjs/tendermint-rpc';
 import { QueryClient, setupIbcExtension } from '@cosmjs/stargate';
-import { NolusClient, NolusContracts } from '@nolus/nolusjs';
+import { NolusClient } from '@nolus/nolusjs';
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 import { NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
-
-interface PricesResponse {
-  prices: { amount: { ticker: string } }[];
-}
+import { Oracle } from '../util/contracts';
 
 function configured(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
@@ -18,27 +15,22 @@ function configured(value: string | undefined): string | undefined {
 
 describe('preflight', () => {
   let cosm: CosmWasmClient;
-  let oracleInstance: NolusContracts.Oracle;
+  let oracleInstance: Oracle;
   let customerAddress: string;
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-    oracleInstance = new NolusContracts.Oracle(
-      cosm,
-      process.env.ORACLE_ADDRESS as string,
-    );
+    oracleInstance = new Oracle(cosm, process.env.ORACLE_ADDRESS as string);
 
     customerAddress = (await getUser1Wallet()).address as string;
   });
 
   test('every lease currency has a price', async () => {
     const leaseCurrencies = await getLeaseGroupCurrencies(oracleInstance);
-    const response = (await oracleInstance.getPrices()) as unknown as
-      | PricesResponse
-      | undefined;
-    const priced = (response?.prices ?? []).map(({ amount }) => amount.ticker);
+    const { prices } = await oracleInstance.getPrices();
+    const priced = prices.map(({ amount }) => amount.ticker);
 
     expect(leaseCurrencies.length).toBeGreaterThan(0);
     expect(priced.length).toBeGreaterThan(0);

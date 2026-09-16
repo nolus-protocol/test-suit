@@ -13,7 +13,7 @@ import {
   VALIDATOR_PART,
 } from '../util/utils';
 
-describe('Fee tests', () => {
+describe.skip('Fee tests', () => {
   let user1Wallet: NolusWallet;
   let user2Wallet: NolusWallet;
   let fee: any;

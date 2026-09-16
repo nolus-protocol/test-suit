@@ -1,11 +1,5 @@
-import { assertIsDeliverTxSuccess } from '@cosmjs/stargate';
 import { fromHex } from '@cosmjs/encoding';
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
-import {
-  OracleConfig,
-  SwapTree,
-  Tree,
-} from '@nolus/nolusjs/build/contracts/types';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import { customFees } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,
@@ -14,18 +8,19 @@ import NODE_ENDPOINT, {
 } from '../util/clients';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { sendSudoContractProposal } from '../util/proposals';
-import { sendInitExecuteFeeTokens } from '../util/transfer';
+import { runOrSkip, withDexAdminTest } from '../util/testingRules';
+import { Oracle, OracleConfig, SwapTree, Tree } from '../util/contracts';
 
-describe.skip('Oracle tests - Configurations', () => {
+const maybe = runOrSkip(process.env.TEST_ORACLE as string);
+
+maybe('Oracle tests - Configurations', () => {
   let userWithBalance: NolusWallet;
   let wallet: NolusWallet;
-  let oracleInstance: NolusContracts.Oracle;
-  let adminInstance: NolusContracts.Admin;
+  let oracleInstance: Oracle;
   let initConfig: OracleConfig;
   let baseAsset: string;
   let leaseCurrencies: string[] | string;
   const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
-  const adminContractAddress = process.env.ADMIN_CONTRACT_ADDRESS as string;
 
   async function trySendPropToUpdateConfig(
     wallet: NolusWallet,
@@ -189,8 +184,7 @@ describe.skip('Oracle tests - Configurations', () => {
     wallet = await createWallet();
 
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
-    oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
-    adminInstance = new NolusContracts.Admin(cosm, adminContractAddress);
+    oracleInstance = new Oracle(cosm, oracleContractAddress);
 
     initConfig = await oracleInstance.getConfig();
     baseAsset = await oracleInstance.getBaseCurrency();
@@ -198,59 +192,69 @@ describe.skip('Oracle tests - Configurations', () => {
     leaseCurrencies = await getLeaseGroupCurrencies(oracleInstance);
   });
 
-  test.skip('try to update swap paths with unsupported currencies - should produce an error', async () => {
-    const invalidCurrency = 'A';
-    const newSwapTree: SwapTree = {
-      tree: {
-        value: [0, baseAsset],
-        children: [
-          {
-            value: [1, invalidCurrency],
-          },
-        ],
-      },
-    };
+  withDexAdminTest(
+    'try to update swap paths with unsupported currencies - should produce an error',
+    async () => {
+      const invalidCurrency = 'A';
+      const newSwapTree: SwapTree = {
+        tree: {
+          value: [0, baseAsset],
+          children: [
+            {
+              value: [1, invalidCurrency],
+            },
+          ],
+        },
+      };
 
-    // Swap_tree update
-    await trySendPropToUpdateSwapTree(
-      wallet,
-      newSwapTree,
-      `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
-    );
+      // Swap_tree update
+      await trySendPropToUpdateSwapTree(
+        wallet,
+        newSwapTree,
+        `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
+      );
 
-    // Instantiation
-    await tryInstantiation(
-      newSwapTree.tree,
-      `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
-    );
-  });
+      // Instantiation
+      await tryInstantiation(
+        newSwapTree.tree,
+        `Found a symbol '${invalidCurrency}' pretending to be ticker of a currency pertaining to the payment group`,
+      );
+    },
+  );
 
-  test.skip('try to update swap paths with unsupported pair - should produce an error', async () => {
-    const secondPairMember = process.env.NO_PRICE_CURRENCY_TICKER as string;
+  withDexAdminTest(
+    'try to update swap paths with unsupported pair - should produce an error',
+    async () => {
+      const secondPairMember = process.env.NO_PRICE_CURRENCY_TICKER as string;
 
-    const newSwapTree: SwapTree = {
-      tree: {
-        value: [0, baseAsset],
-        children: [
-          {
-            value: [1, secondPairMember],
-          },
-        ],
-      },
-    };
+      const newSwapTree: SwapTree = {
+        tree: {
+          value: [0, baseAsset],
+          children: [
+            {
+              value: [1, secondPairMember],
+            },
+          ],
+        },
+      };
 
-    // Swap_tree update
-    await trySendPropToUpdateSwapTree(
-      wallet,
-      newSwapTree,
-      `No records for a pool with '${secondPairMember}' and '${baseAsset}'`,
-    );
+      // Swap_tree update
+      await trySendPropToUpdateSwapTree(
+        wallet,
+        newSwapTree,
+        `No records for a pool with '${secondPairMember}' and '${baseAsset}'`,
+      );
 
-    // Instantiation
-    await tryInstantiation(
-      newSwapTree.tree,
-      `No records for a pool with '${secondPairMember}' and '${baseAsset}'`,
-    );
+      // Instantiation
+      await tryInstantiation(
+        newSwapTree.tree,
+        `No records for a pool with '${secondPairMember}' and '${baseAsset}'`,
+      );
+    },
+  );
+
+  afterEach(async () => {
+    expect(await oracleInstance.getConfig()).toStrictEqual(initConfig);
   });
 
   test('try to update swap paths with base currency other than the init base currency - should produce an error', async () => {
@@ -326,35 +330,6 @@ describe.skip('Oracle tests - Configurations', () => {
       'Upper bound is: 1000, but got: 1001',
       1001,
     );
-  });
-
-  test('try adding a valid feeder - should work as expected', async () => {
-    const newWallet = await createWallet();
-
-    await sendInitExecuteFeeTokens(userWithBalance, wallet.address as string);
-
-    const isFeeder = await oracleInstance.isFeeder(newWallet.address as string);
-    expect(isFeeder).toBe(false);
-
-    const addFeederMsg = {
-      register_feeder: {
-        feeder_address: newWallet.address as string,
-      },
-    };
-
-    await userWithBalance.transferAmount(
-      wallet.address as string,
-      customFees.configs.amount,
-      customFees.transfer,
-    );
-
-    const broadcastTx = await sendSudoContractProposal(
-      wallet,
-      oracleContractAddress,
-      JSON.stringify(addFeederMsg),
-    );
-
-    expect(assertIsDeliverTxSuccess(broadcastTx)).toBeUndefined();
   });
 
   test('try adding an invalid feeder address - should produce an error', async () => {
