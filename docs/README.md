@@ -94,6 +94,8 @@ yarn fund-main-account --recipient nolus1... --keypair … --program-id … \
   --cluster … --channel-ordinal 0 --solray-admin … --dry-run
 ```
 
+Sending needs `--confirm`; without it the script prints the plan and stops.
+
 It reads **nothing** from this repo and nothing from an env file — every value arrives on the
 command line or from the `SEND` table at the top of the script, so it works against any cluster
 without an edit. Its header records where to get the mint and the channel ordinal.

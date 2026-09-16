@@ -60,6 +60,8 @@ yarn fund-main-account \
   --dry-run
 ```
 
+Drop `--dry-run` to see the same plan without sending, and add `--confirm` to actually send it.
+
 ### 2.3 Preflight
 
 ```sh

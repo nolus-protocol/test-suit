@@ -3,7 +3,7 @@
 TypeScript/Jest user-acceptance integration-test suite for the Nolus Protocol
 blockchain. Tests run against a real running `nolusd` node, exercising on-chain behavior of
 the Nolus smart contracts — leases, oracle, LPP, profit, treasury, vesting, staking,
-governance, transfers — via `@cosmjs` and `@nolus/nolusjs`. Maintained by QA.
+transfers — via `@cosmjs` and `@nolus/nolusjs`. Maintained by QA.
 
 **One target: the deployed contracts on `rila`.** There is no local-network mode — anything a
 live network cannot host is skipped in place and covered by the suites that stand up their own
@@ -61,11 +61,11 @@ npx jest --runInBand <path-under-src>          # reads .env; TEST_ENV_FILE overr
 
 | Path | Purpose |
 |---|---|
-| `src/<domain>/*.test.ts` | Test suites grouped by protocol area (borrower, oracle, lender, staking, transfers, treasury, vesting, gov, profit, reserve, timealarms, admin) |
+| `src/<domain>/*.test.ts` | Test suites grouped by protocol area (borrower, oracle, lender, staking, transfers, treasury, vesting, profit, reserve, timealarms, admin) |
 | `src/util/` | Shared test helpers and chain utilities |
-| `src/manually/` | Tests requiring specific manual setup — run in isolation only |
 | `src/preflight/` | The run's own gate rather than protocol tests. Excluded from every ordinary run and reached only by `preflight.sh` |
 | `src/setup.ts` | jest `setupFiles`: loads the env file per worker |
+| `src/cleanup.ts` | jest `setupFilesAfterEnv`: one `afterAll` per file that sweeps every throwaway wallet back to the main account |
 | `scripts/` | Environment prep, preflight, the test runner, Solana funding |
 | `.github/workflows/` | The manual-dispatch CI run |
 | `accounts/` | Local test accounts (gitignored) |
@@ -87,6 +87,14 @@ Additions and overrides for this repo:
 - **Tests run serially (`--runInBand`)** (project rule, no kit equivalent): suites
   share a single funded on-chain wallet and sequential account nonce. Never run Jest in
   parallel — concurrent txs collide on sequence numbers and flake.
+- **No unit tests — every test exercises the protocol on a live network** (project rule,
+  overrides the kit's *Cover every branch of every public surface item*): this repo tests the
+  deployed contracts and the chain, not this repo's own code. A test that asserts on a helper,
+  a message builder or a pure calculation without touching `nolusd` does not belong here and
+  gets deleted, however cheap it is to run. The consequence is accepted deliberately: the
+  ported contract layer in `src/util/contracts/` is covered only through the suites that spend
+  on-chain, and a pure-function regression surfaces there rather than in isolation. Do not
+  re-add a chain-free tier.
 - **`tests-style` carve-outs for live integration tests** (project rule): this suite
   runs against a real `nolusd` node, so three `tests-style.md` rules do not apply —
   *Mock at the boundary* (nothing is mocked; hitting the real chain is the point), *fake
@@ -94,6 +102,13 @@ Additions and overrides for this repo:
   `sleep`/poll is unavoidable), and *no shared mutable fixture state* (suites deliberately
   share one funded wallet + sequential nonce — hence `--runInBand`). Everything else in the
   snippet still applies. Where feasible, prefer **poll-until-condition** over a fixed `sleep`.
+- **A test that changes any contract's configuration restores it before it ends** (project
+  rule): the deployed contracts are shared, so a setting a run leaves behind changes what
+  everyone else's runs — and the rest of this run — observe. Capture the config in `beforeAll`
+  and write it back in `afterEach`/`afterAll`, unconditionally; asserting that it is unchanged is
+  not enough, because the assertion only reports the drift it was supposed to prevent. This
+  applies to a case that *expects* the change to be rejected too: the whole point is that a
+  rejection which unexpectedly succeeds must not survive the suite.
 
 ## Gotchas
 
@@ -121,8 +136,10 @@ Additions and overrides for this repo:
   passing on an empty list.
 - **The CI workflow is manual-only and single-job.** Splitting prep from test would mean passing
   `.env` between jobs as an artifact, and it holds unarmored private keys; only `.runs/<RUN_ID>/`
-  is uploaded. `gov`/`staking`/`vesting`/`admin` have no checkbox because the prep refuses an env
-  file unless all four are `false`. Its `run` steps execute under `bash -e`, where
+  is uploaded. `staking`/`vesting` have no checkbox because the prep refuses an env file unless
+  both are `false` — the sweep cannot recover delegated or unbonding NLS. `admin` used to be
+  refused with them and no longer is: `adminOperations` only asserts rejections, so it needs
+  nothing a live network cannot host. Its `run` steps execute under `bash -e`, where
   `[[ … ]] && cmd` aborts the step when the test is false — use `if`.
 - **`.gitignore`'s `.*` matches `.github/**`,** so a *new* workflow file is invisible to
   `git status`. The existing one is tracked, so edits to it do show. `!.github/` would fix it.
