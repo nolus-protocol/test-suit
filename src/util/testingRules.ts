@@ -26,14 +26,6 @@ export const withLeaseAdminTest = testWhen(
   keyIsSet('LEASE_ADMIN_PRIV_KEY'),
   'needs LEASE_ADMIN_PRIV_KEY',
 );
-export const withFeeder = describeWhen(
-  keyIsSet('FEEDER_PRIV_KEY'),
-  'needs FEEDER_PRIV_KEY',
-);
-export const withFeederTest = testWhen(
-  keyIsSet('FEEDER_PRIV_KEY'),
-  'needs FEEDER_PRIV_KEY',
-);
 export const withDexAdmin = describeWhen(
   keyIsSet('DEX_ADMIN_PRIV_KEY'),
   'needs DEX_ADMIN_PRIV_KEY',
@@ -44,11 +36,6 @@ export const withDexAdminTest = testWhen(
 );
 
 export const runIfLenderDepositRestriction = testWhen(
-  hasDepositCapacity,
-  'needs a non-zero LENDER_DEPOSIT_CAPACITY',
-);
-
-export const describeIfLenderDepositRestriction = describeWhen(
   hasDepositCapacity,
   'needs a non-zero LENDER_DEPOSIT_CAPACITY',
 );
@@ -70,9 +57,6 @@ function describeWhen(allowed: () => boolean, reason: string): DescribeBlock {
   };
 }
 
-// TypeScript accepts an `async () => …` where `() => void` is expected, and jest would invoke it
-// at collection and never await it — so a spend written under `withFeeder` instead of
-// `withFeederTest` would broadcast outside any test.
 function synchronousOnly(
   name: string,
   fn: jest.EmptyFunction,
@@ -122,7 +106,6 @@ function isSet(value: string | undefined) {
   );
 }
 
-// `+('null')` is NaN and `NaN !== 0` is true, which would report a capacity that does not exist.
 function hasDepositCapacity() {
   const capacity = process.env.LENDER_DEPOSIT_CAPACITY;
 

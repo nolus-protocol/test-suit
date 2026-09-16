@@ -1,5 +1,5 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
@@ -7,17 +7,15 @@ import {
   currencyTicker_To_IBC,
   NLPNS_To_LPNS,
 } from '../util/smart-contracts/calculations';
-import { describeIfLenderDepositRestriction } from '../util/testingRules';
+import { runOrSkip } from '../util/testingRules';
+import { Lpp } from '../util/contracts';
 
-const maybe =
-  (process.env.TEST_LENDER as string).toLowerCase() === 'false'
-    ? describe.skip
-    : describeIfLenderDepositRestriction;
+const maybe = runOrSkip(process.env.TEST_LENDER as string);
 
 maybe('Lender tests - Deposit burn', () => {
   let cosm: CosmWasmClient;
   let userWithBalance: NolusWallet;
-  let lppInstance: NolusContracts.Lpp;
+  let lppInstance: Lpp;
   let lenderWallet: NolusWallet;
   let lppCurrency: string;
   let lppCurrencyToIBC: string;
@@ -61,7 +59,7 @@ maybe('Lender tests - Deposit burn', () => {
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     cosm = await NolusClient.getInstance().getCosmWasmClient();
-    lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
+    lppInstance = new Lpp(cosm, lppContractAddress);
 
     userWithBalance = await getUser1Wallet();
     lenderWallet = await createWallet();
@@ -72,7 +70,7 @@ maybe('Lender tests - Deposit burn', () => {
 
     const depositCapacity = await lppInstance.getDepositCapacity();
     deposit = depositCapacity
-      ? Math.ceil(depositCapacity.amount / 10000).toString()
+      ? Math.ceil(+depositCapacity.amount / 10000).toString()
       : '100';
 
     if (+deposit < 100) {
