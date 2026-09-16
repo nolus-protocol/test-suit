@@ -1,12 +1,11 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { Asset } from '@nolus/nolusjs/build/contracts';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import NODE_ENDPOINT, {
   getLeaseAdminWallet,
   getUser1Wallet,
   createWallet,
 } from '../util/clients';
-import { customFees, undefinedHandler } from '../util/utils';
+import { customFees } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   getLeaseGroupCurrencies,
@@ -24,37 +23,56 @@ import {
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
 } from '../util/smart-contracts/calculations';
+import { Coin, Lease, Leaser, Lpp, Oracle } from '../util/contracts';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Market Close',
   () => {
     let userWithBalanceWallet: NolusWallet;
     let borrowerWallet: NolusWallet;
+    let unauthorizedWallet: NolusWallet;
     let lppCurrency: string;
     let lppCurrencyToIBC: string;
     let leaseCurrency: string;
     let leaseCurrencyToIBC: string;
     let downpaymentCurrency: string;
-    let oracleInstance: NolusContracts.Oracle;
-    let lppInstance: NolusContracts.Lpp;
-    let leaserInstance: NolusContracts.Leaser;
-    let leaseInstance: NolusContracts.Lease;
+    let oracleInstance: Oracle;
+    let lppInstance: Lpp;
+    let leaserInstance: Leaser;
+    let leaseInstance: Lease;
     let leaseAddress: string;
     let cosm: CosmWasmClient;
     let minSellAsset: number;
     let minAsset: number;
+    let maxCloseSlippagePercent: number;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
 
-    const downpayment = '1000';
+    const downpayment = '700000';
+
+    async function openedLease(
+      lease: Lease = leaseInstance,
+    ): Promise<
+      NonNullable<Awaited<ReturnType<Lease['getLeaseStatus']>>['opened']>
+    > {
+      const state = await lease.getLeaseStatus();
+
+      if (!state.opened) {
+        throw new Error(
+          `The lease holds no open position to close. Its state is ${JSON.stringify(state)}.`,
+        );
+      }
+
+      return state.opened;
+    }
 
     async function testMarketCloseInvalidCases(
       wallet: NolusWallet,
       errorMessage: string,
-      leaseAmountBeforeMarketClose: Asset,
-      amount?: Asset,
+      leaseAmountBeforeMarketClose: Coin,
+      amount?: Coin,
     ) {
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
@@ -81,9 +99,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       userWithBalanceWallet = await getUser1Wallet();
       borrowerWallet = await createWallet();
 
-      oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
-      leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
-      lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
+      unauthorizedWallet = await createWallet();
+
+      oracleInstance = new Oracle(cosm, oracleContractAddress);
+      leaserInstance = new Leaser(cosm, leaserContractAddress);
+      lppInstance = new Lpp(cosm, lppContractAddress);
 
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
       lppCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
@@ -95,9 +115,17 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(leaseCurrencyToIBC).not.toBe('');
 
       minSellAsset = +(await leaserInstance.getLeaserConfig()).config
-        .lease_position_spec.min_transaction.amount;
-      minAsset = +(await leaserInstance.getLeaserConfig()).config
-        .lease_position_spec.min_asset.amount;
+        .lease_config.position_spec.min_transaction.amount;
+      minAsset = +(await leaserInstance.getLeaserConfig()).config.lease_config
+        .position_spec.min_asset.amount;
+
+      // The protocol's own bound on how far a close may land from the oracle price, in permille.
+      // Nothing promises the DEX agrees with the oracle any more tightly than this, so asserting a
+      // narrower band asserts something the protocol never offered — one run came in 1.4% out
+      // against a hand-picked 1%.
+      maxCloseSlippagePercent =
+        +(await leaserInstance.getLeaserConfig()).config.lease_config
+          .max_slippages.close / 10;
 
       leaseAddress = await openLease(
         leaserInstance,
@@ -108,11 +136,48 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet,
       );
 
-      leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
+      leaseInstance = new Lease(cosm, leaseAddress);
 
       console.log('Lease address: ', leaseAddress);
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
+    });
+
+    afterAll(async () => {
+      const openPositions = await leaserInstance.getCurrentOpenLeasesByOwner(
+        borrowerWallet.address as string,
+      );
+      const failures: string[] = [];
+
+      for (const address of openPositions) {
+        try {
+          const position = new Lease(cosm, address);
+
+          await waitLeaseInProgressToBeNull(position);
+
+          if (!(await position.getLeaseStatus()).opened) {
+            continue;
+          }
+
+          await sendInitExecuteFeeTokens(
+            userWithBalanceWallet,
+            borrowerWallet.address as string,
+          );
+
+          await position.closePositionLease(borrowerWallet, customFees.exec);
+          await waitLeaseInProgressToBeNull(position);
+        } catch (error) {
+          failures.push(`${address}: ${(error as Error).message}`);
+        }
+      }
+
+      if (failures.length > 0) {
+        throw new Error(
+          `Could not close ${failures.length} of ${openPositions.length} position(s). The sweep ` +
+            `still records the owner, so the payouts can be recovered by hand:\n  ` +
+            failures.join('\n  '),
+        );
+      }
     });
 
     test.skip('the lease admin closes a position regardless of the owner - should work as expected', async () => {
@@ -126,7 +191,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
       console.log('leaseAddressForAdminClose', leaseAddressForAdminClose);
 
-      const leaseInstanceForAdminClose = new NolusContracts.Lease(
+      const leaseInstanceForAdminClose = new Lease(
         cosm,
         leaseAddressForAdminClose,
       );
@@ -159,17 +224,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('an unauthorized user tries to close the position - should produce an error', async () => {
-      const leaseAmountBeforeMarketClose = (
-        await leaseInstance.getLeaseStatus()
-      ).opened?.amount;
-
-      if (!leaseAmountBeforeMarketClose) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseAmountBeforeMarketClose = (await openedLease()).amount;
       await testMarketCloseInvalidCases(
-        userWithBalanceWallet,
+        unauthorizedWallet,
         'Unauthorized access!',
         leaseAmountBeforeMarketClose,
         undefined,
@@ -177,14 +234,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially "0" amount from the position - should produce an error', async () => {
-      const leaseAmountBeforePartialClose = (
-        await leaseInstance.getLeaseStatus()
-      ).opened?.amount;
-
-      if (!leaseAmountBeforePartialClose) {
-        undefinedHandler();
-        return;
-      }
+      const leaseAmountBeforePartialClose = (await openedLease()).amount;
       const amount = {
         amount: '0',
         ticker: leaseAmountBeforePartialClose.ticker,
@@ -199,15 +249,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially the full amount from the position - should produce an error', async () => {
-      const leaseAmountBeforePartialClose = (
-        await leaseInstance.getLeaseStatus()
-      ).opened?.amount;
-
-      if (!leaseAmountBeforePartialClose) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseAmountBeforePartialClose = (await openedLease()).amount;
       await testMarketCloseInvalidCases(
         borrowerWallet,
         `The position past this close should worth at least ${minAsset} ${lppCurrency}`,
@@ -217,14 +259,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially an amount greater than the position - should produce an error', async () => {
-      const leaseAmountBeforePartialClose = (
-        await leaseInstance.getLeaseStatus()
-      ).opened?.amount;
-
-      if (!leaseAmountBeforePartialClose) {
-        undefinedHandler();
-        return;
-      }
+      const leaseAmountBeforePartialClose = (await openedLease()).amount;
       const amount = {
         amount: (+leaseAmountBeforePartialClose.amount + 1).toString(),
         ticker: leaseAmountBeforePartialClose.ticker,
@@ -239,15 +274,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially by sending amount ticker != lease currency ticker - should produce an error', async () => {
-      const leaseAmountBeforePartialClose = (
-        await leaseInstance.getLeaseStatus()
-      ).opened?.amount;
-
-      if (!leaseAmountBeforePartialClose) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseAmountBeforePartialClose = (await openedLease()).amount;
       const invalidLeaseTicker = lppCurrency;
 
       const amount = { amount: '1', ticker: invalidLeaseTicker };
@@ -260,22 +287,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
     test('the borrower tries to close partially by sending amount < "min_transaction" - should produce an error', async () => {
-      const leaseAmountBeforePartialClose = (
-        await leaseInstance.getLeaseStatus()
-      ).opened?.amount;
-
-      if (!leaseAmountBeforePartialClose) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseAmountBeforePartialClose = (await openedLease()).amount;
       const leaseCurrencyPriceObj =
         await oracleInstance.getBasePrice(leaseCurrency);
-      const [
-        minToleranceCurrencyPrice_LC,
-        exactCurrencyPrice_LC,
-        maxToleranceCurrencyPrice_LC,
-      ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
+      const { min: minToleranceCurrencyPrice_LC } = currencyPriceObjToNumbers(
+        leaseCurrencyPriceObj,
+        1,
+      );
 
       const amountToCloseValue = Math.trunc(
         (minSellAsset - 1) * minToleranceCurrencyPrice_LC,
@@ -295,24 +313,15 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially after which the lease amount is below "min_asset"" - should produce an error', async () => {
-      const leaseStateBeforePartialClose = (
-        await leaseInstance.getLeaseStatus()
-      ).opened;
-
-      if (!leaseStateBeforePartialClose) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseStateBeforePartialClose = await openedLease();
       const leaseAmountBeforeClose = leaseStateBeforePartialClose.amount;
 
       const leaseCurrencyPriceObj =
         await oracleInstance.getBasePrice(leaseCurrency);
-      const [
-        minToleranceCurrencyPrice_LC,
-        exactCurrencyPrice_LC,
-        maxToleranceCurrencyPrice_LC,
-      ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
+      const { max: maxToleranceCurrencyPrice_LC } = currencyPriceObjToNumbers(
+        leaseCurrencyPriceObj,
+        1,
+      );
 
       const minLeaseAmountLC = minAsset * maxToleranceCurrencyPrice_LC;
       const amountToCloseValue = Math.trunc(
@@ -333,25 +342,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially - should work as expected', async () => {
-      const leaseStateBeforePartialClose = (
-        await leaseInstance.getLeaseStatus()
-      ).opened;
-
-      if (!leaseStateBeforePartialClose) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseStateBeforePartialClose = await openedLease();
       const leaseObligationsBeforePartialClose = getLeaseObligations(
         leaseStateBeforePartialClose,
         true,
       );
-
-      if (!leaseObligationsBeforePartialClose) {
-        undefinedHandler();
-        return;
-      }
-
       const borrowerBalanceBeforeLPN = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
         lppCurrencyToIBC,
@@ -369,17 +364,23 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseCurrencyPriceObj =
         await oracleInstance.getBasePrice(leaseCurrency);
-      const [
-        minToleranceCurrencyPrice_LC,
-        exactCurrencyPrice_LC,
-        maxToleranceCurrencyPrice_LC,
-      ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
+      const {
+        min: minToleranceCurrencyPrice_LC,
+        max: maxToleranceCurrencyPrice_LC,
+      } = currencyPriceObjToNumbers(
+        leaseCurrencyPriceObj,
+        maxCloseSlippagePercent,
+      );
+
+      const preferredCloseValueLPN = 500000;
 
       const amountToCloseValue = await calcMinAllowablePaymentAmount(
         leaserInstance,
         oracleInstance,
         leaseCurrency,
-        '10000',
+        Math.trunc(
+          preferredCloseValueLPN * maxToleranceCurrencyPrice_LC,
+        ).toString(),
       );
 
       const closedAmountToLPN_min = Math.trunc(
@@ -401,26 +402,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
       expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
 
-      const leaseStateAfterPartialClose = (await leaseInstance.getLeaseStatus())
-        .opened;
-
-      if (!leaseStateAfterPartialClose) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseStateAfterPartialClose = await openedLease();
       expect(leaseStateAfterPartialClose).toBeDefined();
 
       const leaseObligationsAfterPartialClose = getLeaseObligations(
         leaseStateAfterPartialClose,
         true,
       );
-
-      if (!leaseObligationsAfterPartialClose) {
-        undefinedHandler();
-        return;
-      }
-
       expect(+leaseStateAfterPartialClose.amount.amount).toBe(
         +leaseStateBeforePartialClose.amount.amount - +amountToCloseValue,
       );
@@ -456,27 +444,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     });
 
     test('the borrower tries to close partially by sending an amount which covers the obligations - should work as expected', async () => {
-      const leaseStateBeforePartialClose = (
-        await leaseInstance.getLeaseStatus()
-      ).opened;
-
-      if (!leaseStateBeforePartialClose) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseStateBeforePartialClose = await openedLease();
       const leaseAmountBeforePartialClose = leaseStateBeforePartialClose.amount;
 
       const leaseObligationsBeforePartialClose = getLeaseObligations(
         leaseStateBeforePartialClose,
         true,
       );
-
-      if (!leaseObligationsBeforePartialClose) {
-        undefinedHandler();
-        return;
-      }
-
       const borrowerBalanceBeforeLPN = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
         lppCurrencyToIBC,
@@ -495,11 +469,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const leaseCurrencyPriceObj =
         await oracleInstance.getBasePrice(leaseCurrency);
 
-      const [
-        minToleranceCurrencyPrice_LC,
-        exactCurrencyPrice_LC,
-        maxToleranceCurrencyPrice_LC,
-      ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
+      const {
+        min: minToleranceCurrencyPrice_LC,
+        max: maxToleranceCurrencyPrice_LC,
+      } = currencyPriceObjToNumbers(
+        leaseCurrencyPriceObj,
+        maxCloseSlippagePercent,
+      );
 
       const amountToCloseValue = Math.max(
         minSellAsset,
@@ -578,11 +554,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrency,
         borrowerWallet,
       );
-      const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
+      const fullCloseLeaseInstance = new Lease(cosm, leaseAddress);
 
       console.log('Lease address', leaseAddress);
 
-      expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
+      expect(await waitLeaseOpeningProcess(fullCloseLeaseInstance)).toBe(
+        undefined,
+      );
 
       const leasesBefore = (
         await leaserInstance.getCurrentOpenLeasesByOwner(
@@ -590,26 +568,15 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         )
       ).length;
 
-      const leaseStateBeforeFullClose = (await leaseInstance.getLeaseStatus())
-        .opened;
-
-      if (!leaseStateBeforeFullClose) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseStateBeforeFullClose = await openedLease(
+        fullCloseLeaseInstance,
+      );
       const leaseAmountBeforeClose = leaseStateBeforeFullClose.amount;
 
       const leaseObligations = getLeaseObligations(
         leaseStateBeforeFullClose,
         true,
       );
-
-      if (!leaseObligations) {
-        undefinedHandler();
-        return;
-      }
-
       const borrowerBalanceBeforeLPN = await borrowerWallet.getBalance(
         borrowerWallet.address as string,
         lppCurrencyToIBC,
@@ -622,25 +589,30 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseCurrencyPriceObj =
         await oracleInstance.getBasePrice(leaseCurrency);
-      const [
-        minToleranceCurrencyPrice_LC,
-        exactCurrencyPrice_LC,
-        maxToleranceCurrencyPrice_LC,
-      ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
+      const {
+        min: minToleranceCurrencyPrice_LC,
+        max: maxToleranceCurrencyPrice_LC,
+      } = currencyPriceObjToNumbers(
+        leaseCurrencyPriceObj,
+        maxCloseSlippagePercent,
+      );
 
       const leaseAmountToLPN_min =
         +leaseAmountBeforeClose.amount / minToleranceCurrencyPrice_LC;
       const leaseAmountToLPN_max =
         +leaseAmountBeforeClose.amount / maxToleranceCurrencyPrice_LC;
 
-      await leaseInstance.closePositionLease(
+      await fullCloseLeaseInstance.closePositionLease(
         borrowerWallet,
         customFees.exec,
         undefined,
       );
-      expect(await waitLeaseInProgressToBeNull(leaseInstance)).toBe(undefined);
+      expect(await waitLeaseInProgressToBeNull(fullCloseLeaseInstance)).toBe(
+        undefined,
+      );
 
-      const leaseStateAfterFullClose = await leaseInstance.getLeaseStatus();
+      const leaseStateAfterFullClose =
+        await fullCloseLeaseInstance.getLeaseStatus();
       expect(leaseStateAfterFullClose.closed).toBeDefined();
 
       const borrowerBalanceAfterLPN = await borrowerWallet.getBalance(

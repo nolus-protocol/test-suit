@@ -1,7 +1,6 @@
 import { Coin, addCoins } from '@cosmjs/amino';
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { OpenedLeaseInfo } from '@nolus/nolusjs/build/contracts';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import {
   customFees,
   NATIVE_MINIMAL_DENOM,
@@ -32,6 +31,7 @@ import {
   waitLeaseInProgressToBeNull,
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
+import { Lease, Leaser, Lpp, OpenedLeaseInfo, Oracle } from '../util/contracts';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Repay lease',
@@ -45,10 +45,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let paymentCurrency: string;
     let paymentCurrencyToIBC: string;
     let cosm: CosmWasmClient;
-    let lppInstance: NolusContracts.Lpp;
-    let oracleInstance: NolusContracts.Oracle;
-    let leaserInstance: NolusContracts.Leaser;
-    let leaseInstance: NolusContracts.Lease;
+    let lppInstance: Lpp;
+    let oracleInstance: Oracle;
+    let leaserInstance: Leaser;
+    let leaseInstance: Lease;
     let leaseAddress: string;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
@@ -56,7 +56,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     const profitContractAddress = process.env.PROFIT_ADDRESS as string;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
-    const downpayment = '100000';
+    // The loan is 1.5x this, so an opening swaps 2.5x it — under ~0.5 LPN the DEX will not route it.
+    const downpayment = '200000';
     let paymentsCount = 0;
 
     async function verifyTransferAfterRepay(
@@ -222,10 +223,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       userWithBalanceWallet = await getUser1Wallet();
       borrowerWallet = await createWallet();
 
-      leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
-      lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
+      leaserInstance = new Leaser(cosm, leaserContractAddress);
+      lppInstance = new Lpp(cosm, lppContractAddress);
 
-      oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
+      oracleInstance = new Oracle(cosm, oracleContractAddress);
 
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
       lppCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
@@ -242,7 +243,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         leaseCurrency,
         borrowerWallet,
       );
-      leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
+      leaseInstance = new Lease(cosm, leaseAddress);
 
       console.log('REPAY tests --- Lease address: ', leaseAddress);
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
@@ -296,11 +297,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const paymentCurrencyPriceObj =
         await oracleInstance.getBasePrice(paymentCurrency);
 
-      const [
-        minToleranceCurrencyPrice,
-        exactCurrencyPrice,
-        maxToleranceCurrencyPrice,
-      ] = currencyPriceObjToNumbers(paymentCurrencyPriceObj, 1);
+      const { exact: exactCurrencyPrice } = currencyPriceObjToNumbers(
+        paymentCurrencyPriceObj,
+        1,
+      );
 
       const paymentAmount = Math.trunc(paymentAmountLPN * exactCurrencyPrice);
       expect(paymentAmount).toBeGreaterThan(0);
@@ -420,18 +420,17 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('the borrower tries to pay less than the "min_transaction" - should produce an error', async () => {
       const minTransaction = (await leaserInstance.getLeaserConfig()).config
-        .lease_position_spec.min_transaction.amount;
+        .lease_config.position_spec.min_transaction.amount;
 
       const paymentCurrency = leaseCurrency;
       const paymentCurrencyToIBC = await currencyTicker_To_IBC(paymentCurrency);
       expect(paymentCurrencyToIBC).not.toBe('');
       const paymentCurrencyPriceObj =
         await oracleInstance.getBasePrice(paymentCurrency);
-      const [
-        minToleranceCurrencyPrice_PC,
-        exactCurrencyPrice_PC,
-        maxToleranceCurrencyPrice_PC,
-      ] = currencyPriceObjToNumbers(paymentCurrencyPriceObj, 1);
+      const { min: minToleranceCurrencyPrice_PC } = currencyPriceObjToNumbers(
+        paymentCurrencyPriceObj,
+        1,
+      );
 
       const paymentAmount = Math.trunc(
         (+minTransaction - 1) * minToleranceCurrencyPrice_PC,

@@ -1,12 +1,8 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
-import {
-  customFees,
-  PERMILLE_TO_PERCENT,
-  undefinedHandler,
-} from '../util/utils';
+import { customFees, PERMILLE_TO_PERCENT } from '../util/utils';
 import {
   openLease,
   waitLeaseInProgressToBeNull,
@@ -15,6 +11,7 @@ import {
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import { calcLTV } from '../util/smart-contracts/calculations';
+import { Lease, Leaser, Lpp, Oracle } from '../util/contracts';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Close policy Configuration',
@@ -22,20 +19,21 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let userWithBalanceWallet: NolusWallet;
     let borrowerWallet: NolusWallet;
     let cosm: CosmWasmClient;
-    let leaserInstance: NolusContracts.Leaser;
-    let oracleInstance: NolusContracts.Oracle;
-    let lppInstance: NolusContracts.Lpp;
-    let leaseInstance: NolusContracts.Lease;
+    let leaserInstance: Leaser;
+    let oracleInstance: Oracle;
+    let lppInstance: Lpp;
+    let leaseInstance: Lease;
 
     const leaserContractAddress = process.env.LEASER_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
-    const downpayment = '10000';
+    // The loan is 1.5x this, so an opening swaps 2.5x it — under ~0.5 LPN the DEX will not route it.
+    const downpayment = '200000';
 
     async function changeClosePolicyInvalidCases(
       wallet: NolusWallet,
-      errorMessage: string,
+      errorMessage: string | RegExp,
       SL?: number | null,
       TP?: number | null,
     ) {
@@ -73,9 +71,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       NolusClient.setInstance(NODE_ENDPOINT);
       cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-      leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
-      lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
-      oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
+      leaserInstance = new Leaser(cosm, leaserContractAddress);
+      lppInstance = new Lpp(cosm, lppContractAddress);
+      oracleInstance = new Oracle(cosm, oracleContractAddress);
 
       userWithBalanceWallet = await getUser1Wallet();
       borrowerWallet = await createWallet();
@@ -94,7 +92,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet,
       );
 
-      leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
+      leaseInstance = new Lease(cosm, leaseAddress);
 
       await sendInitExecuteFeeTokens(
         userWithBalanceWallet,
@@ -126,17 +124,18 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
+    // The current LTV is the contract's own figure and it moves with the oracle price between the
+    // two calls below, so only the strategy — which this case chooses — is pinned. Asserting the
+    // percentage the contract reports made the case fail the moment the price ticked (60% → 59.9%).
     test('try to set SL <= currentLTV - should produce an error', async () => {
       const currentLTV = await calcLTV(leaseInstance, oracleInstance);
-      if (!currentLTV) {
-        undefinedHandler();
-        return;
-      }
       let SL = currentLTV;
 
       await changeClosePolicyInvalidCases(
         borrowerWallet,
-        `The current lease LTV '${currentLTV / PERMILLE_TO_PERCENT}%' would trigger 'stop loss above or equal to ${SL / PERMILLE_TO_PERCENT}%'!`,
+        new RegExp(
+          `Invalid close policy!.*would trigger 'stop loss above or equal to ${SL / PERMILLE_TO_PERCENT}%'!`,
+        ),
         SL,
         null,
       );
@@ -144,7 +143,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       SL = currentLTV - 200; // - 20%
       await changeClosePolicyInvalidCases(
         borrowerWallet,
-        `The current lease LTV '${currentLTV / PERMILLE_TO_PERCENT}%' would trigger 'stop loss above or equal to ${SL / PERMILLE_TO_PERCENT}%'!`,
+        new RegExp(
+          `Invalid close policy!.*would trigger 'stop loss above or equal to ${SL / PERMILLE_TO_PERCENT}%'!`,
+        ),
         SL,
         null,
       );
@@ -152,7 +153,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('try to set SL >= maxLTV - should produce an error', async () => {
       const maxLTV = (await leaserInstance.getLeaserConfig()).config
-        .lease_position_spec.liability.max;
+        .lease_config.position_spec.liability.max;
       let SL = maxLTV;
 
       await changeClosePolicyInvalidCases(
@@ -173,16 +174,14 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('try to set TP > currentLTV - should produce an error', async () => {
       const currentLTV = await calcLTV(leaseInstance, oracleInstance);
-      if (!currentLTV) {
-        undefinedHandler();
-        return;
-      }
 
       const TP = currentLTV + 10; // + 10%
 
       await changeClosePolicyInvalidCases(
         borrowerWallet,
-        `The current lease LTV '${currentLTV / PERMILLE_TO_PERCENT}%' would trigger 'take profit below ${TP / PERMILLE_TO_PERCENT}%'!`,
+        new RegExp(
+          `Invalid close policy!.*would trigger 'take profit below ${TP / PERMILLE_TO_PERCENT}%'!`,
+        ),
         null,
         TP,
       );
@@ -190,7 +189,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('try to set TP > max LTV - should produce an error', async () => {
       const maxLTV = (await leaserInstance.getLeaserConfig()).config
-        .lease_position_spec.liability.max;
+        .lease_config.position_spec.liability.max;
 
       const TP = maxLTV + 10;
 
@@ -204,7 +203,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('try to set SL > max LTV - should produce an error', async () => {
       const maxLTV = (await leaserInstance.getLeaserConfig()).config
-        .lease_position_spec.liability.max;
+        .lease_config.position_spec.liability.max;
 
       const SL = maxLTV + 10;
 
@@ -228,10 +227,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     test('try to set valid SL and TP - should work as expected', async () => {
       const currentLTV = await calcLTV(leaseInstance, oracleInstance);
-      if (!currentLTV) {
-        undefinedHandler();
-        return;
-      }
 
       const validTP = currentLTV - 10; // - 20%
       const validSL = currentLTV + 10; // + 20%

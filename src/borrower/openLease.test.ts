@@ -1,8 +1,12 @@
 import { InstantiateOptions, CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
-import { LeaserConfigInfo } from '@nolus/nolusjs/build/contracts';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
-import { customFees, NATIVE_TICKER, undefinedHandler } from '../util/utils';
+import {
+  customFees,
+  NATIVE_TICKER,
+  PERMILLE_TO_PERCENT,
+  undefinedHandler,
+} from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   calcBorrowedAmountLTD,
@@ -24,6 +28,13 @@ import {
   waitLeaseOpeningProcess,
 } from '../util/smart-contracts/actions/borrower';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
+import {
+  Lease,
+  Leaser,
+  LeaserConfigInfo,
+  Lpp,
+  Oracle,
+} from '../util/contracts';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Open a lease',
@@ -36,9 +47,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let leaseCurrencyToIBC: string;
     let downpaymentCurrency: string;
     let downpaymentCurrencyToIBC: string;
-    let lppInstance: NolusContracts.Lpp;
-    let leaserInstance: NolusContracts.Leaser;
-    let oracleInstance: NolusContracts.Oracle;
+    let lppInstance: Lpp;
+    let leaserInstance: Leaser;
+    let oracleInstance: Oracle;
     let cosm: CosmWasmClient;
     let leaserConfig: LeaserConfigInfo;
     let minAsset: string;
@@ -49,7 +60,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
     const leaseContractCodeId = 2;
 
-    const downpayment = '10000';
+    // The loan is 1.5x this, so an opening swaps 2.5x it. Anything much under 0.5 LPN of swap does
+    // not route on the DEX and the lease never leaves `buy_asset`.
+    const downpayment = '200000';
 
     async function testOpening(
       leaseCurrency: string,
@@ -88,25 +101,28 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         borrowerWallet.address as string,
       );
 
+      const openSlippagePercent =
+        +leaserConfig.lease_config.max_slippages.open / PERMILLE_TO_PERCENT;
+
       const leaseCurrencyPriceObj =
         await oracleInstance.getBasePrice(leaseCurrency);
-      const [
-        minToleranceCurrencyPrice_LC,
-        exactCurrencyPrice_LC,
-        maxToleranceCurrencyPrice_LC,
-      ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
+      const {
+        min: minToleranceCurrencyPrice_LC,
+        max: maxToleranceCurrencyPrice_LC,
+      } = currencyPriceObjToNumbers(leaseCurrencyPriceObj, openSlippagePercent);
 
-      let exactCurrencyPrice_PC = 1;
       let minToleranceCurrencyPrice_PC = 1;
       let maxToleranceCurrencyPrice_PC = 1;
       if (downpaymentCurrency !== lppCurrency) {
         const downnpaymentCurrencyPriceObj =
           await oracleInstance.getBasePrice(downpaymentCurrency);
-        [
-          minToleranceCurrencyPrice_PC,
-          exactCurrencyPrice_PC,
-          maxToleranceCurrencyPrice_PC,
-        ] = currencyPriceObjToNumbers(downnpaymentCurrencyPriceObj, 1);
+        ({
+          min: minToleranceCurrencyPrice_PC,
+          max: maxToleranceCurrencyPrice_PC,
+        } = currencyPriceObjToNumbers(
+          downnpaymentCurrencyPriceObj,
+          openSlippagePercent,
+        ));
       }
 
       await provideEnoughLiquidity(
@@ -138,7 +154,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       const leaseAddress = getLeaseAddressFromOpenLeaseResponse(response);
       console.log('Lease address: ', leaseAddress);
-      const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
+      const leaseInstance = new Lease(cosm, leaseAddress);
 
       expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
 
@@ -196,7 +212,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
           calcBorrowedAmountLTD(downpaymentToLPN_max, ltd),
         );
       } else {
-        const initPercent = +leaserConfig.lease_position_spec.liability.initial;
+        const initPercent =
+          +leaserConfig.lease_config.position_spec.liability.initial;
 
         calcBorrowAmount_max = Math.trunc(
           calcBorrowedAmountLTV(downpaymentToLPN_min, initPercent),
@@ -286,13 +303,14 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       userWithBalanceWallet = await getUser1Wallet();
       borrowerWallet = await createWallet();
 
-      leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
-      oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
-      lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
+      leaserInstance = new Leaser(cosm, leaserContractAddress);
+      oracleInstance = new Oracle(cosm, oracleContractAddress);
+      lppInstance = new Lpp(cosm, lppContractAddress);
 
       leaserConfig = (await leaserInstance.getLeaserConfig()).config;
-      minAsset = leaserConfig.lease_position_spec.min_asset.amount;
-      minTransaction = leaserConfig.lease_position_spec.min_transaction.amount;
+      minAsset = leaserConfig.lease_config.position_spec.min_asset.amount;
+      minTransaction =
+        leaserConfig.lease_config.position_spec.min_transaction.amount;
 
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
       lppCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
@@ -376,10 +394,17 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     test('the successful scenario for opening a lease - downpayment currency === lease currency- should work as expected', async () => {
       // !!! leaseCurrency balance > 0 is required for the main account
 
-      const currentDPAmount = '100000';
-
       const currentLeaseCurrency = leaseCurrency;
       const currentDownpaymentCurrency = currentLeaseCurrency;
+
+      const { exact: leaseCurrencyPerLPN } = currencyPriceObjToNumbers(
+        await oracleInstance.getBasePrice(currentLeaseCurrency),
+        0,
+      );
+      const currentDPAmount = Math.trunc(
+        +downpayment * leaseCurrencyPerLPN,
+      ).toString();
+
       const currentDownpaymentCurrencyToIBC = await currencyTicker_To_IBC(
         currentDownpaymentCurrency,
       );
@@ -405,7 +430,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(currentDownpaymentCurrencyToIBC).not.toBe('');
 
       const maxLTD =
-        LTVtoLTD(+leaserConfig.lease_position_spec.liability.initial) - 100; // -10%
+        LTVtoLTD(+leaserConfig.lease_config.position_spec.liability.initial) -
+        100; // -10%
 
       await testOpening(
         currentLeaseCurrency,
@@ -507,18 +533,17 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       expect(borrowerBalanceAfter.amount).toBe(borrowerBalanceBefore.amount);
     });
 
-    // min_transaction <= 1000, min_asset>=15000
     test('the borrower tries to open a lease whose amount is less than the "min_asset" - should produce an error', async () => {
       const downpaymentCurrency = lppCurrency;
       const downpaymentCurrencyToIBC =
         await currencyTicker_To_IBC(downpaymentCurrency);
-      const downpaymentCurrencyPriceObj =
-        await oracleInstance.getBasePrice(downpaymentCurrency);
-      const [
-        minToleranceCurrencyPrice_LC,
-        exactCurrencyPrice_LC,
-        maxToleranceCurrencyPrice_LC,
-      ] = currencyPriceObjToNumbers(downpaymentCurrencyPriceObj, 1);
+
+      const leaseCurrencyPriceObj =
+        await oracleInstance.getBasePrice(leaseCurrency);
+      const { min: minToleranceCurrencyPrice_LC } = currencyPriceObjToNumbers(
+        leaseCurrencyPriceObj,
+        1,
+      );
 
       expect(downpaymentCurrencyToIBC).not.toBe('');
 
@@ -551,11 +576,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         await currencyTicker_To_IBC(downpaymentCurrency);
       const downpaymentCurrencyPriceObj =
         await oracleInstance.getBasePrice(downpaymentCurrency);
-      const [
-        minToleranceCurrencyPrice_DPC,
-        exactCurrencyPrice_DPC,
-        maxToleranceCurrencyPrice_DPC,
-      ] = currencyPriceObjToNumbers(downpaymentCurrencyPriceObj, 1);
+      const { min: minToleranceCurrencyPrice_DPC } = currencyPriceObjToNumbers(
+        downpaymentCurrencyPriceObj,
+        1,
+      );
 
       expect(downpaymentCurrencyToIBC).not.toBe('');
 
