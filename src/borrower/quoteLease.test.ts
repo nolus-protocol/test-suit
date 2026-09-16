@@ -1,19 +1,19 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate/';
-import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import { runOrSkip } from '../util/testingRules';
 import NODE_ENDPOINT, { createWallet } from '../util/clients';
 import {
   calcBorrowedAmountLTD,
   calcBorrowedAmountLTV,
   calcQuoteAnnualInterestRate,
-  calcUtilization,
   currencyPriceObjToNumbers,
   currencyTicker_To_IBC,
   LTVtoLTD,
 } from '../util/smart-contracts/calculations';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
 import { provideEnoughLiquidity } from '../util/smart-contracts/actions/lender';
-import { PERMILLE_TO_PERCENT } from '../util/utils';
+
+import { InterestRate, Leaser, Lpp, Oracle } from '../util/contracts';
 
 runOrSkip(process.env.TEST_BORROWER as string)(
   'Borrower tests - Quote lease',
@@ -23,12 +23,10 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     let downpaymentCurrency: string;
     let downpaymentCurrencyToIBC: string;
     let leaseCurrency: string;
-    let leaserInstance: NolusContracts.Leaser;
-    let oracleInstance: NolusContracts.Oracle;
-    let lppInstance: NolusContracts.Lpp;
-    let baseInterestRate: number;
-    let utilizationOptimal: number;
-    let addonOptimalInterestRate: number;
+    let leaserInstance: Leaser;
+    let oracleInstance: Oracle;
+    let lppInstance: Lpp;
+    let borrowRate: InterestRate;
     let liabilityInitialPercent: number;
     let cosm: CosmWasmClient;
 
@@ -61,9 +59,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       cosm = await NolusClient.getInstance().getCosmWasmClient();
       borrowerWallet = await createWallet();
 
-      leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
-      lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
-      oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
+      leaserInstance = new Leaser(cosm, leaserContractAddress);
+      lppInstance = new Lpp(cosm, lppContractAddress);
+      oracleInstance = new Oracle(cosm, oracleContractAddress);
 
       const lppConfig = await lppInstance.getLppConfig();
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
@@ -74,16 +72,11 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
       expect(downpaymentCurrencyToIBC).not.toBe('');
 
-      baseInterestRate =
-        lppConfig.borrow_rate.base_interest_rate / PERMILLE_TO_PERCENT; //%
-      utilizationOptimal =
-        lppConfig.borrow_rate.utilization_optimal / PERMILLE_TO_PERCENT; //%
-      addonOptimalInterestRate =
-        lppConfig.borrow_rate.addon_optimal_interest_rate / PERMILLE_TO_PERCENT; //%
+      borrowRate = lppConfig.borrow_rate;
 
       const leaserConfig = (await leaserInstance.getLeaserConfig()).config;
       liabilityInitialPercent =
-        +leaserConfig.lease_position_spec.liability.initial;
+        +leaserConfig.lease_config.position_spec.liability.initial;
 
       await provideEnoughLiquidity(
         leaserInstance,
@@ -103,11 +96,8 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const leaseCurrencyPriceObj =
         await oracleInstance.getBasePrice(leaseCurrency);
 
-      const [
-        minToleranceCurrencyPrice,
-        exactCurrencyPrice,
-        maxToleranceCurrencyPrice,
-      ] = currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
+      const { min: minToleranceCurrencyPrice, max: maxToleranceCurrencyPrice } =
+        currencyPriceObjToNumbers(leaseCurrencyPriceObj, 1);
 
       const quote = await leaserInstance.leaseQuote(
         downpayment,
@@ -146,20 +136,13 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       const totalInterestDueByNow = lppInformation.total_interest_due;
       const lppLiquidity = lppInformation.balance;
 
-      const utilization = calcUtilization(
-        +totalPrincipalDueByNow.amount,
-        +quote.borrow.amount,
-        +totalInterestDueByNow.amount,
-        +lppLiquidity.amount,
-        utilizationOptimal,
-      );
-
       expect(
         calcQuoteAnnualInterestRate(
-          utilization,
-          utilizationOptimal,
-          baseInterestRate,
-          addonOptimalInterestRate,
+          BigInt(totalPrincipalDueByNow.amount),
+          BigInt(totalInterestDueByNow.amount),
+          BigInt(quote.borrow.amount),
+          BigInt(lppLiquidity.amount),
+          borrowRate,
         ),
       ).toBe(quote.annual_interest_rate);
 
@@ -268,13 +251,6 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         noProvidedPriceFor,
         'Failed to fetch price for the pair',
       );
-
-      // TO DO - no down payment currency price (when we have >1 onlyPaymentsCurrencies in the list of supported currencies)
-      // quoteQueryResult = () =>
-      //   leaserInstance.leaseQuote('100', noProvidedPriceForPaymentOnly, leaseCurrency);
-      // await expect(quoteQueryResult).rejects.toThrow(
-      //   /^.*TO DO".*/,
-      // );
     });
   },
 );

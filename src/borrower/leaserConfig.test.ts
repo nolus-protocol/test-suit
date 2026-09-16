@@ -1,6 +1,5 @@
-import { NolusClient, NolusWallet, NolusContracts } from '@nolus/nolusjs';
-import { LeaserConfig } from '@nolus/nolusjs/build/contracts';
-import { withLeaseAdminTest } from '../util/testingRules';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { runOrSkip, withLeaseAdminTest } from '../util/testingRules';
 import NODE_ENDPOINT, {
   createWallet,
   getLeaseAdminWallet,
@@ -9,15 +8,25 @@ import NODE_ENDPOINT, {
 import { customFees } from '../util/utils';
 import { sendSudoContractProposal } from '../util/proposals';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
-import { fromHex } from '@cosmjs/encoding';
+import { restoreLeaserConfig } from '../util/smart-contracts/actions/borrower';
+import {
+  configLeasesMsg,
+  LeaseConfig,
+  Leaser,
+  LeaserConfig,
+  leaserSudoConfigMsg,
+  Oracle,
+} from '../util/contracts';
 
-describe.skip('Leaser contract tests - Config', () => {
+const maybe = runOrSkip(process.env.TEST_BORROWER as string);
+
+maybe('Leaser contract tests - Config', () => {
   let userWithBalanceWallet: NolusWallet;
   let wallet: NolusWallet;
-  let leaserInstance: NolusContracts.Leaser;
-  let oracleInstance: NolusContracts.Oracle;
-  let configBefore: NolusContracts.LeaserConfig;
-  let leaserConfigMsg: LeaserConfig;
+  let leaserInstance: Leaser;
+  let oracleInstance: Oracle;
+  let configBefore: LeaserConfig;
+  let leaseConfigMsg: LeaseConfig;
   let leaseAdminWallet: NolusWallet;
 
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
@@ -33,7 +42,7 @@ describe.skip('Leaser contract tests - Config', () => {
     const broadcastTx = await sendSudoContractProposal(
       wallet,
       leaserContractAddress,
-      JSON.stringify(leaserConfigMsg),
+      JSON.stringify(leaserSudoConfigMsg(leaseConfigMsg)),
     );
 
     expect(broadcastTx.rawLog).toContain(message);
@@ -43,9 +52,7 @@ describe.skip('Leaser contract tests - Config', () => {
     leaseAdminWallet: NolusWallet,
     message: string,
   ) {
-    const updateConfigMsg = {
-      config_leases: leaserConfigMsg.config,
-    };
+    const updateConfigMsg = configLeasesMsg(leaseConfigMsg);
 
     await userWithBalanceWallet.transferAmount(
       leaseAdminWallet.address as string,
@@ -67,80 +74,64 @@ describe.skip('Leaser contract tests - Config', () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-    leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
-    oracleInstance = new NolusContracts.Oracle(cosm, oracleContractAddress);
+    leaserInstance = new Leaser(cosm, leaserContractAddress);
+    oracleInstance = new Oracle(cosm, oracleContractAddress);
 
     userWithBalanceWallet = await getUser1Wallet();
     wallet = await createWallet();
     leaseAdminWallet = await getLeaseAdminWallet();
 
     configBefore = await leaserInstance.getLeaserConfig();
-    leaserConfigMsg = JSON.parse(JSON.stringify(configBefore));
-    leaserConfigMsg.config.lease_code = undefined;
-    leaserConfigMsg.config.dex = undefined;
-    leaserConfigMsg.config.lpp = undefined;
-    leaserConfigMsg.config.market_price_oracle = undefined;
-    leaserConfigMsg.config.profit = undefined;
-    leaserConfigMsg.config.time_alarms = undefined;
-    leaserConfigMsg.config.reserve = undefined;
-    leaserConfigMsg.config.protocols_registry = undefined;
-    leaserConfigMsg.config.lease_admin = undefined;
+    leaseConfigMsg = structuredClone(configBefore.config.lease_config);
   });
 
   afterEach(async () => {
-    leaserConfigMsg.config.lease_due_period =
-      configBefore.config.lease_due_period;
-    leaserConfigMsg.config.lease_position_spec = JSON.parse(
-      JSON.stringify(configBefore.config.lease_position_spec),
-    );
-    leaserConfigMsg.config.lease_interest_rate_margin = JSON.parse(
-      JSON.stringify(configBefore.config.lease_interest_rate_margin),
-    );
-    leaserConfigMsg.config.lease_max_slippages = JSON.parse(
-      JSON.stringify(configBefore.config.lease_max_slippages),
+    leaseConfigMsg = structuredClone(configBefore.config.lease_config);
+
+    const restored = await restoreLeaserConfig(
+      leaseAdminWallet,
+      configBefore.config.lease_config,
     );
 
-    const configAfter = await leaserInstance.getLeaserConfig();
-
-    expect(configAfter).toStrictEqual(configBefore);
+    expect(restored).toBe(false);
   });
 
   test('try to set initial liability % > healthy liability % - should produce an error', async () => {
-    leaserConfigMsg.config.lease_position_spec.liability.initial =
-      leaserConfigMsg.config.lease_position_spec.liability.healthy + 1;
+    leaseConfigMsg.position_spec.liability.initial =
+      leaseConfigMsg.position_spec.liability.healthy + 1;
 
     await trySendPropToSetConfig('Initial % should be <= healthy %');
   });
 
   test('try to set healthy liability % > max liability % - should produce an error', async () => {
-    leaserConfigMsg.config.lease_position_spec.liability.healthy =
-      leaserConfigMsg.config.lease_position_spec.liability.max + 1;
+    leaseConfigMsg.position_spec.liability.healthy =
+      leaseConfigMsg.position_spec.liability.max + 1;
 
     await trySendPropToSetConfig('Healthy % should be < first liquidation %');
   });
 
   test('try to set first liq warn % <= healthy liability % - should produce an error', async () => {
-    leaserConfigMsg.config.lease_position_spec.liability.first_liq_warn =
-      leaserConfigMsg.config.lease_position_spec.liability.healthy - 1;
+    leaseConfigMsg.position_spec.liability.first_liq_warn =
+      leaseConfigMsg.position_spec.liability.healthy - 1;
 
     await trySendPropToSetConfig('Healthy % should be < first liquidation %');
 
-    leaserConfigMsg.config.lease_position_spec.liability.first_liq_warn =
-      leaserConfigMsg.config.lease_position_spec.liability.healthy;
+    leaseConfigMsg.position_spec.liability.first_liq_warn =
+      leaseConfigMsg.position_spec.liability.healthy;
 
     await trySendPropToSetConfig('Healthy % should be < first liquidation %');
   });
 
   test('try to set second liq warn % <= first liq warn % - should produce an error', async () => {
-    leaserConfigMsg.config.lease_position_spec.liability.second_liq_warn =
-      leaserConfigMsg.config.lease_position_spec.liability.first_liq_warn - 1;
+    leaseConfigMsg.position_spec.liability.second_liq_warn =
+      leaseConfigMsg.position_spec.liability.first_liq_warn - 1;
 
     await trySendPropToSetConfig(
       'First liquidation % should be < second liquidation %',
     );
 
-    leaserConfigMsg.config.lease_position_spec.liability.second_liq_warn =
-      leaserConfigMsg.config.lease_position_spec.liability.first_liq_warn;
+    leaseConfigMsg.position_spec.liability.second_liq_warn =
+      leaseConfigMsg.position_spec.liability.first_liq_warn;
 
     await trySendPropToSetConfig(
       'First liquidation % should be < second liquidation %',
@@ -148,15 +139,15 @@ describe.skip('Leaser contract tests - Config', () => {
   });
 
   test('try to set third liq warn % <= second liq warn % - should produce an error', async () => {
-    leaserConfigMsg.config.lease_position_spec.liability.third_liq_warn =
-      leaserConfigMsg.config.lease_position_spec.liability.second_liq_warn - 1;
+    leaseConfigMsg.position_spec.liability.third_liq_warn =
+      leaseConfigMsg.position_spec.liability.second_liq_warn - 1;
 
     await trySendPropToSetConfig(
       'Second liquidation % should be < third liquidation %',
     );
 
-    leaserConfigMsg.config.lease_position_spec.liability.third_liq_warn =
-      leaserConfigMsg.config.lease_position_spec.liability.second_liq_warn;
+    leaseConfigMsg.position_spec.liability.third_liq_warn =
+      leaseConfigMsg.position_spec.liability.second_liq_warn;
 
     await trySendPropToSetConfig(
       'Second liquidation % should be < third liquidation %',
@@ -164,29 +155,28 @@ describe.skip('Leaser contract tests - Config', () => {
   });
 
   test('try to set third liq warn % >= max % - should produce an error', async () => {
-    leaserConfigMsg.config.lease_position_spec.liability.third_liq_warn =
-      leaserConfigMsg.config.lease_position_spec.liability.max + 1;
+    leaseConfigMsg.position_spec.liability.third_liq_warn =
+      leaseConfigMsg.position_spec.liability.max + 1;
 
     await trySendPropToSetConfig('Third liquidation % should be < max %');
 
-    leaserConfigMsg.config.lease_position_spec.liability.third_liq_warn =
-      leaserConfigMsg.config.lease_position_spec.liability.max;
+    leaseConfigMsg.position_spec.liability.third_liq_warn =
+      leaseConfigMsg.position_spec.liability.max;
 
     await trySendPropToSetConfig('Third liquidation % should be < max %');
   });
 
   test('try to set recalc period < 1hour - should produce an error', async () => {
     const oneHourToNanosec = 3600000000000;
-    leaserConfigMsg.config.lease_position_spec.liability.recalc_time =
-      oneHourToNanosec - 1;
+    leaseConfigMsg.position_spec.liability.recalc_time = oneHourToNanosec - 1;
 
     await trySendPropToSetConfig('Recalculation cadence should be >= 1h');
   });
 
   test('try to set "min_asset" amount = 0 - should produce an error', async () => {
-    leaserConfigMsg.config.lease_position_spec.min_asset = {
+    leaseConfigMsg.position_spec.min_asset = {
       amount: '0',
-      ticker: process.env.LPP_BASE_CURRENCY,
+      ticker: process.env.LPP_BASE_CURRENCY as string,
     };
 
     await trySendPropToSetConfig('Min asset amount should be positive');
@@ -194,7 +184,7 @@ describe.skip('Leaser contract tests - Config', () => {
 
   test('try to set "min_asset" ticker != LPN - should produce an error', async () => {
     const invalidTicker = (await getLeaseGroupCurrencies(oracleInstance))[0];
-    leaserConfigMsg.config.lease_position_spec.min_asset = {
+    leaseConfigMsg.position_spec.min_asset = {
       amount: '100', // any amount
       ticker: invalidTicker,
     };
@@ -206,7 +196,7 @@ describe.skip('Leaser contract tests - Config', () => {
 
   test('try to set "min_transaction" ticker != LPN - should produce an error', async () => {
     const invalidTicker = (await getLeaseGroupCurrencies(oracleInstance))[0];
-    leaserConfigMsg.config.lease_position_spec.min_transaction = {
+    leaseConfigMsg.position_spec.min_transaction = {
       amount: '100', // any amount
       ticker: invalidTicker,
     };
@@ -218,12 +208,10 @@ describe.skip('Leaser contract tests - Config', () => {
 
   test('try to set "slippage protection percent" outside the limit of min_transaction - should produce an error', async () => {
     const lowerBound =
-      1000 -
-      1000 / +leaserConfigMsg.config.lease_position_spec.min_transaction.amount;
+      1000 - 1000 / +leaseConfigMsg.position_spec.min_transaction.amount;
     const invalidSlippagePercent = Math.ceil(lowerBound) + 1;
 
-    leaserConfigMsg.config.lease_max_slippages.liquidation =
-      invalidSlippagePercent;
+    leaseConfigMsg.max_slippages.liquidation = invalidSlippagePercent;
 
     await trySendPropToSetConfig(
       'The min output from a dex transaction of the min transaction amount should be positive',
@@ -234,12 +222,9 @@ describe.skip('Leaser contract tests - Config', () => {
     'try to set "slippage protection percent" outside the limit of min_transaction - exec - should produce an error',
     async () => {
       const lowerBound =
-        1000 -
-        1000 /
-          +leaserConfigMsg.config.lease_position_spec.min_transaction.amount;
+        1000 - 1000 / +leaseConfigMsg.position_spec.min_transaction.amount;
       const invalidSlippagePercent = Math.ceil(lowerBound) + 1;
-      leaserConfigMsg.config.lease_max_slippages.liquidation =
-        invalidSlippagePercent;
+      leaseConfigMsg.max_slippages.liquidation = invalidSlippagePercent;
 
       await tryChangeConfig(
         leaseAdminWallet,
@@ -251,9 +236,9 @@ describe.skip('Leaser contract tests - Config', () => {
   withLeaseAdminTest(
     'try to set "min_asset" amount = 0 - exec - should produce an error',
     async () => {
-      leaserConfigMsg.config.lease_position_spec.min_asset = {
+      leaseConfigMsg.position_spec.min_asset = {
         amount: '0',
-        ticker: process.env.LPP_BASE_CURRENCY,
+        ticker: process.env.LPP_BASE_CURRENCY as string,
       };
 
       await tryChangeConfig(

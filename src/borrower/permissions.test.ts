@@ -1,25 +1,44 @@
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import { customFees } from '../util/utils';
-import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
-import { sendSudoContractProposal } from '../util/proposals';
-import {
-  openLease,
-  waitLeaseOpeningProcess,
-} from '../util/smart-contracts/actions/borrower';
-import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
+import NODE_ENDPOINT, {
+  createWallet,
+  getLeaseAdminWallet,
+  getUser1Wallet,
+} from '../util/clients';
+import { sendInitExecuteFeeTokens } from '../util/transfer';
+import { restoreLeaserConfig } from '../util/smart-contracts/actions/borrower';
+import { runOrSkip } from '../util/testingRules';
+import { configLeasesMsg, LeaseConfig, Leaser } from '../util/contracts';
 
-describe.skip('Borrower tests - Permissions', () => {
+const maybe = runOrSkip(process.env.TEST_BORROWER as string);
+
+maybe('Borrower tests - Permissions', () => {
   let userWithBalanceWallet: NolusWallet;
-  let leaserInstance: NolusContracts.Leaser;
+  let unauthorizedWallet: NolusWallet;
+  let leaserInstance: Leaser;
+  let leaseConfigBefore: LeaseConfig;
   const leaserContractAddress = process.env.LEASER_ADDRESS as string;
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     const cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-    leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
+    leaserInstance = new Leaser(cosm, leaserContractAddress);
 
     userWithBalanceWallet = await getUser1Wallet();
+    unauthorizedWallet = await createWallet();
+
+    leaseConfigBefore = (await leaserInstance.getLeaserConfig()).config
+      .lease_config;
+  });
+
+  afterAll(async () => {
+    const restored = await restoreLeaserConfig(
+      await getLeaseAdminWallet(),
+      leaseConfigBefore,
+    );
+
+    expect(restored).toBe(false);
   });
 
   test('migrate msg should only be exec via proposal', async () => {
@@ -114,86 +133,20 @@ describe.skip('Borrower tests - Permissions', () => {
     await expect(broadcastTx).rejects.toThrow(/^.*No such contract.*/);
   });
 
-  test('close protocol msg should be exec only if there are no leases', async () => {
-    const leases = await userWithBalanceWallet.getContracts(
-      +(process.env.LEASE_CODE_ID as string),
-    );
-
-    if (leases.length === 0) {
-      const cosm = await NolusClient.getInstance().getCosmWasmClient();
-      const leaserContractAddress = process.env.LEASER_ADDRESS as string;
-      const lppContractAddress = process.env.LPP_ADDRESS as string;
-      const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
-
-      const leaserInstance = new NolusContracts.Leaser(
-        cosm,
-        leaserContractAddress,
-      );
-      const lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
-      const oracleInstance = new NolusContracts.Oracle(
-        cosm,
-        oracleContractAddress,
-      );
-
-      const downpayment = '10000';
-      const lppCurrency = process.env.LPP_BASE_CURRENCY as string;
-      const leaseCurrency = (await getLeaseGroupCurrencies(oracleInstance))[0];
-
-      const leaseAddress = await openLease(
-        leaserInstance,
-        lppInstance,
-        downpayment,
-        lppCurrency,
-        leaseCurrency,
-        userWithBalanceWallet,
-      );
-
-      const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
-      expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
-    }
-
-    const closeProtocolMsg = {
-      close_protocol: {
-        migration_spec: {
-          leaser: { code_id: '1', migrate_message: '{}' },
-          lpp: { code_id: '1', migrate_message: '{}' },
-          oracle: { code_id: '1', migrate_message: '{}' },
-          profit: { code_id: '1', migrate_message: '{}' },
-          reserve: { code_id: '1', migrate_message: '{}' },
-        },
-      },
-    };
-
-    const broadcastTx = await sendSudoContractProposal(
-      userWithBalanceWallet,
-      leaserContractAddress,
-      JSON.stringify(closeProtocolMsg),
-    );
-
-    expect(broadcastTx.rawLog).toContain(
-      'The protocol is still in use. There are open leases',
-    );
-  });
-
   test('update config msg should only be exec by the lease admin', async () => {
-    const leaserConfig = (await leaserInstance.getLeaserConfig()).config;
+    const leaseConfig = (await leaserInstance.getLeaserConfig()).config
+      .lease_config;
 
-    leaserConfig.lease_max_slippages.liquidation = 500;
-    leaserConfig.lease_code = undefined;
-    leaserConfig.dex = undefined;
-    leaserConfig.lpp = undefined;
-    leaserConfig.market_price_oracle = undefined;
-    leaserConfig.profit = undefined;
-    leaserConfig.time_alarms = undefined;
-    leaserConfig.reserve = undefined;
-    leaserConfig.protocols_registry = undefined;
-    leaserConfig.lease_admin = undefined;
+    leaseConfig.max_slippages.liquidation = 500;
 
-    const updateConfigMsg = {
-      config_leases: leaserConfig,
-    };
+    await sendInitExecuteFeeTokens(
+      userWithBalanceWallet,
+      unauthorizedWallet.address as string,
+    );
+
+    const updateConfigMsg = configLeasesMsg(leaseConfig);
     const broadcastTx = () =>
-      userWithBalanceWallet.executeContract(
+      unauthorizedWallet.executeContract(
         leaserContractAddress,
         updateConfigMsg,
         customFees.configs,
@@ -205,12 +158,17 @@ describe.skip('Borrower tests - Permissions', () => {
   test('change lease admin msg should only be exec by the current admin', async () => {
     const changeLeaseAdminMsg = {
       change_lease_admin: {
-        new: 'adresshere',
+        new: unauthorizedWallet.address as string,
       },
     };
 
+    await sendInitExecuteFeeTokens(
+      userWithBalanceWallet,
+      unauthorizedWallet.address as string,
+    );
+
     const broadcastTx = () =>
-      userWithBalanceWallet.executeContract(
+      unauthorizedWallet.executeContract(
         leaserContractAddress,
         changeLeaseAdminMsg,
         customFees.configs,

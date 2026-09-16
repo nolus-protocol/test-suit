@@ -1,5 +1,5 @@
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import { toUtf8 } from '@cosmjs/encoding';
 import { Coin } from '@cosmjs/proto-signing';
 import {
@@ -12,7 +12,7 @@ import NODE_ENDPOINT, {
   txSearchByEvents,
 } from '../util/clients';
 import { runOrSkip } from '../util/testingRules';
-import { customFees, undefinedHandler } from '../util/utils';
+import { customFees } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';
 import {
   getLoanInterestPaidFromRepayTx,
@@ -21,6 +21,7 @@ import {
   getPrincipalPaidFromRepayTx,
 } from '../util/smart-contracts/getters';
 import { waitLeaseInProgressToBeNull } from '../util/smart-contracts/actions/borrower';
+import { Lease, Leaser, Lpp } from '../util/contracts';
 
 runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
   'Borrower tests - Interest testing',
@@ -30,13 +31,28 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
     let lppCurrency: string;
     let lppCurrencyToIBC: string;
     let cosm: CosmWasmClient;
-    let lppInstance: NolusContracts.Lpp;
-    let leaseInstance: NolusContracts.Lease;
-    let duePeriod: number;
+    let lppInstance: Lpp;
+    let leaseInstance: Lease;
+    let duePeriod: bigint;
 
     const lppContractAddress = process.env.LPP_ADDRESS as string;
     const leaseAddress = process.env.ACTIVE_LEASE_ADDRESS as string;
     const leaserAddress = process.env.LEASER_ADDRESS as string;
+
+    async function openedLease(): Promise<
+      NonNullable<Awaited<ReturnType<Lease['getLeaseStatus']>>['opened']>
+    > {
+      const state = await leaseInstance.getLeaseStatus();
+
+      if (!state.opened) {
+        throw new Error(
+          `ACTIVE_LEASE_ADDRESS (${leaseAddress}) holds no open position; its state is ` +
+            `${JSON.stringify(state)}.`,
+        );
+      }
+
+      return state.opened;
+    }
 
     function verifyInterestCalc(
       principalDue: bigint,
@@ -106,29 +122,23 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
       NolusClient.setInstance(NODE_ENDPOINT);
       cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-      leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
-      lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
+      leaseInstance = new Lease(cosm, leaseAddress);
+      lppInstance = new Lpp(cosm, lppContractAddress);
 
       lppCurrency = process.env.LPP_BASE_CURRENCY as string;
       lppCurrencyToIBC = await currencyTicker_To_IBC(lppCurrency);
 
-      const leaserInstance = new NolusContracts.Leaser(cosm, leaserAddress);
-      duePeriod = +(
-        await leaserInstance.getLeaserConfig()
-      ).config.lease_due_period.toString();
+      const leaserInstance = new Leaser(cosm, leaserAddress);
+      duePeriod = BigInt(
+        (await leaserInstance.getLeaserConfig()).config.lease_config.due_period,
+      );
 
       userWithBalanceWallet = await getUser1Wallet();
       borrowerWallet = await createWallet();
     });
 
     test('the existing lease should have a properly calculated interest', async () => {
-      const leaseState = (await leaseInstance.getLeaseStatus()).opened;
-
-      if (!leaseState) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseState = await openedLease();
       const leaseAnnualInterest = leaseState.loan_interest_rate;
       const interestRateMargin = leaseState.margin_interest_rate;
       const leasePrincipal = leaseState.principal_due.amount;
@@ -139,28 +149,32 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
 
       const loan = await lppInstance.getLoanInformation(leaseAddress);
 
-      const startPeriodLoanDue = Math.max(
-        +loan.interest_paid,
-        +leaseState.validity - duePeriod,
-      );
+      if (loan === null) {
+        throw new Error(
+          `the LPP holds no loan for ${leaseAddress}, so the interest assertions cannot run`,
+        );
+      }
+
+      const endPeriodOverdue = BigInt(leaseState.validity) - duePeriod;
+      const interestPaid = BigInt(loan.interest_paid);
+      const startPeriodLoanDue =
+        interestPaid > endPeriodOverdue ? interestPaid : endPeriodOverdue;
 
       // verify loan interest due calc
       verifyInterestCalc(
         BigInt(leasePrincipal),
         BigInt(leaseAnnualInterest),
-        BigInt(startPeriodLoanDue),
+        startPeriodLoanDue,
         BigInt(leaseState.validity),
         BigInt(leaseID),
       );
-
-      const endPeriodOverdue = +leaseState.validity - duePeriod;
 
       // verify loan interest overdue calc
       verifyInterestCalc(
         BigInt(leasePrincipal),
         BigInt(leaseAnnualInterest),
-        BigInt(loan.interest_paid),
-        BigInt(endPeriodOverdue),
+        interestPaid,
+        endPeriodOverdue,
         BigInt(leaseIOD),
       );
 
@@ -170,22 +184,24 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
       );
 
       if (!leaseRawState) {
-        undefinedHandler();
-        return;
+        throw new Error(
+          `the raw state of ${leaseAddress} came back empty, so the margin-paid timestamp the ` +
+            'margin assertions need cannot be read',
+        );
       }
 
       const marginInterestPaidTo = getMarginPaidTimeFromRawState(leaseRawState);
 
-      const startPeriodMarginDue = Math.max(
-        +marginInterestPaidTo.toString(),
-        +leaseState.validity - duePeriod,
-      );
+      const startPeriodMarginDue =
+        marginInterestPaidTo > endPeriodOverdue
+          ? marginInterestPaidTo
+          : endPeriodOverdue;
 
       // verify margin interest due calc
       verifyInterestCalc(
         BigInt(leasePrincipal),
         BigInt(interestRateMargin),
-        BigInt(startPeriodMarginDue),
+        startPeriodMarginDue,
         BigInt(leaseState.validity),
         BigInt(leaseMD),
       );
@@ -195,19 +211,13 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
         BigInt(leasePrincipal),
         BigInt(interestRateMargin),
         marginInterestPaidTo,
-        BigInt(endPeriodOverdue),
+        endPeriodOverdue,
         BigInt(leaseMOD),
       );
     });
 
     test('repayment of debts must be in proper sequence', async () => {
-      const leaseStateBefore = (await leaseInstance.getLeaseStatus()).opened;
-
-      if (!leaseStateBefore) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseStateBefore = await openedLease();
       const MOD_before = BigInt(leaseStateBefore.overdue_margin.amount);
       const IOD_before = BigInt(leaseStateBefore.overdue_interest.amount);
       const MD_before = BigInt(leaseStateBefore.due_margin.amount);
@@ -229,14 +239,7 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
         marginAndLoanInteresPayment,
       );
 
-      const leaseStateAfterFirstRepay = (await leaseInstance.getLeaseStatus())
-        .opened;
-
-      if (!leaseStateAfterFirstRepay) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseStateAfterFirstRepay = await openedLease();
       const CMD_afterFirstRepay = BigInt(
         leaseStateAfterFirstRepay.due_margin.amount,
       );
@@ -272,13 +275,7 @@ runOrSkip(process.env.TEST_BORROWER_INTEREST as string)(
       expect(loanInterestPaid).toBe(CID_afterFirstRepay);
       expect(principalPaid).toBe(payPrincipalAmount);
 
-      const leaseStateFinish = (await leaseInstance.getLeaseStatus()).opened;
-
-      if (!leaseStateFinish) {
-        undefinedHandler();
-        return;
-      }
-
+      const leaseStateFinish = await openedLease();
       expect(leaseStateFinish.due_interest.amount).toBe('0');
       expect(leaseStateFinish.due_margin.amount).toBe('0');
       expect(BigInt(leaseStateFinish.principal_due.amount)).toBe(
