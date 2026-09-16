@@ -13,7 +13,6 @@ import { nolusOfflineSigner } from '@nolus/nolusjs/build/wallet/NolusWalletFacto
 const user1PrivKey = fromHex(process.env.USER_1_PRIV_KEY as string);
 const user2PrivKey = fromHex(process.env.USER_2_PRIV_KEY as string);
 const user3PrivKey = fromHex(process.env.USER_3_PRIV_KEY as string);
-const feederPrivKey = fromHex(process.env.FEEDER_PRIV_KEY as string);
 
 const NODE_ENDPOINT = process.env.NODE_URL as string;
 export default NODE_ENDPOINT;
@@ -48,10 +47,6 @@ export async function getUser3Wallet(): Promise<NolusWallet> {
   return await getWallet(user3PrivKey);
 }
 
-export async function getFeederWallet(): Promise<NolusWallet> {
-  return await getWallet(feederPrivKey);
-}
-
 export async function getLeaseAdminWallet(): Promise<NolusWallet> {
   const privKey = process.env.LEASE_ADMIN_PRIV_KEY?.trim();
 
@@ -65,13 +60,28 @@ export async function getLeaseAdminWallet(): Promise<NolusWallet> {
   return await getWallet(fromHex(privKey));
 }
 
+export interface DisposableWallet {
+  wallet: NolusWallet;
+  // Held only so `src/cleanup.ts` can write it out for the handful of wallets it fails to empty.
+  mnemonic: string;
+}
+
+const disposableWallets: DisposableWallet[] = [];
+
 export async function createWallet(): Promise<NolusWallet> {
   const mnemonic = KeyUtils.generateMnemonic();
   const accountNumbers = [0];
   const path = accountNumbers.map(makeCosmoshubPath)[0];
   const privateKey = await KeyUtils.getPrivateKeyFromMnemonic(mnemonic, path);
 
-  return getWallet(privateKey);
+  const wallet = await getWallet(privateKey);
+  disposableWallets.push({ wallet, mnemonic });
+
+  return wallet;
+}
+
+export function takeDisposableWallets(): DisposableWallet[] {
+  return disposableWallets.splice(0, disposableWallets.length);
 }
 
 export async function txSearchByEvents(

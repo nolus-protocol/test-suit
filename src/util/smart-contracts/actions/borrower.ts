@@ -1,4 +1,4 @@
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '@nolus/nolusjs';
 import {
   sendInitExecuteFeeTokens,
   sendInitTransferFeeTokens,
@@ -6,7 +6,7 @@ import {
 import { getUser1Wallet } from '../../../util/clients';
 import {
   BLOCK_CREATION_TIME_DEV_SEC,
-  BORROWER_ATTEMPTS_TIMEOUT,
+  LEASE_SETTLEMENT_TIMEOUT_SEC,
   customFees,
   NATIVE_MINIMAL_DENOM,
   sleep,
@@ -18,6 +18,14 @@ import {
   getLeaseAddressFromOpenLeaseResponse,
   getLeaseObligations,
 } from '../getters';
+import {
+  configLeasesMsg,
+  Lease,
+  LeaseConfig,
+  Leaser,
+  Lpp,
+  Oracle,
+} from '../../contracts';
 
 export async function checkLeaseBalance(
   leaseAddress: string,
@@ -52,26 +60,52 @@ export async function returnAmountToTheMainAccount(
   }
 }
 
+async function pollLeaseStatus(
+  leaseInstance: Lease,
+): Promise<Awaited<ReturnType<Lease['getLeaseStatus']>> | undefined> {
+  try {
+    return await leaseInstance.getLeaseStatus();
+  } catch (error) {
+    console.log(
+      `Lease state query failed, retrying on the next tick: ` +
+        `${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    return undefined;
+  }
+}
+
+function timedOut(waitingFor: string, lastState: string | undefined): Error {
+  return new Error(
+    `Timed out after ${LEASE_SETTLEMENT_TIMEOUT_SEC}s waiting for the lease to ${waitingFor}. ` +
+      `Last state: ${lastState ?? 'never read — every query failed'}.`,
+  );
+}
+
 export async function waitLeaseOpeningProcess(
-  leaseInstance: NolusContracts.Lease,
-): Promise<Error | undefined> {
+  leaseInstance: Lease,
+): Promise<void> {
   let newState;
-  let timeout = BORROWER_ATTEMPTS_TIMEOUT;
+  const deadline = Date.now() + LEASE_SETTLEMENT_TIMEOUT_SEC * 1000;
 
   do {
     await sleep(BLOCK_CREATION_TIME_DEV_SEC);
-    const fullState = await leaseInstance.getLeaseStatus();
+
+    const fullState = await pollLeaseStatus(leaseInstance);
+
+    if (fullState === undefined) {
+      continue;
+    }
+
     if (!fullState.opening) {
       console.log('Lease state - opened!');
-      return undefined;
+      return;
     }
     newState = JSON.stringify(fullState.opening.in_progress);
     console.log('Lease opening is in progress: ', newState);
+  } while (Date.now() < deadline);
 
-    timeout--;
-  } while (timeout > 0);
-
-  return new Error('Timeout');
+  throw timedOut('open', newState);
 }
 
 export async function dispatchAlarms(timealarmsContractAddress: string) {
@@ -96,45 +130,60 @@ export async function dispatchAlarms(timealarmsContractAddress: string) {
 }
 
 export async function waitLeaseInProgressToBeNull(
-  leaseInstance: NolusContracts.Lease,
+  leaseInstance: Lease,
   selfDispatch: boolean = false,
-): Promise<Error | undefined> {
+): Promise<void> {
   let newState;
-  let timeout = BORROWER_ATTEMPTS_TIMEOUT;
+  const deadline = Date.now() + LEASE_SETTLEMENT_TIMEOUT_SEC * 1000;
 
   do {
     if (selfDispatch) {
       await dispatchAlarms(process.env.TIMEALARMS_ADDRESS as string);
     }
     await sleep(BLOCK_CREATION_TIME_DEV_SEC);
-    const fullState = await leaseInstance.getLeaseStatus();
-    if (
-      typeof fullState.opened?.status === 'string' ||
-      fullState.closing?.in_progress === null ||
-      fullState.closed ||
-      fullState.liquidated
-    ) {
-      console.log('Lease state in_progress = null!');
-      return undefined;
+
+    const fullState = await pollLeaseStatus(leaseInstance);
+
+    if (fullState === undefined) {
+      continue;
     }
+
+    const settled =
+      typeof fullState.opened?.status === 'string'
+        ? fullState.opened.status
+        : fullState.closed
+          ? 'closed'
+          : fullState.liquidated
+            ? 'liquidated'
+            : fullState.open_failed
+              ? `open_failed: ${fullState.open_failed.reason}`
+              : undefined;
+
+    if (settled !== undefined) {
+      console.log(`Lease state in_progress = null! Settled as: ${settled}`);
+      return;
+    }
+
     newState = JSON.stringify(
-      fullState.opened?.status || fullState.closing?.in_progress,
+      fullState.opened?.status ??
+        fullState.opening?.in_progress ??
+        fullState.paid?.in_progress ??
+        (fullState.closing && 'closing'),
     );
     console.log('Lease is in progress: ', newState);
-    timeout--;
-  } while (timeout > 0);
+  } while (Date.now() < deadline);
 
-  return new Error('Timeout');
+  throw timedOut('settle', newState);
 }
 
 export async function calcMinAllowablePaymentAmount(
-  leaserInstance: NolusContracts.Leaser,
-  oracleInstance: NolusContracts.Oracle,
+  leaserInstance: Leaser,
+  oracleInstance: Oracle,
   paymentCurrencyTicker: string,
   preferredPaymentAmount: string,
 ): Promise<string> {
   const minTransactionAmount = +(await leaserInstance.getLeaserConfig()).config
-    .lease_position_spec.min_transaction.amount;
+    .lease_config.position_spec.min_transaction.amount;
 
   const priceObj = await oracleInstance.getBasePrice(paymentCurrencyTicker);
   const price = +priceObj.amount.amount / +priceObj.amount_quote.amount;
@@ -144,12 +193,12 @@ export async function calcMinAllowablePaymentAmount(
     price * +minTransactionAmount + additionAmount,
   ).toString();
 
-  return payment > preferredPaymentAmount ? payment : preferredPaymentAmount;
+  return +payment > +preferredPaymentAmount ? payment : preferredPaymentAmount;
 }
 
 export async function openLease(
-  leaserInstance: NolusContracts.Leaser,
-  lppInstance: NolusContracts.Lpp,
+  leaserInstance: Leaser,
+  lppInstance: Lpp,
   downpayment: string,
   downpaymentCurrency: string,
   leaseCurrency: string,
@@ -189,7 +238,7 @@ export async function openLease(
 }
 
 export async function closeLease(
-  leaseInstance: NolusContracts.Lease,
+  leaseInstance: Lease,
   borrowerWallet: NolusWallet,
   lppCurrency: string,
 ) {
@@ -240,4 +289,33 @@ export async function closeLease(
   );
 
   await returnAmountToTheMainAccount(borrowerWallet, leaseCurrencyToIBC);
+}
+
+
+export async function restoreLeaserConfig(
+  leaseAdminWallet: NolusWallet,
+  expected: LeaseConfig,
+): Promise<boolean> {
+  const cosm = await NolusClient.getInstance().getCosmWasmClient();
+  const leaserInstance = new Leaser(cosm, process.env.LEASER_ADDRESS as string);
+
+  const current = (await leaserInstance.getLeaserConfig()).config.lease_config;
+
+  if (JSON.stringify(current) === JSON.stringify(expected)) {
+    return false;
+  }
+
+  const userWithBalance = await getUser1Wallet();
+  await sendInitExecuteFeeTokens(
+    userWithBalance,
+    leaseAdminWallet.address as string,
+  );
+
+  await leaseAdminWallet.executeContract(
+    process.env.LEASER_ADDRESS as string,
+    configLeasesMsg(expected),
+    customFees.configs,
+  );
+
+  return true;
 }

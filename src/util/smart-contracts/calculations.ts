@@ -1,45 +1,55 @@
-import { NolusContracts, AssetUtils, NolusClient } from '@nolus/nolusjs';
-import { LppBalance } from '@nolus/nolusjs/build/contracts';
-import { Price } from '@nolus/nolusjs/build/contracts/types/Price';
+import { NolusClient } from '@nolus/nolusjs';
 import { TONANOSEC, undefinedHandler } from '../utils';
 import NODE_ENDPOINT from '../clients';
 import { getLeaseObligations } from './getters';
+import {
+  CurrencyInfo,
+  Lease,
+  InterestRate,
+  LppBalance,
+  Oracle,
+  PriceRatio,
+  findBankSymbolByTicker,
+} from '../contracts';
 
 const NANOSEC_YEAR = 365 * 24 * 60 * 60 * TONANOSEC;
 
 export async function calcLTV( // permille
-  leaseInstance: NolusContracts.Lease,
-  oracleInstance: NolusContracts.Oracle,
-): Promise<number | undefined> {
+  leaseInstance: Lease,
+  oracleInstance: Oracle,
+): Promise<number> {
   const leaseState = (await leaseInstance.getLeaseStatus()).opened;
 
   if (!leaseState) {
-    undefinedHandler();
-    return;
+    throw new Error(
+      'Cannot compute the LTV: the lease is not opened. Its state is ' +
+        `${JSON.stringify(await leaseInstance.getLeaseStatus())}.`,
+    );
   }
 
   const leaseAmount = leaseState.amount.amount;
   const leaseCurrency = leaseState.amount.ticker;
 
   if (!leaseCurrency) {
-    undefinedHandler();
-    return;
+    throw new Error(
+      'Cannot compute the LTV: the opened lease carries no asset ticker.',
+    );
   }
 
   const priceObj = await oracleInstance.getBasePrice(leaseCurrency);
-  const [
-    minToleranceCurrencyPrice_LC,
-    exactCurrencyPrice_LC,
-    maxToleranceCurrencyPrice_LC,
-  ] = currencyPriceObjToNumbers(priceObj, 1);
+  const { exact: exactCurrencyPrice_LC } = currencyPriceObjToNumbers(
+    priceObj,
+    1,
+  );
 
   const leaseAmountToLPN = +leaseAmount / exactCurrencyPrice_LC;
 
   const obligations = getLeaseObligations(leaseState, true);
 
   if (!obligations) {
-    undefinedHandler();
-    return;
+    throw new Error(
+      'Cannot compute the LTV: the opened lease reports no obligations.',
+    );
   }
 
   const LTV = Math.trunc((obligations / leaseAmountToLPN) * 1000);
@@ -61,44 +71,38 @@ export function calcBorrowedAmountLTD(
   return downpayment * (ltd / 1000);
 }
 
-export function calcUtilization( // %
-  totalPrincipalDueByNow: number,
-  quoteBorrow: number,
-  totalInterestDueByNow: number,
-  lppLiquidity: number,
-  utilizationOptimalPercent: number,
-): number {
-  const totalLiabilityPast =
-    totalInterestDueByNow + quoteBorrow + totalPrincipalDueByNow;
-
-  const balance = lppLiquidity - quoteBorrow;
-  const utilizationCoeffMaxPercent =
-    (utilizationOptimalPercent / (100 - utilizationOptimalPercent)) * 100;
-
-  let utilizationCoeffPercent;
-
-  if (balance === 0) {
-    utilizationCoeffPercent = utilizationCoeffMaxPercent;
-  } else {
-    utilizationCoeffPercent = Math.min(
-      (totalLiabilityPast / balance) * 100,
-      utilizationCoeffMaxPercent,
-    );
-  }
-  return utilizationCoeffPercent;
-}
-
 export function calcQuoteAnnualInterestRate( // permille
-  utilizationCoefPercent: number,
-  utilizationOptimalPercent: number,
-  baseInterestRatePercent: number,
-  addonOptimalInterestRatePercent: number,
+  totalPrincipalDueByNow: bigint,
+  totalInterestDueByNow: bigint,
+  quoteBorrow: bigint,
+  lppLiquidity: bigint,
+  borrowRate: InterestRate,
 ): number {
-  const config = addonOptimalInterestRatePercent / utilizationOptimalPercent;
-  const quoteAnnualInterestRate =
-    baseInterestRatePercent + config * utilizationCoefPercent;
+  const MILLE = 1000n;
+  const utilizationOptimal = BigInt(borrowRate.utilization_optimal);
 
-  return Math.round(quoteAnnualInterestRate * 10);
+  const totalLiabilityPastQuote =
+    totalPrincipalDueByNow + quoteBorrow + totalInterestDueByNow;
+  const balancePastQuote = lppLiquidity - quoteBorrow;
+
+  const utilizationFactorMax =
+    (utilizationOptimal * MILLE) / (MILLE - utilizationOptimal);
+
+  let utilizationFactor: bigint;
+
+  if (balancePastQuote === 0n) {
+    utilizationFactor = utilizationFactorMax;
+  } else {
+    const factor = (totalLiabilityPastQuote * MILLE) / balancePastQuote;
+    utilizationFactor =
+      factor < utilizationFactorMax ? factor : utilizationFactorMax;
+  }
+
+  return Number(
+    (BigInt(borrowRate.addon_optimal_interest_rate) * utilizationFactor) /
+      utilizationOptimal +
+      BigInt(borrowRate.base_interest_rate),
+  );
 }
 
 export function calcInterestRate(
@@ -124,7 +128,7 @@ export function LTVtoLTD(ltv: number): number {
   return Math.trunc((1000 * ltv) / (1000 - ltv));
 }
 
-export function LPNS_To_NLPNS(lpns: number, price: Price): bigint {
+export function LPNS_To_NLPNS(lpns: number, price: PriceRatio): bigint {
   const result = Math.trunc(
     lpns * (+price.amount.amount / +price.amount_quote.amount),
   );
@@ -132,7 +136,7 @@ export function LPNS_To_NLPNS(lpns: number, price: Price): bigint {
   return BigInt(result);
 }
 
-export function NLPNS_To_LPNS(nlpns: number, price: Price): bigint {
+export function NLPNS_To_LPNS(nlpns: number, price: PriceRatio): bigint {
   const result = Math.trunc(
     nlpns / (+price.amount.amount / +price.amount_quote.amount),
   );
@@ -152,17 +156,49 @@ export function calcDepositCapacity(
   return (totalDue * 100) / (minUtilization / 10) - balance - totalDue;
 }
 
+// `NolusClient.setInstance` constructs a whole new client — and so a new connection — every time
+// it is called, and never closes the one it replaces. This helper has 34 call sites and used to
+// call it, plus re-query the currency list, on every single invocation; across a run that is
+// hundreds of connections to the same host, which the endpoint in front of rila answers by
+// refusing to connect at all. The list is chain configuration and does not move during a run, so
+// it is fetched once. The promise is cached, not the value, so concurrent callers share one
+// request; a failure clears the cache so the next caller retries instead of inheriting it.
+let currenciesOnce: Promise<CurrencyInfo[]> | undefined;
+
+// Every suite sets the instance in its own `beforeAll`, but this helper is reachable from places
+// that do not, and `getInstance()` throws rather than defaulting. Setting it only when it is
+// missing keeps those callers working without reconstructing the client of the ones that did.
+function clientInstance(): NolusClient {
+  try {
+    return NolusClient.getInstance();
+  } catch {
+    NolusClient.setInstance(NODE_ENDPOINT);
+
+    return NolusClient.getInstance();
+  }
+}
+
+async function currencies(): Promise<CurrencyInfo[]> {
+  if (currenciesOnce === undefined) {
+    currenciesOnce = (async () => {
+      const cosm = await clientInstance().getCosmWasmClient();
+      const oracleInstance = new Oracle(
+        cosm,
+        process.env.ORACLE_ADDRESS as string,
+      );
+
+      return await oracleInstance.getCurrencies();
+    })().catch((error) => {
+      currenciesOnce = undefined;
+      throw error;
+    });
+  }
+
+  return await currenciesOnce;
+}
+
 export async function currencyTicker_To_IBC(ticker: string): Promise<string> {
-  NolusClient.setInstance(NODE_ENDPOINT);
-  const cosm = await NolusClient.getInstance().getCosmWasmClient();
-
-  const oracleInstance = new NolusContracts.Oracle(
-    cosm,
-    process.env.ORACLE_ADDRESS as string,
-  );
-  const currencies = await oracleInstance.getCurrencies();
-
-  const result = AssetUtils.findBankSymbolByTicker(currencies, ticker);
+  const result = findBankSymbolByTicker(await currencies(), ticker);
   const resultString: string = result ?? '';
 
   if (resultString == '') {
@@ -173,18 +209,12 @@ export async function currencyTicker_To_IBC(ticker: string): Promise<string> {
 }
 
 export function currencyPriceObjToNumbers(
-  currencyPriceObj: NolusContracts.Price,
+  currencyPriceObj: PriceRatio,
   tolerancePercent: number,
-) {
-  const exactCurrencyPrice =
+): { min: number; exact: number; max: number } {
+  const exact =
     +currencyPriceObj.amount.amount / +currencyPriceObj.amount_quote.amount; // = 1LPN
-  const tolerance = exactCurrencyPrice * (tolerancePercent / 100);
-  const minToleranceCurrencyPrice = exactCurrencyPrice - tolerance;
-  const maxToleranceCurrencyPrice = exactCurrencyPrice + tolerance;
+  const tolerance = exact * (tolerancePercent / 100);
 
-  return [
-    minToleranceCurrencyPrice,
-    exactCurrencyPrice,
-    maxToleranceCurrencyPrice,
-  ];
+  return { min: exact - tolerance, exact, max: exact + tolerance };
 }
