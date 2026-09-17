@@ -1,4 +1,4 @@
-import { ExecuteResult } from '@cosmjs/cosmwasm-stargate';
+import { ExecuteResult } from '@cosmjs/cosmwasm';
 import { comet38 } from '@cosmjs/tendermint-rpc';
 import { fromUtf8 } from '@cosmjs/encoding';
 import {

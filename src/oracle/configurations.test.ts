@@ -1,5 +1,5 @@
 import { fromHex } from '@cosmjs/encoding';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import { customFees } from '../util/utils';
 import NODE_ENDPOINT, {
   createWallet,

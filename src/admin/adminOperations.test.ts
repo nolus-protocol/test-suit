@@ -1,5 +1,5 @@
-import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { CosmWasmClient } from '@cosmjs/cosmwasm';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import { runOrSkip } from '../util/testingRules';
 import { sendSudoContractProposal } from '../util/proposals';
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';

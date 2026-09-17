@@ -1,4 +1,4 @@
-import { NolusClient } from '@nolus/nolusjs';
+import { NolusClient } from '../nolus';
 import { TONANOSEC, undefinedHandler } from '../utils';
 import NODE_ENDPOINT from '../clients';
 import { getLeaseObligations } from './getters';

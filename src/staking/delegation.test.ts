@@ -1,6 +1,6 @@
 import { Coin } from '@cosmjs/proto-signing';
 import { assertIsDeliverTxSuccess, isDeliverTxFailure } from '@cosmjs/stargate';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import {
   BondStatus,
   bondStatusFromJSON,

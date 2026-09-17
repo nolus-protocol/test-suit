@@ -1,7 +1,7 @@
-import { CosmWasmClient, ExecuteResult } from '@cosmjs/cosmwasm-stargate';
+import { CosmWasmClient, ExecuteResult } from '@cosmjs/cosmwasm';
 import { Coin as StargateCoin } from '@cosmjs/proto-signing';
 import { StdFee } from '@cosmjs/stargate';
-import { NolusWallet } from '@nolus/nolusjs';
+import { NolusWallet } from '../../nolus';
 
 import {
   currentOpenLeasesByOwnerMsg,

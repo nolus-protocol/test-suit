@@ -1,14 +1,15 @@
 import {
   DeliverTxResponse,
   QueryClient,
+  StdFee,
   assertIsDeliverTxSuccess,
   setupBankExtension,
 } from '@cosmjs/stargate';
 import { Coin } from '@cosmjs/proto-signing';
 import { connectComet } from '@cosmjs/tendermint-rpc';
-import { NolusWallet } from '@nolus/nolusjs';
+import { NolusWallet } from './nolus';
 import { getUser1Wallet } from './clients';
-import { GASPRICE, NATIVE_MINIMAL_DENOM, customFees } from './utils';
+import { NATIVE_MINIMAL_DENOM, TAX_PART, customFees } from './utils';
 
 export async function sendInitTransferFeeTokens(
   client: NolusWallet,
@@ -138,13 +139,20 @@ export async function allBalances(address: string): Promise<readonly Coin[]> {
   }
 }
 
-export function calcFeeProfit(fee: any): number {
-  const percision = 100000;
-  const gasPriceInteger = GASPRICE * percision;
-
-  const profit = Math.trunc(
-    +fee.amount[0].amount - (+fee.gas * gasPriceInteger) / percision,
-  );
-
-  return profit;
+/**
+ * What of a paid fee reaches the treasury.
+ *
+ * The chain's tax module takes `fee_rate` percent of every fee and leaves the rest to the
+ * validator; the prep records the remainder as `VALIDATOR_FEE_PART`, so the treasury's share is
+ * whatever is not the validator's. Verified against rila, where `fee_rate` is 100: the fee
+ * collector forwards the *whole* fee to `TREASURY_ADDRESS` in the same transaction.
+ *
+ * This used to be derived the other way round - paid minus `gas * GASPRICE` - which is equivalent
+ * wherever the validator's share is non-zero, because `customFees` grosses the fee up by exactly
+ * that share. It breaks at `fee_rate` 100, where the gross-up divisor is pinned to 1 to avoid a
+ * division by zero: the subtraction then cancels to 0 and reports that a fully-taxed fee reaches
+ * the treasury untouched.
+ */
+export function calcFeeProfit(fee: StdFee): number {
+  return Math.trunc(+fee.amount[0].amount * TAX_PART);
 }

@@ -1,4 +1,4 @@
-import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
+import { CosmWasmClient } from '@cosmjs/cosmwasm';
 
 import { protocolMsg, protocolsMsg } from '../messages';
 import { Protocol } from '../types';

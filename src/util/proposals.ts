@@ -1,12 +1,11 @@
 import { Any } from 'cosmjs-types/google/protobuf/any';
-import { DeliverTxResponse } from '@cosmjs/cosmwasm-stargate';
+import { DeliverTxResponse } from '@cosmjs/cosmwasm';
 import { toUtf8 } from '@cosmjs/encoding';
-import { NolusWallet } from '@nolus/nolusjs';
+import { NolusWallet } from './nolus';
 import { NATIVE_MINIMAL_DENOM, customFees, MIN_DEPOSIT_AMOUNT } from './utils';
 import { MsgSudoContract } from './codec/cosmos/msgSudoContract/tx';
 import { getUser1Wallet } from './clients';
 import { MsgSubmitPropWValidation } from './codec/cosmos/msgSubmitPropWValidation/tx';
-
 
 const PROPOSAL_MARKER = 'TEST TEST_SUIT proposal';
 

@@ -15,7 +15,7 @@ import {
   NATIVE_MINIMAL_DENOM,
   undefinedHandler,
 } from '../util/utils';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import { runOrSkip } from '../util/testingRules';
 
 runOrSkip(process.env.TEST_STAKING as string)(

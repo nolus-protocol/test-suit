@@ -1,5 +1,5 @@
-import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { CosmWasmClient } from '@cosmjs/cosmwasm';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import { toUtf8 } from '@cosmjs/encoding';
 import { Coin } from '@cosmjs/proto-signing';
 import {

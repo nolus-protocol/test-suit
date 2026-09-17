@@ -1,4 +1,4 @@
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../../nolus';
 import {
   sendInitExecuteFeeTokens,
   sendInitTransferFeeTokens,
@@ -290,7 +290,6 @@ export async function closeLease(
 
   await returnAmountToTheMainAccount(borrowerWallet, leaseCurrencyToIBC);
 }
-
 
 export async function restoreLeaserConfig(
   leaseAdminWallet: NolusWallet,

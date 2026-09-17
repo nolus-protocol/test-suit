@@ -3,7 +3,7 @@ import {
   Coin,
   DeliverTxResponse,
 } from '@cosmjs/stargate';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import NODE_ENDPOINT, { getUser1Wallet, getUser2Wallet } from '../util/clients';
 import {
   customFees,

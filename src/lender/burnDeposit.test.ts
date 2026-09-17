@@ -1,5 +1,5 @@
-import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { CosmWasmClient } from '@cosmjs/cosmwasm';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { sendInitExecuteFeeTokens } from '../util/transfer';

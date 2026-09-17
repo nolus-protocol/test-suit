@@ -4,7 +4,7 @@ import {
   isDeliverTxFailure,
 } from '@cosmjs/stargate';
 import { EncodeObject } from '@cosmjs/proto-signing';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import { Coin } from 'cosmjs-types/cosmos/base/v1beta1/coin';
 import {
   MsgCreateVestingAccount,

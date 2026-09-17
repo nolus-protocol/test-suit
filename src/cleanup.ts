@@ -4,7 +4,7 @@
 import { closeSync, fchmodSync, mkdirSync, openSync, writeSync } from 'fs';
 import { join, relative } from 'path';
 
-import { NolusClient } from '@nolus/nolusjs';
+import { NolusClient } from './util/nolus';
 
 import { DisposableWallet, takeDisposableWallets } from './util/clients';
 import { allBalances, returnAllFundsToMainAccount } from './util/transfer';

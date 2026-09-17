@@ -1,6 +1,6 @@
 import { Coin, addCoins } from '@cosmjs/amino';
-import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { CosmWasmClient } from '@cosmjs/cosmwasm';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import {
   customFees,
   NATIVE_MINIMAL_DENOM,

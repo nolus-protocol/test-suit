@@ -1,6 +1,6 @@
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 import { customFees } from '../util/utils';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import { runOrSkip } from '../util/testingRules';
 
 runOrSkip(process.env.TEST_TREASURY as string)(

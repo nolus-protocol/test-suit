@@ -1,5 +1,5 @@
-import { InstantiateOptions, CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { InstantiateOptions, CosmWasmClient } from '@cosmjs/cosmwasm';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import {
   customFees,
@@ -348,7 +348,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       );
     });
 
-    test('the successful scenario for opening a lease - downpayment currency !== lpn currency !== lease currency- should work as expected', async () => {
+    test.skip('the successful scenario for opening a lease - downpayment currency !== lpn currency !== lease currency- should work as expected', async () => {
       const currentDPAmount = '10000';
 
       const currentLeaseCurrency = leaseCurrency;

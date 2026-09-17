@@ -10,12 +10,16 @@ import NODE_ENDPOINT, {
   getUser3Wallet,
 } from '../util/clients';
 import { customFees, NATIVE_MINIMAL_DENOM } from '../util/utils';
-import { NolusWallet, NolusClient, ChainConstants } from '@nolus/nolusjs';
+import {
+  NolusWallet,
+  NolusClient,
+  BECH32_PREFIX_ACC_ADDR,
+} from '../util/nolus';
 import { calcFeeProfit, sendInitTransferFeeTokens } from '../util/transfer';
 import { ASSERT_EXACT_DELTAS, runOrSkip } from '../util/testingRules';
 import { HDNodeWallet, Wallet } from 'ethers';
 import { Buffer } from 'buffer';
-import * as bech32 from 'bech32';
+import { toBech32 } from '@cosmjs/encoding';
 import { sha256, ripemd160 } from '@cosmjs/crypto';
 import {
   AuthInfo,
@@ -113,10 +117,7 @@ runOrSkip(process.env.TEST_TRANSFER as string)(
       const sha = sha256(compressed);
       const rip = ripemd160(sha);
 
-      return bech32.encode(
-        ChainConstants.BECH32_PREFIX_ACC_ADDR,
-        bech32.toWords(rip),
-      );
+      return toBech32(BECH32_PREFIX_ACC_ADDR, rip);
     }
 
     async function fetchAccountInfo(address: string) {

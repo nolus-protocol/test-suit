@@ -3,7 +3,7 @@
 TypeScript/Jest user-acceptance integration-test suite for the Nolus Protocol
 blockchain. Tests run against a real running `nolusd` node, exercising on-chain behavior of
 the Nolus smart contracts — leases, oracle, LPP, profit, treasury, vesting, staking,
-transfers — via `@cosmjs` and `@nolus/nolusjs`. Maintained by QA.
+transfers — via `@cosmjs`. Maintained by QA.
 
 **One target: the deployed contracts on `rila`.** There is no local-network mode — anything a
 live network cannot host is skipped in place and covered by the suites that stand up their own
@@ -17,11 +17,11 @@ project-specific.
 
 - Language: TypeScript 5.9 (CommonJS, target ESNext, `strict: true`)
 - Test runner: Jest 30 + ts-jest (`testTimeout` ~2000s — on-chain settlement)
-- Chain SDK: `@nolus/nolusjs` 3.7.7, `cosmjs-types`, and `@cosmjs` **0.39** — note
-  `package.json` still pins the `@cosmjs/*` devDependencies at `0.36.0` while nolusjs 3.7.7
-  hard-pins `0.39.0`, so 0.39 is what is installed and what `src/` is written against. The pins
-  need a deliberate bump plus a lockfile update; 0.36 is not an option while nolusjs is a
-  dependency.
+- Chain SDK: `@cosmjs` **0.39** and `cosmjs-types`. `@nolus/nolusjs` is gone — the package is
+  being discontinued, so the slice the suites used lives in `src/util/nolus/` instead. Depend on
+  `@cosmjs/cosmwasm`, never `@cosmjs/cosmwasm-stargate`: at 0.39 the latter is only a re-export,
+  and mixing the two produced two parallel cosmjs universes where classes compared by identity
+  did not match.
 - Lint / format: ESLint 9 (flat config, `@typescript-eslint`) + Prettier 3
 - Package manager: yarn (`yarn.lock`)
 - Under test: the deployed contracts on `rila`, reached through the `nolusd` the prep downloads
@@ -74,7 +74,6 @@ npx jest --runInBand <path-under-src>          # reads .env; TEST_ENV_FILE overr
 ## Conventions
 
 @~/.claude/kit/snippets/typescript-style.md
-@~/.claude/kit/snippets/tests-style.md
 @~/.claude/kit/snippets/github-workflow-style.md
 
 Additions and overrides for this repo:
@@ -124,22 +123,15 @@ Additions and overrides for this repo:
   (`scripts/helpers/fund-main-account-from-solana.sh`, which reads no env file). So the prep takes
   no Solana settings and the preflight has no funder-solvency check — the numbering keeps a gap
   where check 5 was.
-- **`Oracle.getPrices()` is mistyped in nolusjs 3.7.7 and the wrong shape typechecks.** It is
-  declared `Promise<{ [key: string]: Price }>` but returns the raw `{"prices":{}}` result verbatim
-  (`Oracle.js:49-51`), i.e. `{ prices: { amount, amount_quote }[] }`. So `Object.keys(prices)`
-  compiles cleanly and yields `['prices']` — a ticker comparison against it reports **every**
-  currency as unpriced. This shipped a false "no lease currency has a price" refusal in the
-  preflight. Read `.prices[].amount.ticker`; `amount_quote.ticker` is the *quote* side (always the
-  LPN, `USDC`) and reading it instead makes a hand-written `jq` diagnostic agree with the bug.
-  `src/preflight/preflight.test.ts` narrows the response locally and asserts the list is
-  non-empty, so the day nolusjs fixes the declaration the check fails loudly instead of silently
-  passing on an empty list.
+- **The oracle's `Prices` query answers an object, not a ticker-keyed map.** `PricesResponse` is
+  `{ prices: Price[] }`, so `Object.keys()` on it yields the single key `'prices'` and a ticker
+  comparison against that reports **every** currency as unpriced. nolusjs declared the return as
+  `Promise<{ [key: string]: Price }>` while returning the raw object, so the wrong shape
+  typechecked and shipped a false "no lease currency has a price" refusal in the preflight; the
+  ported client types it correctly, which is why the mistake can no longer compile. Read
+  `.prices[].amount.ticker` — `amount_quote.ticker` is the *quote* side (always the LPN, `USDC`)
+  and reading it instead makes a hand-written `jq` diagnostic agree with the bug.
 - **The CI workflow is manual-only and single-job.** Splitting prep from test would mean passing
-  `.env` between jobs as an artifact, and it holds unarmored private keys; only `.runs/<RUN_ID>/`
-  is uploaded. `staking`/`vesting` have no checkbox because the prep refuses an env file unless
-  both are `false` — the sweep cannot recover delegated or unbonding NLS. `admin` used to be
-  refused with them and no longer is: `adminOperations` only asserts rejections, so it needs
-  nothing a live network cannot host. Its `run` steps execute under `bash -e`, where
-  `[[ … ]] && cmd` aborts the step when the test is false — use `if`.
+  `.env` between jobs as an artifact, and it holds unarmored private keys; only `.runs/<RUN_ID>/` is uploaded.
 - **`.gitignore`'s `.*` matches `.github/**`,** so a *new* workflow file is invisible to
   `git status`. The existing one is tracked, so edits to it do show. `!.github/` would fix it.

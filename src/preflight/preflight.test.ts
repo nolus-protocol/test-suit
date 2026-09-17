@@ -1,7 +1,7 @@
-import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
+import { CosmWasmClient } from '@cosmjs/cosmwasm';
 import { connectComet } from '@cosmjs/tendermint-rpc';
 import { QueryClient, setupIbcExtension } from '@cosmjs/stargate';
-import { NolusClient } from '@nolus/nolusjs';
+import { NolusClient } from '../util/nolus';
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 import { NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';

@@ -1,4 +1,4 @@
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import NODE_ENDPOINT, { createWallet, getUser1Wallet } from '../util/clients';
 import { customFees } from '../util/utils';
 import { sendSudoContractProposal } from '../util/proposals';

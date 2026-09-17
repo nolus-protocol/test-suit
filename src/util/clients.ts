@@ -3,12 +3,13 @@ import { DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
 import { fromHex } from '@cosmjs/encoding';
 import { GeneratedType } from '@cosmjs/proto-signing/build/registry';
 import {
-  ChainConstants,
-  KeyUtils,
+  BECH32_PREFIX_ACC_ADDR,
+  generateMnemonic,
+  getPrivateKeyFromMnemonic,
   NolusClient,
   NolusWallet,
-} from '@nolus/nolusjs';
-import { nolusOfflineSigner } from '@nolus/nolusjs/build/wallet/NolusWalletFactory';
+  nolusOfflineSigner,
+} from './nolus';
 
 const user1PrivKey = fromHex(process.env.USER_1_PRIV_KEY as string);
 const user2PrivKey = fromHex(process.env.USER_2_PRIV_KEY as string);
@@ -20,7 +21,7 @@ export default NODE_ENDPOINT;
 export async function getWallet(privateKey: Uint8Array): Promise<NolusWallet> {
   const offlineSigner = await DirectSecp256k1Wallet.fromKey(
     privateKey,
-    ChainConstants.BECH32_PREFIX_ACC_ADDR,
+    BECH32_PREFIX_ACC_ADDR,
   );
   const nolusWallet = await nolusOfflineSigner(offlineSigner);
   nolusWallet.useAccount();
@@ -69,10 +70,10 @@ export interface DisposableWallet {
 const disposableWallets: DisposableWallet[] = [];
 
 export async function createWallet(): Promise<NolusWallet> {
-  const mnemonic = KeyUtils.generateMnemonic();
+  const mnemonic = generateMnemonic();
   const accountNumbers = [0];
   const path = accountNumbers.map(makeCosmoshubPath)[0];
-  const privateKey = await KeyUtils.getPrivateKeyFromMnemonic(mnemonic, path);
+  const privateKey = await getPrivateKeyFromMnemonic(mnemonic, path);
 
   const wallet = await getWallet(privateKey);
   disposableWallets.push({ wallet, mnemonic });

@@ -1,4 +1,4 @@
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import { customFees } from '../util/utils';
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 import { runOrSkip } from '../util/testingRules';
