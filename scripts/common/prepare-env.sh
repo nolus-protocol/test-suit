@@ -31,6 +31,17 @@ _bondedValidatorAddresses() {
            | sort | .[]'
 }
 
+_unbondedValidatorAddresses() {
+  local -r accounts_dir="$1"
+  local -r nolus_net="$2"
+
+  run_cmd "$accounts_dir" query staking validators --output json --node "$nolus_net" |
+    jq -r '[.validators[]
+             | select(.status != 3 and .status != "BOND_STATUS_BONDED")
+             | .operator_address]
+           | sort | .[]'
+}
+
 _verifyResolved() {
   local -r value="$1"
   local -r description="$2"
@@ -92,14 +103,25 @@ if [ "$bonded_count" -lt 1 ]; then
   exit 1
 fi
 
+# VALIDATOR_1 has to be bonded - it is the one the suites delegate to and earn rewards from.
 local -r validator_1_address=$(printf '%s\n' "$bonded_validators" | sed -n '1p')
+
+# VALIDATOR_2 only ever receives a redelegation, so bonded is preferred but not required.
 local validator_2_address=""
 
 if [ "$bonded_count" -ge 2 ]; then
   validator_2_address=$(printf '%s\n' "$bonded_validators" | sed -n '2p')
 else
-  echo >&2 "Warning: only 1 bonded validator on $node_url. VALIDATOR_2_ADDRESS is left empty;"
-  echo >&2 "  staking redelegation and any two-validator case cannot run against this network."
+  validator_2_address=$(_unbondedValidatorAddresses "$accounts_dir" "$node_url" | sed -n '1p')
+
+  if [ -n "$validator_2_address" ]; then
+    echo >&2 "Note: only 1 bonded validator on $node_url; VALIDATOR_2_ADDRESS falls back to the"
+    echo >&2 "  unbonded '$validator_2_address'. It is a redelegation destination only, so it does"
+    echo >&2 "  not have to be earning."
+  else
+    echo >&2 "Warning: $node_url carries a single validator, so VALIDATOR_2_ADDRESS is left empty;"
+    echo >&2 "  staking redelegation and any two-validator case cannot run against this network."
+  fi
 fi
 
 local dex_admin_priv_key=""

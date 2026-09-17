@@ -202,15 +202,6 @@ verify_mandatory "$TEST_WALLET_MNEMONIC" "test wallet mnemonic"
 verify_mandatory "$PROTOCOL" "protocol name"
 verify_mandatory "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "oracle code id different protocol"
 
-for policy in TEST_STAKING TEST_VESTING; do
-  if [[ "${!policy}" != "false" ]]; then
-    echo >&2 "Refusing to prepare an env file with $policy='${!policy}'."
-    echo >&2 "  Both are 'false' by policy, not by capability: the fund sweep cannot recover"
-    echo >&2 "  delegated or unbonding NLS, so $CHAIN_ID would lose it on every run."
-    exit 1
-  fi
-done
-
 if [[ -z "$NOLUS_CORE_TAG" ]]; then
   NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' \
     "$GITHUB_NOLUS_CORE_RELEASES/latest" | jq -r '.tag_name') || NOLUS_CORE_TAG=""

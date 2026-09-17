@@ -61,6 +61,14 @@ on:
         description: "Test reserve"
         type: boolean
         default: true
+      test-staking:
+        description: "Test staking (strands the delegated NLS — see the note in the workflow)"
+        type: boolean
+        default: false
+      test-vesting:
+        description: "Test vesting (continuous vesting accounts; slow, ~215s)"
+        type: boolean
+        default: false
 
 # Two runs at once collide on the shared wallet's account nonce; cancelling one can leave a
 # lease open and a packet in flight, so queue instead.
@@ -91,6 +99,8 @@ jobs:
       TEST_PROFIT: ${{ inputs.test-profit }}
       TEST_TIMEALARMS: ${{ inputs.test-timealarms }}
       TEST_RESERVE: ${{ inputs.test-reserve }}
+      TEST_STAKING: ${{ inputs.test-staking }}
+      TEST_VESTING: ${{ inputs.test-vesting }}
       RUN_ID: gh-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
@@ -135,6 +145,8 @@ jobs:
             --test-profit-flag "$TEST_PROFIT"
             --test-timealarms-flag "$TEST_TIMEALARMS"
             --test-reserve-flag "$TEST_RESERVE"
+            --test-staking-flag "$TEST_STAKING"
+            --test-vesting-flag "$TEST_VESTING"
           )
 
           # Only when set: an empty value would override the prep's own default. `if` rather than
