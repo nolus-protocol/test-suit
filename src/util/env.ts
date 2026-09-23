@@ -5,7 +5,7 @@ export const DEFAULT_ENV_FILE = '.env';
 export function loadEnvFile(): void {
   const envFile = process.env.TEST_ENV_FILE ?? DEFAULT_ENV_FILE;
 
-  const loaded = cfg.config({ path: envFile, override: true });
+  const loaded = cfg.config({ path: envFile, override: true, quiet: true });
 
   if (loaded.error !== undefined) {
     throw new Error(
