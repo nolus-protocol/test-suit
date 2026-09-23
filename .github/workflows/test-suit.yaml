@@ -61,14 +61,18 @@ on:
         description: "Test reserve"
         type: boolean
         default: true
+      test-admin:
+        description: "Test admin"
+        type: boolean
+        default: true
       test-staking:
-        description: "Test staking (strands the delegated NLS — see the note in the workflow)"
+        description: "Test staking (strands the NLS it delegates — 504h unbonding, no sweep)"
         type: boolean
-        default: false
+        default: true
       test-vesting:
-        description: "Test vesting (continuous vesting accounts; slow, ~215s)"
+        description: "Test vesting (slowest suite in the tree, ~215s)"
         type: boolean
-        default: false
+        default: true
 
 # Two runs at once collide on the shared wallet's account nonce; cancelling one can leave a
 # lease open and a packet in flight, so queue instead.
@@ -99,6 +103,7 @@ jobs:
       TEST_PROFIT: ${{ inputs.test-profit }}
       TEST_TIMEALARMS: ${{ inputs.test-timealarms }}
       TEST_RESERVE: ${{ inputs.test-reserve }}
+      TEST_ADMIN: ${{ inputs.test-admin }}
       TEST_STAKING: ${{ inputs.test-staking }}
       TEST_VESTING: ${{ inputs.test-vesting }}
       RUN_ID: gh-${{ github.run_id }}-${{ github.run_attempt }}
@@ -145,6 +150,7 @@ jobs:
             --test-profit-flag "$TEST_PROFIT"
             --test-timealarms-flag "$TEST_TIMEALARMS"
             --test-reserve-flag "$TEST_RESERVE"
+            --test-admin-flag "$TEST_ADMIN"
             --test-staking-flag "$TEST_STAKING"
             --test-vesting-flag "$TEST_VESTING"
           )
