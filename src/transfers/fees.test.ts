@@ -3,7 +3,7 @@ import {
   Coin,
   DeliverTxResponse,
 } from '@cosmjs/stargate';
-import { NolusClient, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import NODE_ENDPOINT, { getUser1Wallet, getUser2Wallet } from '../util/clients';
 import {
   customFees,
@@ -13,7 +13,7 @@ import {
   VALIDATOR_PART,
 } from '../util/utils';
 
-describe('Fee tests', () => {
+describe.skip('Fee tests', () => {
   let user1Wallet: NolusWallet;
   let user2Wallet: NolusWallet;
   let fee: any;

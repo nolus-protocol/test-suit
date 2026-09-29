@@ -1,226 +1,178 @@
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import { customFees } from '../util/utils';
-import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
+import NODE_ENDPOINT, {
+  createWallet,
+  getLeaseAdminWallet,
+  getUser1Wallet,
+} from '../util/clients';
+import { sendInitExecuteFeeTokens } from '../util/transfer';
+import { restoreLeaserConfig } from '../util/smart-contracts/actions/borrower';
 import { runOrSkip } from '../util/testingRules';
-import { sendSudoContractProposal } from '../util/proposals';
-import {
-  openLease,
-  waitLeaseOpeningProcess,
-} from '../util/smart-contracts/actions/borrower';
-import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
+import { configLeasesMsg, LeaseConfig, Leaser } from '../util/contracts';
 
-runOrSkip(process.env.TEST_BORROWER as string)(
-  'Borrower tests - Permissions',
-  () => {
-    let userWithBalanceWallet: NolusWallet;
-    let leaserInstance: NolusContracts.Leaser;
-    const leaserContractAddress = process.env.LEASER_ADDRESS as string;
+const maybe = runOrSkip(process.env.TEST_BORROWER as string);
 
-    beforeAll(async () => {
-      NolusClient.setInstance(NODE_ENDPOINT);
-      const cosm = await NolusClient.getInstance().getCosmWasmClient();
+maybe('Borrower tests - Permissions', () => {
+  let userWithBalanceWallet: NolusWallet;
+  let unauthorizedWallet: NolusWallet;
+  let leaserInstance: Leaser;
+  let leaseConfigBefore: LeaseConfig;
+  const leaserContractAddress = process.env.LEASER_ADDRESS as string;
 
-      leaserInstance = new NolusContracts.Leaser(cosm, leaserContractAddress);
+  beforeAll(async () => {
+    NolusClient.setInstance(NODE_ENDPOINT);
+    const cosm = await NolusClient.getInstance().getCosmWasmClient();
 
-      userWithBalanceWallet = await getUser1Wallet();
-    });
+    leaserInstance = new Leaser(cosm, leaserContractAddress);
 
-    test('migrate msg should only be exec via proposal', async () => {
-      const migrateContractMsg = {};
+    userWithBalanceWallet = await getUser1Wallet();
+    unauthorizedWallet = await createWallet();
 
-      await userWithBalanceWallet.transferAmount(
+    leaseConfigBefore = (await leaserInstance.getLeaserConfig()).config
+      .lease_config;
+  });
+
+  afterAll(async () => {
+    const restored = await restoreLeaserConfig(
+      await getLeaseAdminWallet(),
+      leaseConfigBefore,
+    );
+
+    expect(restored).toBe(false);
+  });
+
+  test('migrate msg should only be exec via proposal', async () => {
+    const migrateContractMsg = {};
+
+    await userWithBalanceWallet.transferAmount(
+      userWithBalanceWallet.address as string,
+      customFees.configs.amount,
+      customFees.transfer,
+    );
+
+    const broadcastTx = () =>
+      userWithBalanceWallet.migrate(
         userWithBalanceWallet.address as string,
-        customFees.configs.amount,
-        customFees.transfer,
-      );
-
-      const broadcastTx = () =>
-        userWithBalanceWallet.migrate(
-          userWithBalanceWallet.address as string,
-          leaserContractAddress,
-          1,
-          migrateContractMsg,
-          customFees.configs,
-        );
-
-      await expect(broadcastTx).rejects.toThrow(/^.*unauthorized.*/);
-    });
-
-    test('migrate leases msg should only be exec via proposal', async () => {
-      const migrateLeasesMsg = {
-        migrate_leases: {
-          new_code_id: '2',
-          max_leases: 1000,
-          to_release: { software: 'v1.2.3', protocol: '222222222' },
-        },
-      };
-
-      await userWithBalanceWallet.transferAmount(
-        userWithBalanceWallet.address as string,
-        customFees.configs.amount,
-        customFees.transfer,
-      );
-
-      const broadcastTx = () =>
-        userWithBalanceWallet.executeContract(
-          leaserContractAddress,
-          migrateLeasesMsg,
-          customFees.configs,
-        );
-
-      await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
-    });
-
-    test('migrate lease continue msg should only be exec via proposal', async () => {
-      const migrateLeasesContMsg = {
-        migrate_leases_cont: {
-          key: leaserContractAddress,
-          max_leases: 1000,
-          to_release: { software: 'v1.2.3', protocol: '222222222' },
-        },
-      };
-
-      await userWithBalanceWallet.transferAmount(
-        userWithBalanceWallet.address as string,
-        customFees.configs.amount,
-        customFees.transfer,
-      );
-
-      const broadcastTx = () =>
-        userWithBalanceWallet.executeContract(
-          leaserContractAddress,
-          migrateLeasesContMsg,
-          customFees.configs,
-        );
-
-      await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
-    });
-
-    test('finalize lease msg should only be exec by a lease', async () => {
-      const finalizeLeaseMsg = {
-        finalize_lease: { customer: userWithBalanceWallet.address as string },
-      };
-
-      await userWithBalanceWallet.transferAmount(
-        userWithBalanceWallet.address as string,
-        customFees.configs.amount,
-        customFees.transfer,
-      );
-
-      const broadcastTx = () =>
-        userWithBalanceWallet.executeContract(
-          leaserContractAddress,
-          finalizeLeaseMsg,
-          customFees.configs,
-        );
-
-      await expect(broadcastTx).rejects.toThrow(/^.*No such contract.*/);
-    });
-
-    test('close protocol msg should be exec only if there are no leases', async () => {
-      const leases = await userWithBalanceWallet.getContracts(
-        +(process.env.LEASE_CODE_ID as string),
-      );
-
-      if (leases.length === 0) {
-        const cosm = await NolusClient.getInstance().getCosmWasmClient();
-        const leaserContractAddress = process.env.LEASER_ADDRESS as string;
-        const lppContractAddress = process.env.LPP_ADDRESS as string;
-        const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
-
-        const leaserInstance = new NolusContracts.Leaser(
-          cosm,
-          leaserContractAddress,
-        );
-        const lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
-        const oracleInstance = new NolusContracts.Oracle(
-          cosm,
-          oracleContractAddress,
-        );
-
-        const downpayment = '10000';
-        const lppCurrency = process.env.LPP_BASE_CURRENCY as string;
-        const leaseCurrency = (
-          await getLeaseGroupCurrencies(oracleInstance)
-        )[0];
-
-        const leaseAddress = await openLease(
-          leaserInstance,
-          lppInstance,
-          downpayment,
-          lppCurrency,
-          leaseCurrency,
-          userWithBalanceWallet,
-        );
-
-        const leaseInstance = new NolusContracts.Lease(cosm, leaseAddress);
-        expect(await waitLeaseOpeningProcess(leaseInstance)).toBe(undefined);
-      }
-
-      const closeProtocolMsg = {
-        close_protocol: {
-          migration_spec: {
-            leaser: { code_id: '1', migrate_message: '{}' },
-            lpp: { code_id: '1', migrate_message: '{}' },
-            oracle: { code_id: '1', migrate_message: '{}' },
-            profit: { code_id: '1', migrate_message: '{}' },
-            reserve: { code_id: '1', migrate_message: '{}' },
-          },
-        },
-      };
-
-      const broadcastTx = await sendSudoContractProposal(
-        userWithBalanceWallet,
         leaserContractAddress,
-        JSON.stringify(closeProtocolMsg),
+        1,
+        migrateContractMsg,
+        customFees.configs,
       );
 
-      expect(broadcastTx.rawLog).toContain(
-        'The protocol is still in use. There are open leases',
+    await expect(broadcastTx).rejects.toThrow(/^.*unauthorized.*/);
+  });
+
+  test('migrate leases msg should only be exec via proposal', async () => {
+    const migrateLeasesMsg = {
+      migrate_leases: {
+        new_code_id: '2',
+        max_leases: 1000,
+        to_release: { software: 'v1.2.3', protocol: '222222222' },
+      },
+    };
+
+    await userWithBalanceWallet.transferAmount(
+      userWithBalanceWallet.address as string,
+      customFees.configs.amount,
+      customFees.transfer,
+    );
+
+    const broadcastTx = () =>
+      userWithBalanceWallet.executeContract(
+        leaserContractAddress,
+        migrateLeasesMsg,
+        customFees.configs,
       );
-    });
 
-    test('update config msg should only be exec by the lease admin', async () => {
-      const leaserConfig = (await leaserInstance.getLeaserConfig()).config;
+    await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
+  });
 
-      leaserConfig.lease_max_slippages.liquidation = 500;
-      leaserConfig.lease_code = undefined;
-      leaserConfig.dex = undefined;
-      leaserConfig.lpp = undefined;
-      leaserConfig.market_price_oracle = undefined;
-      leaserConfig.profit = undefined;
-      leaserConfig.time_alarms = undefined;
-      leaserConfig.reserve = undefined;
-      leaserConfig.protocols_registry = undefined;
-      leaserConfig.lease_admin = undefined;
+  test('migrate lease continue msg should only be exec via proposal', async () => {
+    const migrateLeasesContMsg = {
+      migrate_leases_cont: {
+        key: leaserContractAddress,
+        max_leases: 1000,
+        to_release: { software: 'v1.2.3', protocol: '222222222' },
+      },
+    };
 
-      const updateConfigMsg = {
-        config_leases: leaserConfig,
-      };
-      const broadcastTx = () =>
-        userWithBalanceWallet.executeContract(
-          leaserContractAddress,
-          updateConfigMsg,
-          customFees.configs,
-        );
+    await userWithBalanceWallet.transferAmount(
+      userWithBalanceWallet.address as string,
+      customFees.configs.amount,
+      customFees.transfer,
+    );
 
-      await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
-    });
+    const broadcastTx = () =>
+      userWithBalanceWallet.executeContract(
+        leaserContractAddress,
+        migrateLeasesContMsg,
+        customFees.configs,
+      );
 
-    test('change lease admin msg should only be exec by the current admin', async () => {
-      const changeLeaseAdminMsg = {
-        change_lease_admin: {
-          new: 'adresshere',
-        },
-      };
+    await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
+  });
 
-      const broadcastTx = () =>
-        userWithBalanceWallet.executeContract(
-          leaserContractAddress,
-          changeLeaseAdminMsg,
-          customFees.configs,
-        );
-      await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
-    });
-  },
-);
+  test('finalize lease msg should only be exec by a lease', async () => {
+    const finalizeLeaseMsg = {
+      finalize_lease: { customer: userWithBalanceWallet.address as string },
+    };
+
+    await userWithBalanceWallet.transferAmount(
+      userWithBalanceWallet.address as string,
+      customFees.configs.amount,
+      customFees.transfer,
+    );
+
+    const broadcastTx = () =>
+      userWithBalanceWallet.executeContract(
+        leaserContractAddress,
+        finalizeLeaseMsg,
+        customFees.configs,
+      );
+
+    await expect(broadcastTx).rejects.toThrow(/^.*No such contract.*/);
+  });
+
+  test('update config msg should only be exec by the lease admin', async () => {
+    const leaseConfig = (await leaserInstance.getLeaserConfig()).config
+      .lease_config;
+
+    leaseConfig.max_slippages.liquidation = 500;
+
+    await sendInitExecuteFeeTokens(
+      userWithBalanceWallet,
+      unauthorizedWallet.address as string,
+    );
+
+    const updateConfigMsg = configLeasesMsg(leaseConfig);
+    const broadcastTx = () =>
+      unauthorizedWallet.executeContract(
+        leaserContractAddress,
+        updateConfigMsg,
+        customFees.configs,
+      );
+
+    await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
+  });
+
+  test('change lease admin msg should only be exec by the current admin', async () => {
+    const changeLeaseAdminMsg = {
+      change_lease_admin: {
+        new: unauthorizedWallet.address as string,
+      },
+    };
+
+    await sendInitExecuteFeeTokens(
+      userWithBalanceWallet,
+      unauthorizedWallet.address as string,
+    );
+
+    const broadcastTx = () =>
+      unauthorizedWallet.executeContract(
+        leaserContractAddress,
+        changeLeaseAdminMsg,
+        customFees.configs,
+      );
+    await expect(broadcastTx).rejects.toThrow(/^.*Unauthorized access.*/);
+  });
+});

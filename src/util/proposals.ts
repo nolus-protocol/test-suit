@@ -1,28 +1,13 @@
-import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
-import { QueryProposalResponse } from 'cosmjs-types/cosmos/gov/v1beta1/query';
 import { Any } from 'cosmjs-types/google/protobuf/any';
-import { QueryClient, setupGovExtension, GovExtension } from '@cosmjs/stargate';
-import { DeliverTxResponse } from '@cosmjs/cosmwasm-stargate';
+import { DeliverTxResponse } from '@cosmjs/cosmwasm';
 import { toUtf8 } from '@cosmjs/encoding';
-import { NolusWallet } from '@nolus/nolusjs';
+import { NolusWallet } from './nolus';
 import { NATIVE_MINIMAL_DENOM, customFees, MIN_DEPOSIT_AMOUNT } from './utils';
 import { MsgSudoContract } from './codec/cosmos/msgSudoContract/tx';
 import { getUser1Wallet } from './clients';
 import { MsgSubmitPropWValidation } from './codec/cosmos/msgSubmitPropWValidation/tx';
 
-const NODE_ENDPOINT = process.env.NODE_URL as string;
-let queryClient: QueryClient & GovExtension;
-
-async function loadClient() {
-  const tendermintClient = await Tendermint34Client.connect(NODE_ENDPOINT);
-  queryClient = QueryClient.withExtensions(tendermintClient, setupGovExtension);
-}
-
-export async function getProposal(id: number): Promise<QueryProposalResponse> {
-  await loadClient();
-
-  return await queryClient.gov.proposal(id);
-}
+const PROPOSAL_MARKER = 'TEST TEST_SUIT proposal';
 
 export async function sendSudoContractProposal(
   wallet: NolusWallet,
@@ -70,9 +55,8 @@ export async function sendSudoContractProposal(
       ],
       metadata: '',
       proposer: wallet.address as string,
-      summary:
-        'This proposal proposes to test whether this SudoContract proposal passes',
-      title: 'Test Proposal',
+      summary: PROPOSAL_MARKER,
+      title: PROPOSAL_MARKER,
       initialDeposit: [deposit],
     },
   };

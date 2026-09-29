@@ -1,20 +1,21 @@
-import { ChainConstants } from '@nolus/nolusjs';
+import { COIN_DENOM, COIN_MINIMAL_DENOM } from './nolus';
 
 export const BLOCK_CREATION_TIME_DEV_SEC = 5;
 
 export const TONANOSEC = 1000000000;
 export const PERMILLE_TO_PERCENT = 10;
 
-export const NATIVE_MINIMAL_DENOM = ChainConstants.COIN_MINIMAL_DENOM;
-export const NATIVE_TICKER = ChainConstants.COIN_DENOM.toUpperCase();
+export const NATIVE_MINIMAL_DENOM = COIN_MINIMAL_DENOM;
+export const NATIVE_TICKER = COIN_DENOM.toUpperCase();
 export const GASPRICE = 0.0025;
 
-export const GAS_LIMIT = '100000000';
 export const MIN_DEPOSIT_AMOUNT = process.env.GOV_MIN_DEPOSIT_NATIVE as string;
 const rawValidatorPart = Number(process.env.VALIDATOR_FEE_PART);
 export const VALIDATOR_PART = rawValidatorPart > 0 ? rawValidatorPart / 100 : 0;
 
-export const BORROWER_ATTEMPTS_TIMEOUT = 300;
+export const TAX_PART = 1 - VALIDATOR_PART;
+
+export const LEASE_SETTLEMENT_TIMEOUT_SEC = 600;
 
 export const fee_divisor = VALIDATOR_PART === 0 ? 1 : VALIDATOR_PART;
 export const customFees = {
@@ -32,6 +33,16 @@ export const customFees = {
     amount: [
       {
         amount: Math.floor((200000 * GASPRICE) / fee_divisor).toString(),
+        denom: NATIVE_MINIMAL_DENOM,
+      },
+    ],
+  },
+
+  sweep: {
+    gas: '500000',
+    amount: [
+      {
+        amount: Math.floor((500000 * GASPRICE) / fee_divisor).toString(),
         denom: NATIVE_MINIMAL_DENOM,
       },
     ],

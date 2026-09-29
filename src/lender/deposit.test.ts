@@ -1,6 +1,5 @@
-import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
-import { NolusClient, NolusContracts, NolusWallet } from '@nolus/nolusjs';
-import { LppBalance, Price } from '@nolus/nolusjs/build/contracts/types';
+import { CosmWasmClient } from '@cosmjs/cosmwasm';
+import { NolusClient, NolusWallet } from '../util/nolus';
 import NODE_ENDPOINT, { getUser1Wallet, createWallet } from '../util/clients';
 import {
   customFees,
@@ -17,19 +16,20 @@ import {
   currencyTicker_To_IBC,
   LPNS_To_NLPNS,
 } from '../util/smart-contracts/calculations';
-import { ifLocal, runIfLenderDepositRestriction } from '../util/testingRules';
+import {
+  ASSERT_EXACT_DELTAS,
+  runIfLenderDepositRestriction,
+  runOrSkip,
+} from '../util/testingRules';
+import { Lpp, LppBalance, PriceRatio } from '../util/contracts';
 
-const maybe =
-  (process.env.TEST_LENDER as string).toLowerCase() !== 'false' &&
-  +(process.env.LENDER_DEPOSIT_CAPACITY as string) !== 0
-    ? describe
-    : describe.skip;
+const maybe = runOrSkip(process.env.TEST_LENDER as string);
 
 maybe('Lender tests - Make a deposit', () => {
   let cosm: CosmWasmClient;
   let userWithBalance: NolusWallet;
   let lenderWallet: NolusWallet;
-  let lppInstance: NolusContracts.Lpp;
+  let lppInstance: Lpp;
   let lppCurrency: string;
   let lppCurrencyToIBC: string;
   let deposit: string;
@@ -54,17 +54,13 @@ maybe('Lender tests - Make a deposit', () => {
     );
 
     const depositCapacity = await lppInstance.getDepositCapacity();
-
-    if (!depositCapacity) {
-      undefinedHandler();
-      return;
-    }
+    const capacity = depositCapacity ? +depositCapacity.amount : Infinity;
 
     if (
       +depositAmount > 0 &&
       (+depositAmount <= +lenderBalanceBefore.amount ||
         depositCurrency === NATIVE_MINIMAL_DENOM ||
-        +depositAmount > depositCapacity?.amount)
+        +depositAmount > capacity)
     ) {
       await userWithBalance.transferAmount(
         lenderWallet.address as string,
@@ -88,7 +84,7 @@ maybe('Lender tests - Make a deposit', () => {
       lppCurrencyToIBC,
     );
 
-    if (+depositAmount <= depositCapacity?.amount) {
+    if (+depositAmount <= capacity) {
       expect(lenderBalanceBefore.amount).toBe(lenderBalanceAfter.amount);
     }
 
@@ -125,7 +121,7 @@ maybe('Lender tests - Make a deposit', () => {
     await returnRestToMainAccount(lenderWallet, lppCurrencyToIBC);
   }
 
-  function verifyPrice(price: Price, lppBalance: LppBalance): void {
+  function verifyPrice(price: PriceRatio, lppBalance: LppBalance): void {
     // a/b === c/d if a*d == b*c
     expect(
       BigInt(price.amount_quote.amount) *
@@ -142,8 +138,8 @@ maybe('Lender tests - Make a deposit', () => {
     lppLenderDepositResponse: bigint,
     deposit: number,
     lenderDepositBefore: bigint,
-    priceBeforeDeposit: Price,
-    priceAfterDeposit: Price,
+    priceBeforeDeposit: PriceRatio,
+    priceAfterDeposit: PriceRatio,
   ): void {
     expect(lppLenderDepositResponse).toBeLessThanOrEqual(
       lenderDepositBefore + LPNS_To_NLPNS(deposit, priceBeforeDeposit),
@@ -157,31 +153,22 @@ maybe('Lender tests - Make a deposit', () => {
   function getCustomPrice(
     lppBalanceBeforeDeposit: LppBalance,
     lppBalanceAfterDeposit: LppBalance,
-    symbol: string,
-  ): Price {
+  ): PriceRatio {
     const totalLPNinLPP =
       BigInt(lppBalanceAfterDeposit.balance.amount) +
       BigInt(lppBalanceAfterDeposit.total_principal_due.amount) +
       BigInt(lppBalanceAfterDeposit.total_interest_due.amount);
 
-    const customPriceAfterDeposit: Price = {
-      amount: {
-        amount: lppBalanceBeforeDeposit.balance_nlpn.amount,
-        ticker: symbol,
-      },
-      amount_quote: {
-        amount: totalLPNinLPP.toString(),
-        ticker: lppCurrency,
-      },
+    return {
+      amount: { amount: lppBalanceBeforeDeposit.balance_nlpn.amount },
+      amount_quote: { amount: totalLPNinLPP.toString() },
     };
-
-    return customPriceAfterDeposit;
   }
 
   beforeAll(async () => {
     NolusClient.setInstance(NODE_ENDPOINT);
     cosm = await NolusClient.getInstance().getCosmWasmClient();
-    lppInstance = new NolusContracts.Lpp(cosm, lppContractAddress);
+    lppInstance = new Lpp(cosm, lppContractAddress);
 
     userWithBalance = await getUser1Wallet();
     lenderWallet = await createWallet();
@@ -191,9 +178,9 @@ maybe('Lender tests - Make a deposit', () => {
     expect(lppCurrencyToIBC).not.toBe('');
 
     const depositCapacity = await lppInstance.getDepositCapacity();
-    depositCapacity
-      ? (deposit = Math.ceil(depositCapacity.amount / 10000).toString())
-      : (deposit = '100');
+    deposit = depositCapacity
+      ? Math.ceil(+depositCapacity.amount / 10000).toString()
+      : '100';
   });
 
   test('the successful liquidity provision scenario - should work as expected', async () => {
@@ -245,7 +232,6 @@ maybe('Lender tests - Make a deposit', () => {
     const customPriceAfterDeposit = getCustomPrice(
       lppBalanceImmediatlyBeforeDeposit,
       lppBalanceImmediatlyAfterDeposit,
-      lppCurrency,
     );
 
     const lppLiquidityAfterDeposit = await cosm.getBalance(
@@ -311,7 +297,11 @@ maybe('Lender tests - Make a deposit', () => {
   });
 
   test('a lender tries to deposit 0 amount - should produce an error', async () => {
-    await testDepositInvalidCases(lppCurrencyToIBC, '0', 'invalid coins');
+    await testDepositInvalidCases(
+      lppCurrencyToIBC,
+      '0',
+      'amount is not positive',
+    );
   });
 
   test('a lender tries not to send funds when calling "deposit" msg - should produce an error', async () => {
@@ -428,7 +418,7 @@ maybe('Lender tests - Make a deposit', () => {
         NATIVE_MINIMAL_DENOM,
       );
 
-      if (ifLocal()) {
+      if (ASSERT_EXACT_DELTAS) {
         expect(BigInt(treasuryBalanceAfter.amount)).toBe(
           BigInt(treasuryBalanceBefore.amount) +
             BigInt(calcFeeProfit(customFees.exec)),
