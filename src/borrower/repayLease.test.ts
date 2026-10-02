@@ -57,7 +57,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
 
     // The loan is 1.5x this, so an opening swaps 2.5x it — under ~0.5 LPN the DEX will not route it.
-    const downpayment = '200000';
+    const downpayment = '2000000';
     let paymentsCount = 0;
 
     async function verifyTransferAfterRepay(

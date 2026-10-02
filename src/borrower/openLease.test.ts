@@ -62,7 +62,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
 
     // The loan is 1.5x this, so an opening swaps 2.5x it. Anything much under 0.5 LPN of swap does
     // not route on the DEX and the lease never leaves `buy_asset`.
-    const downpayment = '200000';
+    const downpayment = '700000';
 
     async function testOpening(
       leaseCurrency: string,
