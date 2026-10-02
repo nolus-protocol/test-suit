@@ -50,7 +50,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
     const oracleContractAddress = process.env.ORACLE_ADDRESS as string;
     const lppContractAddress = process.env.LPP_ADDRESS as string;
 
-    const downpayment = '700000';
+    const downpayment = '2000000';
 
     async function openedLease(
       lease: Lease = leaseInstance,
@@ -372,7 +372,9 @@ runOrSkip(process.env.TEST_BORROWER as string)(
         maxCloseSlippagePercent,
       );
 
-      const preferredCloseValueLPN = 500000;
+      // A partial close swaps this back to the LPN, and under ~0.5 LPN the DEX will not route it.
+      // 500000 sat exactly on that floor, so keep a multiple of it.
+      const preferredCloseValueLPN = 1500000;
 
       const amountToCloseValue = await calcMinAllowablePaymentAmount(
         leaserInstance,
