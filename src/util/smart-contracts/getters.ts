@@ -8,7 +8,10 @@ import {
   Oracle,
   findTickersByGroup,
 } from '../contracts';
+import { registeredMints } from '../solray';
 import { undefinedHandler } from '../utils';
+
+const ESCROWED_GROUPS = [CurrencyGroup.Lease, CurrencyGroup.PaymentOnly];
 
 export function getProtocol() {
   return process.env.PROTOCOL as string;
@@ -61,10 +64,28 @@ async function getOracleCurrencies(
   return await oracleInstance.getCurrencies();
 }
 
+async function withoutUnregistered(
+  currencies: CurrencyInfo[],
+): Promise<CurrencyInfo[]> {
+  const escrowed = currencies.filter(({ group }) =>
+    ESCROWED_GROUPS.includes(group),
+  );
+  const registered = await registeredMints(
+    escrowed.map(({ dex_symbol }) => dex_symbol),
+  );
+
+  return currencies.filter(
+    ({ group, dex_symbol }) =>
+      !ESCROWED_GROUPS.includes(group) || registered.has(dex_symbol),
+  );
+}
+
 export async function getLeaseGroupCurrencies(
   oracleInstance: Oracle,
 ): Promise<string[]> {
-  const currencies = await getOracleCurrencies(oracleInstance);
+  const currencies = await withoutUnregistered(
+    await getOracleCurrencies(oracleInstance),
+  );
   return findTickersByGroup(currencies, CurrencyGroup.Lease);
 }
 
@@ -85,7 +106,9 @@ export async function getNativeGroupCurrencies(
 export async function getPaymentGroupCurrencies(
   oracleInstance: Oracle,
 ): Promise<string[]> {
-  const currencies = await getOracleCurrencies(oracleInstance);
+  const currencies = await withoutUnregistered(
+    await getOracleCurrencies(oracleInstance),
+  );
 
   return [
     CurrencyGroup.Native,

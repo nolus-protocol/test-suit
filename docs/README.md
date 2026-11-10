@@ -73,11 +73,14 @@ read -rs MNEMO            # keeps the mnemonic out of shell history — and only
 yarn prepare-env \
   --test-wallet-mnemonic "$MNEMO" \
   --protocol SOLANA-METIS-USDC \
-  --oracle-code-id-different-protocol <code_id>
+  --oracle-code-id-different-protocol <code_id> \
+  --solray-program-id <solray program id>
 unset MNEMO
 ```
 
-Downloads the nolus-core release, recovers the wallet, resolves all 44 variables by query, and writes `.env`. `--help` lists every flag, including the per-domain
+Downloads the nolus-core release, recovers the wallet, resolves the rest by query, and writes all
+49 variables to `.env`. `--solana-rpc-url` defaults to Solana mainnet; `--solray-program-id` has no
+default. `--help` lists every flag, including the per-domain
 `--test-*-flag` toggles.
 
 **Nothing in the file is hand-written**, so a re-prep loses nothing and there is no `env.example`.
@@ -114,15 +117,18 @@ TEST_ENV_FILE=.env-osmosis yarn test       # a different env file
 yarn preflight
 ```
 
-Read-only, needs no environment variables and no Solana tooling. Three checks:
+Read-only. Reads the env file and a Solana RPC, but needs no Solana tooling. Four checks:
 
-1. **Every lease currency has a price.** The oracle drops a price past its window, so presence *is*
-   freshness.
+1. **Every registered lease currency has a price** — registered on solray, as in check 4. The
+   oracle drops a price past its window, so presence *is* freshness.
 2. **No packet is in flight** on `ICS20_CHANNEL_LOCAL` or `LEASE_CHANNEL` — one left over makes the
    next run fail ambiguously.
 3. **The main account holds native currency.** `USER_1` only, and only that the balance is above
    zero, which also proves the account exists. No floor, deliberately: how much a pass needs
    depends on what it does, and every operation checks its own balance before it spends.
+4. **The LPN and at least one lease currency are registered on solray** — the currency's escrow on
+   channel `SOLANA_CHANNEL_ORDINAL` exists and is an SPL token or Token-2022 account. The suites
+   themselves pick only registered lease currencies; the refusal names the unregistered tickers.
 
 ### CI
 
@@ -131,10 +137,11 @@ commands, on `workflow_dispatch` only. Repository variables supply the defaults 
 inputs override them per run; the domain checkboxes become the `TEST_<DOMAIN>` flags, and a
 `suites` input narrows the paths.
 
-Needs `secrets.TEST_WALLET_MNEMONIC`, `vars.PROTOCOL` and `vars.ORACLE_CODE_ID_DIFFERENT_PROTOCOL`
-in a `rila` environment; a first step refuses the run if any is missing. `vars.NOLUS_CORE_TAG` is
+Needs `secrets.TEST_WALLET_MNEMONIC`, `vars.PROTOCOL`, `vars.ORACLE_CODE_ID_DIFFERENT_PROTOCOL` and
+`vars.SOLRAY_PROGRAM_ID` in a `rila` environment; a first step refuses the run if any is missing. `vars.NOLUS_CORE_TAG` is
 optional and normally left unset — the prep downloads the latest nolus-core release, which is what
-`rila` runs.
+`rila` runs. `secrets.SOLANA_RPC_URL` is optional — a secret, not a variable, because a keyed RPC
+URL carries its API key; left unset, the prep's public default applies.
 
 ### The spend guards
 

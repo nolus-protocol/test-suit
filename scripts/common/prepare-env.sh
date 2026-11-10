@@ -82,6 +82,8 @@ local -r test_profit="${22}"
 local -r test_timealarms="${23}"
 local -r test_reserve="${24}"
 local env_file="${25}"
+local -r solana_rpc_url="${26}"
+local -r solray_program_id="${27}"
 
 local -r flags=(--output json --node "$node_url")
 
@@ -278,6 +280,8 @@ REMOTE_LEASE_CONTROLLER=${remote_lease_controller}
 ICS20_CHANNEL_LOCAL=${ics20_channel_local}
 LEASE_CHANNEL=${lease_channel}
 SOLANA_CHANNEL_ORDINAL=${solana_channel_ordinal}
+SOLANA_RPC_URL=${solana_rpc_url}
+SOLRAY_PROGRAM_ID=${solray_program_id}
 
 LENDER_DEPOSIT_CAPACITY=${lender_deposit_capacity}
 
