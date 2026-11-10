@@ -5,7 +5,8 @@ import { NolusClient } from '../util/nolus';
 import NODE_ENDPOINT, { getUser1Wallet } from '../util/clients';
 import { NATIVE_MINIMAL_DENOM } from '../util/utils';
 import { getLeaseGroupCurrencies } from '../util/smart-contracts/getters';
-import { Oracle } from '../util/contracts';
+import { CurrencyGroup, Oracle } from '../util/contracts';
+import { registeredMints } from '../util/solray';
 
 function configured(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
@@ -27,7 +28,7 @@ describe('preflight', () => {
     customerAddress = (await getUser1Wallet()).address as string;
   });
 
-  test('every lease currency has a price', async () => {
+  test('every registered lease currency has a price', async () => {
     const leaseCurrencies = await getLeaseGroupCurrencies(oracleInstance);
     const { prices } = await oracleInstance.getPrices();
     const priced = prices.map(({ amount }) => amount.ticker);
@@ -103,6 +104,48 @@ describe('preflight', () => {
     expect(
       unls > 0n ? [] : [`${customerAddress} holds no ${NATIVE_MINIMAL_DENOM}`],
     ).toStrictEqual([]);
+  });
+
+  test('the LPN and a lease currency are registered on solray', async () => {
+    const lpn = configured(process.env.LPP_BASE_CURRENCY);
+
+    if (lpn === undefined) {
+      throw new Error(
+        'LPP_BASE_CURRENCY is missing, so the registration check cannot run.',
+      );
+    }
+
+    const currencies = await oracleInstance.getCurrencies();
+    const lpnCurrency = currencies.find(({ ticker }) => ticker === lpn);
+
+    if (lpnCurrency === undefined) {
+      throw new Error(
+        `The oracle lists no currency ${lpn} (LPP_BASE_CURRENCY).`,
+      );
+    }
+
+    const lease = currencies.filter(
+      ({ group }) => group === CurrencyGroup.Lease,
+    );
+    const registered = await registeredMints(
+      [lpnCurrency, ...lease].map(({ dex_symbol }) => dex_symbol),
+    );
+    const unregisteredLease = lease
+      .filter(({ dex_symbol }) => !registered.has(dex_symbol))
+      .map(({ ticker }) => ticker);
+    const refusals: string[] = [];
+
+    if (!registered.has(lpnCurrency.dex_symbol)) {
+      refusals.push(`the LPN ${lpn} is not registered on solray`);
+    }
+
+    if (unregisteredLease.length === lease.length) {
+      refusals.push(
+        `no lease currency is registered on solray; unregistered: ${unregisteredLease.join(', ')}`,
+      );
+    }
+
+    expect(refusals).toStrictEqual([]);
   });
 
   test('the customer is the account the env file names', () => {

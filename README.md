@@ -41,8 +41,10 @@ bridge channel by query, and writes the file. `--help` lists every flag.
 
 - **The file is complete when the prep exits.** Nothing is appended by hand, so a re-prep loses
   nothing.
-- **It funds nothing and takes no Solana settings.** It assumes the main key already holds the
-  currencies the suites spend; putting them there is §2.2, which you do before the run.
+- **It funds nothing.** It assumes the main key already holds the currencies the suites spend;
+  putting them there is §2.2, which you do before the run. Its only Solana settings,
+  `--solana-rpc-url` (defaults to mainnet) and `--solray-program-id` (required, no default), are
+  read-only: the suites use them to pick only currencies registered on solray.
 
 ### 2.2 Fund the main account
 
@@ -69,7 +71,7 @@ yarn preflight
 ```
 
 Refuses a run that would fail or overspend: stale prices, a packet in flight, a main
-account with no native currency for fees.
+account with no native currency for fees, an LPN or every lease currency unregistered on solray.
 
 ### 2.4 Contract config the suites are written against
 

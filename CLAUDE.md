@@ -41,6 +41,7 @@ yarn lint
 
 # Prepare environment (needs flags/mnemonics — see docs/README.md before running)
 yarn prepare-env ...   # always writes .env; no flag to change the name
+                       # --solray-program-id is required; --solana-rpc-url defaults to mainnet
 
 # Run everything — preflight, then the suites
 yarn test
@@ -120,9 +121,9 @@ Additions and overrides for this repo:
   drifts as other people draw it down, and was removed.
 - **The prep funds nothing and no run bridges anything in.** The main test key is expected to
   already hold the currencies the suites spend; putting them there is a deliberate hand-run step
-  (`scripts/helpers/fund-main-account-from-solana.sh`, which reads no env file). So the prep takes
-  no Solana settings and the preflight has no funder-solvency check — the numbering keeps a gap
-  where check 5 was.
+  (`scripts/helpers/fund-main-account-from-solana.sh`, which reads no env file). The prep's only
+  Solana inputs, `SOLANA_RPC_URL` and `SOLRAY_PROGRAM_ID`, are read-only — they serve the
+  registration check — and the preflight has no funder-solvency check.
 - **The oracle's `Prices` query answers an object, not a ticker-keyed map.** `PricesResponse` is
   `{ prices: Price[] }`, so `Object.keys()` on it yields the single key `'prices'` and a ticker
   comparison against that reports **every** currency as unpriced. nolusjs declared the return as
@@ -135,3 +136,10 @@ Additions and overrides for this repo:
   `.env` between jobs as an artifact, and it holds unarmored private keys; only `.runs/<RUN_ID>/` is uploaded.
 - **`.gitignore`'s `.*` matches `.github/**`,** so a *new* workflow file is invisible to
   `git status`. The existing one is tracked, so edits to it do show. `!.github/` would fix it.
+
+## Settled — do not re-raise
+
+- Tests learn which currencies are registered on solray by querying Solana directly (the escrow
+  PDA via `SOLANA_RPC_URL`); the prep writes `SOLANA_RPC_URL` and `SOLRAY_PROGRAM_ID` — desislavva, 2026-11-10
+- A test that needs a lease currency picks only registered ones (`getLeaseGroupCurrencies`
+  filters); the preflight refuses a run when the LPN or no lease currency is registered — desislavva, 2026-11-10

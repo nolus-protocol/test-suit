@@ -26,6 +26,9 @@ on:
       no-price-currency-ticker:
         description: "A ticker the oracle prices nothing for (default: vars.NO_PRICE_CURRENCY_TICKER)"
         type: string
+      solray-program-id:
+        description: "Solray program on Solana (default: vars.SOLRAY_PROGRAM_ID)"
+        type: string
       suites:
         description: "Narrow the run to these jest paths, space-separated. Empty runs everything."
         type: string
@@ -94,6 +97,8 @@ jobs:
       NOLUS_CORE_TAG: ${{ inputs.nolus-core-tag || vars.NOLUS_CORE_TAG }}
       ACTIVE_LEASE_ADDRESS: ${{ inputs.active-lease-address || vars.ACTIVE_LEASE_ADDRESS }}
       NO_PRICE_CURRENCY_TICKER: ${{ inputs.no-price-currency-ticker || vars.NO_PRICE_CURRENCY_TICKER }}
+      SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+      SOLRAY_PROGRAM_ID: ${{ inputs.solray-program-id || vars.SOLRAY_PROGRAM_ID }}
       SUITES: ${{ inputs.suites }}
       TEST_TRANSFER: ${{ inputs.test-transfer }}
       TEST_ORACLE: ${{ inputs.test-oracle }}
@@ -127,6 +132,7 @@ jobs:
           [[ -n "$PROTOCOL" ]] || missing+=("vars.PROTOCOL or the protocol input")
           [[ -n "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" ]] ||
             missing+=("vars.ORACLE_CODE_ID_DIFFERENT_PROTOCOL or the oracle-code-id-different-protocol input")
+          [[ -n "$SOLRAY_PROGRAM_ID" ]] || missing+=("vars.SOLRAY_PROGRAM_ID or the solray-program-id input")
 
           if [[ ${#missing[@]} -gt 0 ]]; then
             printf 'Missing required setting: %s\n' "${missing[@]}" >&2
@@ -139,6 +145,7 @@ jobs:
             --test-wallet-mnemonic "$TEST_WALLET_MNEMONIC"
             --protocol "$PROTOCOL"
             --oracle-code-id-different-protocol "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL"
+            --solray-program-id "$SOLRAY_PROGRAM_ID"
             --active-lease-address "$ACTIVE_LEASE_ADDRESS"
             --no-price-currency-ticker "$NO_PRICE_CURRENCY_TICKER"
             --nolus-core-version-tag "$NOLUS_CORE_TAG"
@@ -163,6 +170,10 @@ jobs:
 
           if [[ -n "$ADMIN_CONTRACT_ADDRESS" ]]; then
             args+=(--admin-contract-address "$ADMIN_CONTRACT_ADDRESS")
+          fi
+
+          if [[ -n "$SOLANA_RPC_URL" ]]; then
+            args+=(--solana-rpc-url "$SOLANA_RPC_URL")
           fi
 
           # The prep traces under `set -x`, and GitHub masks the mnemonic but not the private keys

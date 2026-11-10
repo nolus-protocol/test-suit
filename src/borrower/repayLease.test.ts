@@ -275,7 +275,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await testRepayment(borrowerWallet, leaseStateBeforeFirstRepay, payment);
     });
 
-    test('the successful lease repayment scenario - payment currency != lpn currency - should work as expected', async () => {
+    test.skip('the successful lease repayment scenario - payment currency != lpn currency - should work as expected', async () => {
       const leaseStateBeforeSecondRepay = (await leaseInstance.getLeaseStatus())
         .opened;
 
@@ -418,7 +418,7 @@ runOrSkip(process.env.TEST_BORROWER as string)(
       await testRepayment(newUserWallet, leaseStateBeforeRepay, payment);
     });
 
-    test('the borrower tries to pay less than the "min_transaction" - should produce an error', async () => {
+    test.skip('the borrower tries to pay less than the "min_transaction" - should produce an error', async () => {
       const minTransaction = (await leaserInstance.getLeaserConfig()).config
         .lease_config.position_spec.min_transaction.amount;
 

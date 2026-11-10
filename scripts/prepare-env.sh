@@ -49,6 +49,9 @@ TEST_RESERVE="true"
 
 ADMIN_CONTRACT_ADDRESS="nolus17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsmc5xhq"
 
+SOLANA_RPC_URL="https://api.mainnet-beta.solana.com"
+SOLRAY_PROGRAM_ID=""
+
 readonly ENV_FILE=".env"
 
 while [[ $# -gt 0 ]]; do
@@ -57,6 +60,7 @@ while [[ $# -gt 0 ]]; do
   case $key in
 
   -h | --help)
+    { set +x; } 2>/dev/null
     printf \
     "Usage: %s
     [--node-url <node_url>]
@@ -79,6 +83,8 @@ while [[ $# -gt 0 ]]; do
     [--test-timealarms-flag <test_timealarms_true_or_false>]
     [--test-reserve-flag <test_reserve_true_or_false>]
     [--no-price-currency-ticker <no_price_currency_ticker>]
+    [--solana-rpc-url <solana_rpc_url>]
+    --solray-program-id <solray_program_id>
 
 Always downloads the nolus-core release into the repo root and uses that client - the latest
 release, or the one named by --nolus-core-version-tag. A nolusd on PATH is ignored." \
@@ -128,6 +134,16 @@ release, or the one named by --nolus-core-version-tag. A nolusd on PATH is ignor
 
   --no-price-currency-ticker)
     NO_PRICE_CURRENCY_TICKER="$2"
+    shift 2
+    ;;
+
+  --solana-rpc-url)
+    SOLANA_RPC_URL="$2"
+    shift 2
+    ;;
+
+  --solray-program-id)
+    SOLRAY_PROGRAM_ID="$2"
     shift 2
     ;;
 
@@ -201,6 +217,7 @@ source "$SCRIPT_DIR"/common/verify.sh
 verify_mandatory "$TEST_WALLET_MNEMONIC" "test wallet mnemonic"
 verify_mandatory "$PROTOCOL" "protocol name"
 verify_mandatory "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "oracle code id different protocol"
+verify_mandatory "$SOLRAY_PROGRAM_ID" "solray program id"
 
 if [[ -z "$NOLUS_CORE_TAG" ]]; then
   NOLUS_CORE_TAG=$(curl -L -s -H 'Accept: application/json' \
@@ -251,7 +268,7 @@ source "$SCRIPT_DIR"/common/prepare-env.sh
 prepareEnv "$NODE_URL" "$ACCOUNTS_DIR" "$TEST_ACCOUNT_KEY" "" "$PROTOCOL" \
 "$ADMIN_CONTRACT_ADDRESS" "$NO_PRICE_CURRENCY_TICKER" "" "" "$ACTIVE_LEASE_ADDRESS" "$ORACLE_CODE_ID_DIFFERENT_PROTOCOL" "" "" "$TEST_TRANSFER" "$TEST_ORACLE" "$TEST_STAKING" \
 "$TEST_BORROWER" "$TEST_LENDER" "$TEST_TREASURY" "$TEST_VESTING" "$TEST_ADMIN" \
-"$TEST_PROFIT" "$TEST_TIMEALARMS" "$TEST_RESERVE" "$ENV_FILE"
+"$TEST_PROFIT" "$TEST_TIMEALARMS" "$TEST_RESERVE" "$ENV_FILE" "$SOLANA_RPC_URL" "$SOLRAY_PROGRAM_ID"
 
 echo "Wrote $ENV_FILE for $PROTOCOL on $CHAIN_ID."
 echo "This script does not fund anything. It assumes the main test key already holds the"
