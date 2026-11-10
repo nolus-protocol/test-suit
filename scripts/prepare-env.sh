@@ -60,6 +60,7 @@ while [[ $# -gt 0 ]]; do
   case $key in
 
   -h | --help)
+    { set +x; } 2>/dev/null
     printf \
     "Usage: %s
     [--node-url <node_url>]
